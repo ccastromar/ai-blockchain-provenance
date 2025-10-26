@@ -49,21 +49,18 @@ export const verifyChain = async () => {
   return response.data;
 };
 
-// Obtener todos los modelos (colección nueva)
 export const getAllModels = async () => {
   const response = await api.get('/models');
   //console.log('Fetched models:', response.data);
   return response.data; // [{ modelId, name, version, ... }]
 };
 
-// Obtener detalle de un modelo
 export const getModelById = async (modelId: string) => {
   const response = await api.get(`/models/${modelId}`);
   return response.data;
 };
 
 export const getAllModelIds = async () => {
-  // Supón que tienes endpoint /api/models que devuelve [{ modelId }]
   const response = await api.get('/models/ids');
   return response.data;
 };

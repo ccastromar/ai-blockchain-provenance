@@ -1,6 +1,31 @@
-# 🏥 HealthTrace - Medical AI Provenance Blockchain POC
+# 🛡️ AI Model Provenance & Auditing PoC
 
-A proof-of-concept system for tracking AI model provenance and medical inferences using blockchain technology (hash chain implementation).
+Welcome to the AI Model Provenance & Auditing Proof-of-Concept—a full-stack platform to **trace, audit, and anchor the lifecycle of AI models and their inferences**.
+
+## Why This Project?
+
+In fields like healthcare, finance, and industry, **provenance and transparency for AI models are becoming mission-critical**—not just recommended. Regulations (EU AI Act, FDA, GDPR) and the drive for *trustworthy AI* demand that every decision, model update, and inference can be traced, reproduced, and publicly verified.
+
+## What Does This PoC Offer?
+
+- **Track every model, version, parameter & inference.**
+- **Anchor immutable digests (Merkle root) in a public blockchain (Ethereum testnet),** providing tamper-evidence and future-proof proof of existence.
+- **Generalist UI & API:** Ready to integrate any model, data type, or business logic—AI-native but extensible to *any provenance use case*.
+- **Modern stack:** Fast back-end (NestJS/Node.js + MongoDB), intuitive (React/Next.js) front-end.
+- **Auditable & extensible:** Designed for easy adaptation in domains where explainability, compliance, and data lineage matter.
+
+## Who Is This For?
+
+- AI engineers, ML Ops & Data Scientists
+- Compliance/Risk officers
+- CTOs and product leads exploring **“Responsible AI”**
+- Anyone who needs auditable, blockchain-anchored history of AI actions
+
+## Quick Start
+
+1. Clone the repo, install dependencies and launch both backend and frontend.
+2. Register your models and submit inferences through the API or web dashboard.
+3. Review provenance records, Merkle roots, and blockchain anchors in seconds.
 
 ## 🎯 Features
 
@@ -14,25 +39,6 @@ A proof-of-concept system for tracking AI model provenance and medical inference
 ## 🏗️ Architecture
 
 NestJs and Next
-
-## What is stored?
-
-In summary:
-
-Parameters: "What values did you use to train?"
-
-Metrics: "How well did the model do?"
-
-Metadata: "Anything else someone should know for context"
-
-
-### Adding Features
-
-**New block type:**
-1. Update `ProvenanceBlock` schema in `blockchain/models/`
-2. Add method in `BlockchainService`
-3. Create API endpoint in `api/`
-4. Update frontend component
 
 ## 🔒 Security Considerations
 
@@ -70,9 +76,13 @@ This is a POC. For improvements:
 
 MIT License - free to use and modify
 
-## 👥 Authors
+## 👥 Author
 
-Carlos Castro Martos for the backend, and my UI specialist, Perplexity AI.
+Developed and maintained by Carlos Castro Martos.
+
+This project was developed independently by me.
+
+**This repository is not sponsored, endorsed, or licensed by any employer, organization, or company. All code, ideas, and documentation are personal intellectual property and are published for the benefit of the global open source and AI community.**
 
 ## 📞 Support
 
@@ -82,5 +92,7 @@ For issues or questions:
 - Review API endpoints
 
 ---
+
+Copyright © 2025 Carlos Castro Martos. Licensed under MIT, see LICENSE.
 
 **Built with ❤️ for medical AI transparency**

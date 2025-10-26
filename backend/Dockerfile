@@ -2,11 +2,11 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Instalar dependencias
+# Install dependencies
 COPY package*.json ./
 RUN npm ci --only=production
 
-# Copiar código fuente
+# Copy source
 COPY . .
 
 # Build TypeScript

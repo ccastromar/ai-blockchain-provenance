@@ -11,17 +11,15 @@ export class ScheduledBlockchainService {
   private readonly logger = new Logger(ScheduledBlockchainService.name);
 
   constructor(
-    // inyecta el modelo Anchor
     @InjectModel(Anchor.name) private anchorModel: Model<AnchorDocument>,
   ) {}  
   
   /**
-   * Revisa periódicamente los anchors pendientes y actualiza si están minados.
-   * Ejecuta cada minuto.
+   * Periodically check the pending anchors and update them if they are mined.
+   * Executed every 10 minutes.
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async confirmPendingAnchors() {
-    // Busca los anchors con status pending 
     const pending = await this.anchorModel.find({ status: 'pending' }).lean();
 
     if (pending.length === 0) {
@@ -41,7 +39,7 @@ export class ScheduledBlockchainService {
             { 
               $set: {
                 blockNumber: receipt.blockNumber,
-                status: 'confirmed', // puedes poner este campo o cualquier otro
+                status: 'confirmed', 
                 confirmedAt: new Date()
               }
             }

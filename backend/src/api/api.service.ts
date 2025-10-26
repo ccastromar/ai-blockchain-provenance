@@ -23,7 +23,7 @@ export class ApiService {
         throw new BadRequestException(`Model with modelName '${dto.modelName}' already exists.`);
       }
 
-    // Registrar en MLflow (simulado)
+    //simulation
     const mlflowResult = await this.mlflowService.registerModel(
       dto.modelName,
       dto.modelPath || '',
@@ -31,7 +31,6 @@ export class ApiService {
       dto.metrics
     );
 
-    // Registrar en Blockchain
     const blockchainResult = await this.blockchainService.registerModel(
       dto.modelName,
       dto.version,
@@ -44,7 +43,6 @@ export class ApiService {
       }
     );
 
-    // Crear en colección 'models'
     await this.modelService.create({
         modelId: dto.modelName,
         name: dto.modelName,
@@ -72,7 +70,6 @@ export class ApiService {
   async logInference(dto: LogInferenceDto) {
     this.logger.log(`Logging inference for model ID: ${dto.modelId}`);
 
-    // Verificar que el modelo exista
     const modelExists = await this.modelService.findOne(dto.modelId);
     this.logger.log(`Model existence check for ID ${dto.modelId}: ${!!modelExists}`);
     if (!modelExists) {
@@ -80,14 +77,12 @@ export class ApiService {
       throw new NotFoundException(`Model ID ${dto.modelId} does not exist`);
     }
 
-    // Ejecutar inferencia (simulada)
     const inferenceResult = await this.mlflowService.executeInference(
       dto.modelId,
       dto.input,
       dto.params
     );
 
-    // Registrar en Blockchain
     const blockchainResult = await this.blockchainService.logInference(
       dto.modelId,
       inferenceResult.inferenceId,
@@ -137,7 +132,5 @@ export class ApiService {
 
   async getAllModels() {
     return await this.modelService.findAll();   
-  }
-
-  
+  }  
 }
