@@ -1,0 +1,81 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
+
+# VSCode/IDE
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Dist/build/output
+dist/
+build/
+.next/
+out/
+
+# Coverage/test
+coverage/
+.nyc_output/
+test-results/
+__pycache__/
+*.pyc
+
+# Logs/temp
+logs/
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Mongo/DB dumps/backups
+dump/
+*.bak
+*.tgz
+*.gz
+
+# Docker
+docker-compose.override.yml
+docker-compose.local.yml
+
+# Python/ML (por si tienes scripts)
+env/
+.venv/
+*.egg-info/
+*.pkl
+pip-log.txt
+
+# Frontend
+node_modules/
+.next/
+out/
+*.local
+
+# Ignore zip output
+*.zip
+
+# Misc: npm audit cache, yarn cache, etc
+.npm/
+.cache/
+.yarn/
+
+# Misc security
+.secret
+.secrets
+*.pem
+*.key
+
