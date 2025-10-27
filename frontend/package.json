@@ -1,7 +1,7 @@
 {
-  "name": "healthtrace-frontend",
-  "version": "1.0.0",
-  "private": true,
+  "name": "ernest-frontend",
+  "version": "0.1.0",  
+  "description": "AI Model Provenance & Auditing PoC - frontend",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

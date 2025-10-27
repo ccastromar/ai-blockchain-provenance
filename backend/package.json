@@ -1,7 +1,7 @@
 {
-  "name": "healthtrace-backend",
-  "version": "1.0.0",
-  "description": "HealthTrace - Medical AI Provenance Blockchain POC",
+  "name": "ernest-backend",
+  "version": "0.1.0",
+  "description": "AI Model Provenance & Auditing PoC - backend",
   "main": "dist/main.js",
   "scripts": {
     "start": "nest start",

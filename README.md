@@ -1,6 +1,14 @@
-# 🛡️ AI Model Provenance & Auditing PoC
+# 🛡️ AI Model Provenance & Auditing PoC - "Ernest"
 
-Welcome to the AI Model Provenance & Auditing Proof-of-Concept—a full-stack platform to **trace, audit, and anchor the lifecycle of AI models and their inferences**.
+Welcome to "Ernest", the AI Model Provenance & Auditing Proof-of-Concept—a full-stack platform to **trace, audit, and anchor the lifecycle of AI models and their inferences**.
+
+## 📦 Versions
+
+| Component | Version | Description |
+|------------|----------|-------------|
+| **PoC "Ernest" (global)** | `0.1.0` | Combined release |
+| **Backend (NestJS)** | `0.1.0` | API & integrations |
+| **Frontend (Next.js)** | `0.1.0` | UI & client features |
 
 ## Why This Project?
 
@@ -66,7 +74,7 @@ Those inputs and outputs **are not stored in the Database**, only their hashes.
 
 The project follows a **modular architecture** built with **NestJS** for the backend and **Next.js** for the frontend.
 
-# API cURL Examples
+## API cURL Examples
 
 For credit risk scoring in banks, a popular model is a Logistic Regression (often starting from open datasets like the German Credit dataset, or via proprietary features), sometimes upgraded to Random Forests or XGBoost ensembles.
 
@@ -75,7 +83,7 @@ One for registering a credit risk model (let’s assume logistic regression trai
 
 One for logging an inference with feature values for a bank client.
 
-## Register Credit Risk Model
+### Register Credit Risk Model
 
 `curl -X POST http://localhost:3001/api/models \
   -H "Content-Type: application/json" \
@@ -113,7 +121,7 @@ One for logging an inference with feature values for a bank client.
   `{"success":true,"modelId":"credit-risk-logreg-v1","version":"1.0.0","blockIndex":36,"blockHash":"2a648a9bb807c0e3f23ecd89f387774f8f5dcd959587ce45dc1ffba31828fa18","mlflow":{"modelName":"credit-risk-logreg-v1","modelHash":"941a5ccb47444c354cdc75229483109741018265bd85e2d79625a5b7dfe9b158","gitCommit":"bb3a48f9865af3469c8dec8b6bb18f7f8941f158","params":{"model_type":"LogisticRegression","solver":"liblinear","penalty":"l2","C":1,"random_state":42},"metrics":{"roc_auc":0.81,"accuracy":0.76,"precision":0.72,"recall":0.69,"f1_score":0.7},"registeredAt":"2025-10-27T10:57:45.514Z"},"blockchain":{"index":36,"hash":"2a648a9bb807c0e3f23ecd89f387774f8f5dcd959587ce45dc1ffba31828fa18","timestamp":1761562665}}`
 
 
-## Log Inference 
+### Log Inference 
 
 `curl -X POST http://localhost:3001/api/inference \
   -H "Content-Type: application/json" \
@@ -150,7 +158,7 @@ Response:
 - [ ] Implement access control (RBAC)
 - [ ] Encrypt sensitive data
 - [ ] Add rate limiting
-- [ ] Use real blockchain (e.g., Hyperledger Fabric/EVM)
+- [ ] Use real blockchain (e.g., Hyperledger Fabric/EVM) if several organizations are involved
 - [ ] Implement HIPAA compliance
 - [ ] Add audit logging
 - [ ] Secure API endpoints
