@@ -3,38 +3,38 @@ version: '3.8'
 services:
   mongodb:
     image: mongo:7
-    container_name: healthtrace-mongodb
+    container_name: ernest-mongodb
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     environment:
-      - MONGO_INITDB_DATABASE=healthtrace
+      - MONGO_INITDB_DATABASE=ernest
     networks:
-      - healthtrace-network
+      - ernest-network
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: healthtrace-backend
+    container_name: ernest-backend
     ports:
       - "3001:3001"
     environment:
       - PORT=3001
-      - MONGODB_URI=mongodb://mongodb:27017/healthtrace
+      - MONGODB_URI=mongodb://mongodb:27017/ernest
       - NODE_ENV=production
     depends_on:
       - mongodb
     networks:
-      - healthtrace-network
+      - ernest-network
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: healthtrace-frontend
+    container_name: ernest-frontend
     ports:
       - "3000:3000"
     environment:
@@ -42,12 +42,12 @@ services:
     depends_on:
       - backend
     networks:
-      - healthtrace-network
+      - ernest-network
     restart: unless-stopped
 
 volumes:
   mongodb_data:
 
 networks:
-  healthtrace-network:
+  ernest-network:
     driver: bridge

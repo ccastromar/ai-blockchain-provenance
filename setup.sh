@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🏥 HealthTrace POC - Setup Script"
+echo "Ernest POC - Setup Script"
 echo "=================================="
 echo ""
 
@@ -39,7 +39,7 @@ if [ "$choice" = "1" ]; then
     docker-compose up --build -d
     
     echo ""
-    echo -e "${GREEN}✅ HealthTrace is running!${NC}"
+    echo -e "${GREEN}✅ Ernest is running!${NC}"
     echo ""
     echo "Access the application:"
     echo "  Frontend: http://localhost:3000"
@@ -67,7 +67,7 @@ elif [ "$choice" = "2" ]; then
         echo "Creating .env file..."
         cat > .env << EOF
 PORT=3001
-MONGODB_URI=mongodb://localhost:27017/healthtrace
+MONGODB_URI=mongodb://localhost:27017/ernest
 NODE_ENV=development
 EOF
     fi
@@ -87,7 +87,7 @@ EOF
     echo "To start development:"
     echo ""
     echo "1. Start MongoDB:"
-    echo "   docker run -d -p 27017:27017 --name healthtrace-mongo mongo:7"
+    echo "   docker run -d -p 27017:27017 --name ernest-mongo mongo:7"
     echo ""
     echo "2. Start backend (in backend/):"
     echo "   npm run start:dev"
