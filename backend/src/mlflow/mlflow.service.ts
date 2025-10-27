@@ -1,3 +1,8 @@
+/*
+ * AI Model Provenance & Auditing PoC
+ * Copyright (c) 2025 Carlos Castro Martos
+ * Licensed under the MIT License – see root LICENSE
+ */
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { execSync } from 'child_process';

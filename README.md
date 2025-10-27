@@ -36,9 +36,111 @@ In fields like healthcare, finance, and industry, **provenance and transparency 
 - ✅ **Immutable History**: Tamper-proof record of all events
 - ✅ **Web Dashboard**: User-friendly interface for all operations
 
+### Notes
+
+MLFlow is simulated in the scope of this PoC. In a real integration we could integrate with an MLFlow API and calculate the hash of the model.
+Also the log inference ouput is simulated:
+`const simulatedOutput = {
+      prediction: Math.random() > 0.5 ? 'positive' : 'negative',
+      confidence: Math.random(),
+      timestamp: new Date().toISOString()
+    };`
+
+Those inputs and outputs **are not stored in the Database**, only their hashes.    
+
+## Visual demo
+
+### Register AI Model
+![Register AI Model](docs/img/register-model-form.jpg)
+
+### Log Inference
+![Log Inference](docs/img/log-inference-form.jpg)
+
+### View Provenance
+![View Provenance](docs/img/view-provenance.jpg)
+
+### Hashchain stats
+![Show hashchain stats](docs/img/hashchain-stats.jpg)
+
 ## 🏗️ Architecture
 
-NestJs and Next
+The project follows a **modular architecture** built with **NestJS** for the backend and **Next.js** for the frontend.
+
+# API cURL Examples
+
+For credit risk scoring in banks, a popular model is a Logistic Regression (often starting from open datasets like the German Credit dataset, or via proprietary features), sometimes upgraded to Random Forests or XGBoost ensembles.
+
+Below are two ready-to-use curl examples:
+One for registering a credit risk model (let’s assume logistic regression trained on key financial features).
+
+One for logging an inference with feature values for a bank client.
+
+## Register Credit Risk Model
+
+`curl -X POST http://localhost:3001/api/models \
+  -H "Content-Type: application/json" \
+  -d '{
+    "modelName": "credit-risk-logreg-v1",
+    "version": "1.0.0",
+    "params": {
+      "model_type": "LogisticRegression",
+      "solver": "liblinear",
+      "penalty": "l2",
+      "C": 1.0,
+      "random_state": 42
+    },
+    "metrics": {
+      "roc_auc": 0.81,
+      "accuracy": 0.76,
+      "precision": 0.72,
+      "recall": 0.69,
+      "f1_score": 0.70
+    },
+    "metadata": {
+      "framework": "scikit-learn",
+      "training_data": "German Credit Risk Dataset",
+      "feature_names": [
+        "age", "credit_amount", "duration", "housing", "employment_status", "job_type", "other_debtors", "own_telephone"
+      ],
+      "target": "creditworthiness",
+      "classes": ["Good", "Bad"],
+      "author": "Your Name",
+      "creation_date": "2025-10-27"
+    }
+  }'
+  `
+  Response:
+  `{"success":true,"modelId":"credit-risk-logreg-v1","version":"1.0.0","blockIndex":36,"blockHash":"2a648a9bb807c0e3f23ecd89f387774f8f5dcd959587ce45dc1ffba31828fa18","mlflow":{"modelName":"credit-risk-logreg-v1","modelHash":"941a5ccb47444c354cdc75229483109741018265bd85e2d79625a5b7dfe9b158","gitCommit":"bb3a48f9865af3469c8dec8b6bb18f7f8941f158","params":{"model_type":"LogisticRegression","solver":"liblinear","penalty":"l2","C":1,"random_state":42},"metrics":{"roc_auc":0.81,"accuracy":0.76,"precision":0.72,"recall":0.69,"f1_score":0.7},"registeredAt":"2025-10-27T10:57:45.514Z"},"blockchain":{"index":36,"hash":"2a648a9bb807c0e3f23ecd89f387774f8f5dcd959587ce45dc1ffba31828fa18","timestamp":1761562665}}`
+
+
+## Log Inference 
+
+`curl -X POST http://localhost:3001/api/inference \
+  -H "Content-Type: application/json" \
+  -d '{
+    "modelId": "credit-risk-logreg-v1",
+    "input": {
+      "age": 34,
+      "credit_amount": 12000,
+      "duration": 24,
+      "housing": "own",
+      "employment_status": "permanent",
+      "job_type": "skilled",
+      "other_debtors": "none",
+      "own_telephone": true
+    },
+    "params": {
+      "return_probs": true
+    },
+    "metadata": {
+      "client_id": "C002193",
+      "scoring_request_id": "score-20251027-1001",
+      "source": "branch_app"
+    }
+  }'
+`
+Response:
+`{"success":true,"inferenceId":"inf_1761562689068_26aj9p9ji","modelId":"credit-risk-logreg-v1","output":{"prediction":"negative","confidence":0.16279536381555004,"timestamp":"2025-10-27T10:58:09.067Z"},"blockIndex":37,"blockHash":"e8c59ba5a6cf54ca2140e2b4694e7b0c9c55c826759da5b1869a319143eede61","hashes":{"input":"2be0f7ce6bfcc8b7265646ea39f60a0a95441fa4cce20863f241accf410d699c","output":"6c18b277c0f20daaaf0921f8ff14e5692efcca4247ebc06a31b76123dacd704d"},"blockchain":{"index":37,"hash":"e8c59ba5a6cf54ca2140e2b4694e7b0c9c55c826759da5b1869a319143eede61","timestamp":1761562689}}`
 
 ## 🔒 Security Considerations
 
