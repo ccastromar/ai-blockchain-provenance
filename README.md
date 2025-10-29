@@ -56,6 +56,12 @@ Also the log inference ouput is simulated:
 
 Those inputs and outputs **are not stored in the Database**, only their hashes.    
 
+## Extras
+
+There is also a CLI in Go lang to interact with the MongoDB hashchain.
+Also there is a Hardhat project with the "Ernest contract", that will be used to help query the Anchoring events in the Ethereum EVM.
+And additionally there is an AI sandbox with some example with Python to train Iris datasets, and integrated with the NestJs backend.
+
 ## Visual demo
 
 ### Register AI Model
@@ -162,6 +168,9 @@ Response:
 - [ ] Implement HIPAA compliance
 - [ ] Add audit logging
 - [ ] Secure API endpoints
+
+## Sepolia smart contract
+MultiDomainMerkleAnchorModule#MultiDomainMerkleAnchor - 0xA62948582b9c99b2e9f7B735714662307Ede3836
 
 ## 📝 Future Enhancements
 
