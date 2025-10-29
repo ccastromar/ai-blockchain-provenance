@@ -30,12 +30,12 @@ export const registerModel = async (data: RegisterModelData) => {
 };
 
 export const logInference = async (data: LogInferenceData) => {
-  const response = await api.post('/inference', data);
+  const response = await api.post('/inferences', data);
   return response.data;
 };
 
 export const getProvenance = async (modelId: string) => {
-  const response = await api.get(`/provenance/${modelId}`);
+  const response = await api.get(`/provenances/${modelId}`);
   return response.data;
 };
 

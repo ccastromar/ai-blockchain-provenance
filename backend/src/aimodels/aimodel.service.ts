@@ -25,9 +25,9 @@ export class AIModelService {
     return await this.aimodelModel.findOne({ modelId }).lean();
   }
 
-  async findOneByName(modelName: string) {
+  async findOneByName(modelName: string, version:string) {
     this.logger.log(`Finding model with name: ${modelName}`);
-    return await this.aimodelModel.findOne({ name:modelName }).lean();
+    return await this.aimodelModel.findOne({ name:modelName, version }).lean();
   }
 
   async update(modelId: string, update: Partial<AIModelDocument>) {

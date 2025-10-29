@@ -3,13 +3,13 @@ import { Document } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class AIModel {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   modelId: string;
 
   @Prop({ required: true })
   name: string;
 
-  @Prop()
+  @Prop({ required: true })
   version: string;
 
   @Prop({ type: Object })
@@ -24,3 +24,6 @@ export class AIModel {
 
 export type AIModelDocument = AIModel & Document;
 export const AIModelSchema = SchemaFactory.createForClass(AIModel);
+
+AIModelSchema.index({ name: 1, version: 1 }, { unique: true });
+

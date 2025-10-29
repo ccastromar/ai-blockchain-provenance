@@ -7,6 +7,7 @@ import { ApiController } from './api/api.controller';
 import { ApiService } from './api/api.service';
 import { AIModelModule } from './aimodels/aimodel.module';
 import { AIModelController } from './aimodels/aimodel.controller';
+import { AnchorEventsService } from './api/anchor-events.service';
 
 @Module({
   imports: [
@@ -24,6 +25,8 @@ import { AIModelController } from './aimodels/aimodel.controller';
     ApiController,
     AIModelController
   ],
-  providers: [ApiService,],
+  providers: [
+    ApiService,
+    AnchorEventsService],
 })
 export class AppModule {}

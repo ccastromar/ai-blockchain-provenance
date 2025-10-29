@@ -17,10 +17,10 @@ export class ApiService {
   ) {}
 
   async registerModel(dto: RegisterModelDto) {
-
-     const already = await this.modelService.findOneByName(dto.modelName);
+    this.logger.log(`Registering model: ${dto.modelName} with version: ${dto.version}`);
+     const already = await this.modelService.findOneByName(dto.modelName, dto.version);
       if (already) {
-        throw new BadRequestException(`Model with modelName '${dto.modelName}' already exists.`);
+        throw new BadRequestException(`Model with modelName '${dto.modelName}' and version '${dto.version}' already exists.`);
       }
 
     //simulation

@@ -103,7 +103,7 @@ export class BlockchainService implements OnModuleInit {
      * Calcular hash SHA-256 del bloque
      */
     private calculateHash(block: Partial<ProvenanceBlock>): string {
-        // ✅ Timestamp es número, no necesita conversión
+        //Timestamp es número, no necesita conversión
         const timestampString = block.timestamp.toString();
 
         //Limpiar campos undefined/null recursivamente

@@ -1,13 +1,16 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query } from '@nestjs/common';
 import { ApiService } from './api.service';
 import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
+import { AnchorEventsService } from './anchor-events.service';
 
 @Controller('api')
 export class ApiController {
   private readonly logger = new Logger(ApiController.name);
 
-  constructor(private readonly apiService: ApiService) { 
+  constructor(private readonly apiService: ApiService,
+    private readonly anchorEventsService: AnchorEventsService
+  ) { 
     console.log("ApiController initialized!");
   }
 
@@ -18,14 +21,14 @@ export class ApiController {
     return await this.apiService.registerModel(dto);
   }
 
-  @Post('inference')
+  @Post('inferences')
   @HttpCode(HttpStatus.OK)
   async logInference(@Body() dto: LogInferenceDto) {
     this.logger.log(`Received logInference request for model ID: ${dto.modelId}`);
     return await this.apiService.logInference(dto);
   }
 
-  @Get('provenance/:modelId')
+  @Get('provenances/:modelId')
   async getProvenance(@Param('modelId') modelId: string) {
     return await this.apiService.getProvenance(modelId);
   }
@@ -87,6 +90,20 @@ export class ApiController {
     return models.map(m => m.modelId);
   }
 
+  @Get('events')
+  async getAllEvents() {
+    return await this.anchorEventsService.getAllAnchoredEvents();
+  }
+
+  @Get('events/address')
+  async getEventsByAddress(@Query('address') address: string) {
+    return await this.anchorEventsService.getAnchorsByAddress(address);
+  }
+
+  @Get('events/organization')
+  async getEventsByOrgId(@Query('orgId') orgId: string) {
+    return await this.anchorEventsService.getAnchorsByOrganizationId(orgId);
+  }
 
   private calculateHashDebug(block: any): string {
     const crypto = require('crypto');
