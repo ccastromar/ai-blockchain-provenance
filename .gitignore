@@ -53,6 +53,7 @@ docker-compose.override.yml
 docker-compose.local.yml
 
 # Python/ML (por si tienes scripts)
+**/venv/
 env/
 .venv/
 *.egg-info/
