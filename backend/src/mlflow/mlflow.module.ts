@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { MlflowService } from './mlflow.service';
+import { MlflowService } from './mock.mlflow.service';
 
 @Module({
   providers: [MlflowService],

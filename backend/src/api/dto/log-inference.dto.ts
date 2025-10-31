@@ -4,14 +4,20 @@ export class LogInferenceDto {
   @IsString()
   modelId: string;
 
-  @IsObject()
-  input: any;
+  @IsString()
+  inferenceId: string;
 
+  @IsString()
+  inputHash: string;
+  
+  @IsString()
+  outputHash: string;
+  
   @IsObject()
   @IsOptional()
   params?: Record<string, any>;
 
   @IsOptional()
   @IsObject()
-  metadata?: any;
+  metadata?: Record<string, any>;
 }

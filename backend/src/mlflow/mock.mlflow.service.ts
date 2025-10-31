@@ -70,15 +70,13 @@ export class MlflowService {
    */
   async executeInference(
     modelId: string,
-    input: any,
-    params?: Record<string, any>
+    inputHash: string,
+    params?: Record<string, any>,
+    metadata?: Record<string, any>
   ) {
     this.logger.log(`Executing inference for model: ${modelId}`);
 
-    // Calcular hashes de input/output
-    const inputHash = this.calculateHash(JSON.stringify(input));
-    
-    // Simular output (en producción aquí llamarías al modelo real)
+    // Simulation of inference execution
     const simulatedOutput = {
       prediction: Math.random() > 0.5 ? 'positive' : 'negative',
       confidence: Math.random(),
@@ -91,8 +89,8 @@ export class MlflowService {
       inferenceId: `inf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       inputHash,
       outputHash,
-      output: simulatedOutput,
-      params: params || {},
+      params: params,
+      metadata: metadata,
       executedAt: new Date().toISOString()
     };
   }

@@ -13,6 +13,7 @@ import MerkleTree from 'merkletreejs';
 import keccak256 from 'keccak256';
 import { ethers } from 'ethers';
 import { Anchor, AnchorDocument } from './models/anchor.schema';
+import { canonicalize, canonicalizeEx } from 'json-canonicalize';
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -30,13 +31,13 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Crear bloque génesis si no existe
+     * Create genesis block if not exists
      */
     async createGenesisBlock(): Promise<void> {
         const exists = await this.provenanceBlockModel.findOne({ index: 0 });
 
         if (!exists) {
-            const timestamp = Math.floor(Date.now() / 1000); //Unix timestamp en segundos
+            const timestamp = Math.floor(Date.now() / 1000); //Unix timestamp in seconds
 
             const genesisBlock = {
                 index: 0,
@@ -48,7 +49,7 @@ export class BlockchainService implements OnModuleInit {
                 },
                 previousHash: '0',
                 hash: '',
-                nonce: 0
+                //nonce: 0
             };
 
             genesisBlock.hash = this.calculateHash(genesisBlock);
@@ -83,7 +84,7 @@ export class BlockchainService implements OnModuleInit {
             data: cleanedData,
             previousHash: lastBlock.hash,
             hash: '',
-            nonce: 0
+            // nonce: 0
         };
 
         // Calcular hash del nuevo bloque
@@ -100,32 +101,36 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Calcular hash SHA-256 del bloque
+     * Calculate SHA-256 hash
      */
     private calculateHash(block: Partial<ProvenanceBlock>): string {
+        this.logger.debug(`Calculating hash for block raw data: ${JSON.stringify(block)}  `);
+        const canonicalData = canonicalizeEx(block.data, { exclude: ['__v', '_id', 'createdAt', 'updatedAt', 'hash'] });
+        this.logger.debug(`Canonicalized block data: ${canonicalData}  `);
+
         //Timestamp es número, no necesita conversión
         const timestampString = block.timestamp.toString();
 
         //Limpiar campos undefined/null recursivamente
-        const cleanedData = this.cleanObject(block.data);
-        const sortedKeys = Object.keys(cleanedData).sort();
-        const dataString = JSON.stringify(cleanedData, sortedKeys);
+        //const cleanedData = this.cleanObject(block.data);
+        //this.logger.debug(`Cleaned block data for hashing: ${JSON.stringify(cleanedData)}  `);
+        //const sortedKeys = Object.keys(cleanedData).sort();
+        //const dataString = JSON.stringify(cleanedData, sortedKeys);
 
-        // Crear string concatenado en orden fijo
         const blockString = [
             block.index,
             timestampString,
-            dataString,
+            canonicalData, //dataString,
             block.previousHash,
-            block.nonce
-        ].join('|'); // Usar separador explícito
-
+            // block.nonce
+        ].join('|'); // Use explicit pipe separator
+        this.logger.debug(`Calculating hash for block string: ${blockString}`);
         return crypto.createHash('sha256').update(blockString).digest('hex');
 
     }
 
     /**
-     * Verificar integridad de toda la cadena
+     * Verify hashchain integrity
      */
     async verifyChain(): Promise<{ isValid: boolean; errors: string[] }> {
         const blocks = await this.provenanceBlockModel
@@ -138,28 +143,26 @@ export class BlockchainService implements OnModuleInit {
         for (let i = 0; i < blocks.length; i++) {
             const currentBlock = blocks[i];
 
-            // Verificar hash del bloque actual
+            // Calculate current block hash
             const calculatedHash = this.calculateHash(currentBlock);
 
             if (currentBlock.hash !== calculatedHash) {
                 errors.push(`Block ${currentBlock.index}: Hash mismatch`);
-                //Debug detallado
                 this.logger.error(`Block ${currentBlock.index} hash mismatch:`);
                 this.logger.error(`  Stored hash: ${currentBlock.hash}`);
                 this.logger.error(`  Calculated hash: ${calculatedHash}`);
-                this.logger.error(`  Block index: ${currentBlock.index}`);  // ✅ Añadir index
+                this.logger.error(`  Block index: ${currentBlock.index}`);
                 this.logger.error(`  Data: ${JSON.stringify(currentBlock.data)}`);
                 this.logger.error(`  Timestamp: ${currentBlock.timestamp}`);
-                this.logger.error(`  Timestamp (ISO): ${new Date(currentBlock.timestamp * 1000).toISOString()}`); // ✅ FIX
-
+                this.logger.error(`  Timestamp (ISO): ${new Date(currentBlock.timestamp * 1000).toISOString()}`);
             }
 
-            // Verificar enlace con bloque anterior (solo si no es genesis)
-            if (i > 0) {  // ✅ Comparar índice del array, no del bloque
+            // Verify hash chaining (if not genesis)
+            if (i > 0) {
                 const previousBlock = blocks[i - 1];
 
                 if (currentBlock.previousHash !== previousBlock.hash) {
-                    errors.push(`Block ${currentBlock.index}: Chain link broken (previousHash: ${currentBlock.previousHash.substring(0, 16)}..., expected: ${previousBlock.hash.substring(0, 16)}...)`);
+                    errors.push(`Block ${currentBlock.index}: Hashchain broken ! (previousHash: ${currentBlock.previousHash.substring(0, 16)}..., expected: ${previousBlock.hash.substring(0, 16)}...)`);
                 }
             }
         }
@@ -171,7 +174,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Obtener provenance completo de un modelo
+     * Get full provenance by modelId
      */
     async getProvenance(modelId: string) {
         const blocks = await this.provenanceBlockModel
@@ -188,8 +191,8 @@ export class BlockchainService implements OnModuleInit {
             verificationErrors: verification.errors,
             history: blocks.map(b => ({
                 blockIndex: b.index,
-                timestamp: new Date(b.timestamp * 1000).toISOString(), //Convertir a ISO
-                timestampUnix: b.timestamp, // También incluir Unix
+                timestamp: new Date(b.timestamp * 1000).toISOString(),
+                timestampUnix: b.timestamp,
                 type: b.data.type,
                 version: b.data.version,
                 inputHash: b.data.inputHash,
@@ -203,7 +206,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Obtener estadísticas de la cadena
+     * Get hashchain statistics 
      */
     async getChainStats() {
         const totalBlocks = await this.provenanceBlockModel.countDocuments();
@@ -214,10 +217,10 @@ export class BlockchainService implements OnModuleInit {
 
         return {
             totalBlocks,
-            totalModels: modelCount.length - 1, // -1 por genesis
+            totalModels: modelCount.length - 1, // -1 genesis
             lastBlockIndex: lastBlock?.index || 0,
             lastBlockHash: lastBlock?.hash || '',
-            lastBlockTimestamp: lastBlock ? new Date(lastBlock.timestamp * 1000).toISOString() : null, //Convertir
+            lastBlockTimestamp: lastBlock ? new Date(lastBlock.timestamp * 1000).toISOString() : null,
             lastBlockTimestampUnix: lastBlock?.timestamp || 0,
             chainValid: verification.isValid,
             verificationErrors: verification.errors,
@@ -237,49 +240,57 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Registrar nuevo modelo
+     * Register a new IA model
      */
     async registerModel(
         modelId: string,
+        modelName: string,
         version: string,
         modelHash: string,
+        gitCommit: string,
+        params?: Record<string, any>,
+        metrics?: Record<string, any>,
         metadata?: Record<string, any>
     ) {
         return await this.addBlock({
             type: 'model_registration',
             modelId,
+            modelName,
             version,
-            metadata: {
-                ...metadata,
-                modelHash,
-                registeredAt: new Date().toISOString()
-            }
+            modelHash,
+            gitCommit,
+            params,
+            metrics,        
+            metadata
         });
     }
 
     /**
-     * Registrar inferencia
+     * Register inference
      */
     async logInference(
         modelId: string,
         inferenceId: string,
         inputHash: string,
         outputHash: string,
-        params: Record<string, any>
+        params: Record<string, any>,
+        metadata: Record<string, any>,
     ) {
         return await this.addBlock({
             type: 'inference',
             modelId,
+            inferenceId,
             inputHash,
             outputHash,
             params,
-            metadata: {
-                inferenceId,
-                executedAt: new Date().toISOString()
-            }
+            metadata,
+            executedAt: new Date().toISOString(),            
         });
     }
 
+    /**
+     * Get all blocks
+     */
     async getAllBlocks(): Promise<any[]> {
 
         return await this.provenanceBlockModel
@@ -289,8 +300,8 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Obtener un bloque por su índice
-     */
+     * Get block by index
+    */
     async getBlockByIndex(index: number): Promise<any | null> {
         return await this.provenanceBlockModel
             .findOne({ index })
@@ -298,7 +309,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-   * Calcula el Merkle root de toda la hashchain
+   * Calcule Merkle root for the hashchain
    */
     async getMerkleRoot(): Promise<string> {
         const blocks = await this.provenanceBlockModel.find().sort({ index: 1 }).lean();
@@ -311,7 +322,10 @@ export class BlockchainService implements OnModuleInit {
         return '0x' + tree.getRoot().toString('hex');
     }
 
-    // Obtén el último bloque anclado
+
+    /**
+    * Get last anchor
+    */
     async getLastAnchor(): Promise<any | null> {
         const anchor = await this.anchorModel.findOne().sort({ lastBlockIndex: -1 }).lean();
         if (!anchor) {
@@ -321,25 +335,25 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Comprueba si hay ≥ 10 bloques nuevos desde el último anclaje y, si se da el caso, ancla el Merkle root.
+     * Check last anchor and decides to anchor a new one
      */
     async maybeAnchorNew() {
-        // 1. Consigue el último Anchor registrado (si hay)
+        // 1. Get last anchor
         const lastAnchor = await this.getLastAnchor();
         const lastBlockAnclado = lastAnchor?.lastBlockIndex ?? -1;
 
-        // 2. Consigue el último bloque actual
+        // 2. Get last block
         const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
         if (!lastBlock) {
             return { anchored: false, reason: 'No blocks yet.' };
         }
 
-        // 3. Chequea la diferencia de índices (cada 5 bloques se realiza un anclaje)
-        if (lastBlock.index - lastBlockAnclado < 5) {
-            return { anchored: false, reason: `Not enough new blocks (${lastBlock.index - lastBlockAnclado}), wait for 10.` };
+        // 3. Check difference between last block index and last block anchored (every 50 blocks an anchor is done)
+        if (lastBlock.index - lastBlockAnclado < 50000000) {
+            return { anchored: false, reason: `Not enough new blocks (${lastBlock.index - lastBlockAnclado}), wait for 50.` };
         }
 
-        // 4. Si sí toca, calcula y ancla Merkle root
+        // 4. If enough blocks have been stored then calculates and anchors Merkle root
         const merkleRoot = await this.getMerkleRoot();
         const provider = new ethers.JsonRpcProvider(process.env.INFURA_URL!);
         const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
@@ -351,7 +365,7 @@ export class BlockchainService implements OnModuleInit {
         });
         const receipt = await tx.wait();
 
-        // 5. Guarda el anchor con lastBlockIndex
+        // 5. Saves anchor with lastBlockIndex and pending status
         await this.anchorModel.create({
             merkleRoot,
             txHash: receipt.hash,
@@ -372,7 +386,7 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Ancla el Merkle root actual en Ethereum testnet
+     * Anchor Merkle root in Ethereum testnet
      */
     async anchorMerkleRootToEthereum(): Promise<any> {
         const merkleRoot = await this.getMerkleRoot();
@@ -387,7 +401,6 @@ export class BlockchainService implements OnModuleInit {
 
         const receipt = await tx.wait();
 
-        // guarda anchor en Mongo (puedes mejorar con un AnchorSchema)
         await this.anchorModel.create({
             merkleRoot,
             txHash: receipt.hash,
@@ -400,10 +413,8 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-    * Eliminar campos undefined, null y vacíos recursivamente
+    * Clean undefined, null and empty recursively 
     */
-    // backend/src/blockchain/blockchain.service.ts
-
     private cleanObject(obj: any): any {
         if (obj === null || obj === undefined) {
             return {};

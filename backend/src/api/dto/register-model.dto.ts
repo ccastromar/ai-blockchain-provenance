@@ -1,6 +1,10 @@
 import { IsString, IsObject, IsOptional } from 'class-validator';
 
 export class RegisterModelDto {
+  
+  @IsString()
+  modelId: string;
+
   @IsString()
   modelName: string;
 
@@ -22,4 +26,9 @@ export class RegisterModelDto {
   @IsObject()
   @IsOptional()
   metadata?: Record<string, any>;
+
+  @IsObject()
+  @IsOptional()
+  mlflow?: Record<string, any>;
+
 }

@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { BlockchainService } from '../blockchain/blockchain.service';
-import { MlflowService } from '../mlflow/mlflow.service';
+import { MlflowService } from '../mlflow/mock.mlflow.service';
 import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AIModelService } from 'src/aimodels/aimodel.service';
+import { modelNames } from 'mongoose';
 
 @Injectable()
 export class ApiService {
@@ -24,23 +25,22 @@ export class ApiService {
       }
 
     //simulation
-    const mlflowResult = await this.mlflowService.registerModel(
-      dto.modelName,
-      dto.modelPath || '',
-      dto.params || {},
-      dto.metrics
-    );
+    // const mlflowResult = await this.mlflowService.registerModel(
+    //   dto.modelName,
+    //   dto.modelPath || '',
+    //   dto.params || {},
+    //   dto.metrics
+    // );
 
     const blockchainResult = await this.blockchainService.registerModel(
+      dto.modelId,
       dto.modelName,
       dto.version,
-      mlflowResult.modelHash,
-      {
-        ...dto.metadata,
-        gitCommit: mlflowResult.gitCommit,
-        params: dto.params,
-        metrics: dto.metrics
-      }
+      dto.mlflow.modelHash,
+      dto.mlflow.gitCommit,
+      dto.params,
+      dto.metrics,
+      dto.metadata      
     );
 
     await this.modelService.create({
@@ -54,11 +54,15 @@ export class ApiService {
 
     return {
       success: true,
-      modelId: dto.modelName,
+      modelId: dto.modelId,
+      modelName: dto.modelName,
       version: dto.version,
       blockIndex: blockchainResult.index,
       blockHash: blockchainResult.hash,
-      mlflow: mlflowResult,
+      mlflow: {
+        modelHash: dto.mlflow.modelHash,
+        gitCommit: dto.mlflow.gitCommit
+      },
       blockchain: {
         index: blockchainResult.index,
         hash: blockchainResult.hash,
@@ -77,30 +81,31 @@ export class ApiService {
       throw new NotFoundException(`Model ID ${dto.modelId} does not exist`);
     }
 
-    const inferenceResult = await this.mlflowService.executeInference(
-      dto.modelId,
-      dto.input,
-      dto.params
-    );
+    // const inferenceResult = await this.mlflowService.executeInference(
+    //   dto.modelId,
+    //   dto.inputHash,
+    //   dto.params,
+    //   dto.metadata
+    // );
 
     const blockchainResult = await this.blockchainService.logInference(
       dto.modelId,
-      inferenceResult.inferenceId,
-      inferenceResult.inputHash,
-      inferenceResult.outputHash,
-      inferenceResult.params
+      dto.inferenceId,
+      dto.inputHash,
+      dto.outputHash,
+      dto.params,
+      dto.metadata
     );
 
     return {
       success: true,
-      inferenceId: inferenceResult.inferenceId,
+      inferenceId: dto.inferenceId,
       modelId: dto.modelId,
-      output: inferenceResult.output,
       blockIndex: blockchainResult.index,
       blockHash: blockchainResult.hash,
       hashes: {
-        input: inferenceResult.inputHash,
-        output: inferenceResult.outputHash
+        input: dto.inputHash,
+        output: dto.outputHash
       },
       blockchain: {
         index: blockchainResult.index,

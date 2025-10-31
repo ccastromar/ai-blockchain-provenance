@@ -1,0 +1,74 @@
+{
+  "_format": "hh3-artifact-1",
+  "contractName": "MultiDomainMerkleAnchor",
+  "sourceName": "contracts/MultiDomainMerkleAnchor.sol",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "org",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "merkleRoot",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "string",
+          "name": "orgId",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "domain",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "Anchored",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "root",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "orgId",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "domain",
+          "type": "string"
+        }
+      ],
+      "name": "anchorRoot",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f5ffd5b506101f08061001c5f395ff3fe608060405234801561000f575f5ffd5b5060043610610029575f3560e01c80639e258aa71461002d575b5f5ffd5b61004061003b3660046100d9565b610042565b005b336001600160a01b03167fa8afb3199f27e1415ae86ed1cc28d95ef6201397c40d45df91d065831926f33a8686868686426040516100859695949392919061017a565b60405180910390a25050505050565b5f5f83601f8401126100a4575f5ffd5b50813567ffffffffffffffff8111156100bb575f5ffd5b6020830191508360208285010111156100d2575f5ffd5b9250929050565b5f5f5f5f5f606086880312156100ed575f5ffd5b85359450602086013567ffffffffffffffff81111561010a575f5ffd5b61011688828901610094565b909550935050604086013567ffffffffffffffff811115610135575f5ffd5b61014188828901610094565b969995985093965092949392505050565b81835281816020850137505f828201602090810191909152601f909101601f19169091010190565b868152608060208201525f610193608083018789610152565b82810360408401526101a6818688610152565b91505082606083015297965050505050505056fea26469706673582212206496c81741e9de01d79cef7c280d14e1c206666c984b97de5d4ee29e674cf5fc64736f6c634300081c0033",
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b5060043610610029575f3560e01c80639e258aa71461002d575b5f5ffd5b61004061003b3660046100d9565b610042565b005b336001600160a01b03167fa8afb3199f27e1415ae86ed1cc28d95ef6201397c40d45df91d065831926f33a8686868686426040516100859695949392919061017a565b60405180910390a25050505050565b5f5f83601f8401126100a4575f5ffd5b50813567ffffffffffffffff8111156100bb575f5ffd5b6020830191508360208285010111156100d2575f5ffd5b9250929050565b5f5f5f5f5f606086880312156100ed575f5ffd5b85359450602086013567ffffffffffffffff81111561010a575f5ffd5b61011688828901610094565b909550935050604086013567ffffffffffffffff811115610135575f5ffd5b61014188828901610094565b969995985093965092949392505050565b81835281816020850137505f828201602090810191909152601f909101601f19169091010190565b868152608060208201525f610193608083018789610152565b82810360408401526101a6818688610152565b91505082606083015297965050505050505056fea26469706673582212206496c81741e9de01d79cef7c280d14e1c206666c984b97de5d4ee29e674cf5fc64736f6c634300081c0033",
+  "linkReferences": {},
+  "deployedLinkReferences": {},
+  "immutableReferences": {},
+  "inputSourceName": "project/contracts/MultiDomainMerkleAnchor.sol",
+  "buildInfoId": "solc-0_8_28-ce994dc2f10c6aa1c7dfe5b1cc9c08d3ca728188"
+}

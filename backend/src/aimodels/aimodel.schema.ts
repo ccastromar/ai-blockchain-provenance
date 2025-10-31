@@ -25,5 +25,5 @@ export class AIModel {
 export type AIModelDocument = AIModel & Document;
 export const AIModelSchema = SchemaFactory.createForClass(AIModel);
 
-AIModelSchema.index({ name: 1, version: 1 }, { unique: true });
+AIModelSchema.index({ modelId: 1, version: 1 }, { unique: true });
 

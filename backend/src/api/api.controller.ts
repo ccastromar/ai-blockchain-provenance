@@ -43,20 +43,6 @@ export class ApiController {
     return await this.apiService.verifyChain();
   }
 
-  @Get('debug/blocks')
-  async debugBlocks() {
-    const blocks = await this.apiService.getAllBlocks();
-
-    return blocks.map(block => ({
-      index: block.index,
-      timestamp: block.timestamp,
-      timestampISO: new Date(block.timestamp).toISOString(),
-      storedHash: block.hash,
-      calculatedHash: this.calculateHashDebug(block),
-      match: block.hash === this.calculateHashDebug(block)
-    }));
-  }
-
   @Get('blocks')
   async getAllBlocks() {
     return await this.apiService.getAllBlocks();
@@ -103,24 +89,6 @@ export class ApiController {
   @Get('events/organization')
   async getEventsByOrgId(@Query('orgId') orgId: string) {
     return await this.anchorEventsService.getAnchorsByOrganizationId(orgId);
-  }
-
-  private calculateHashDebug(block: any): string {
-    const crypto = require('crypto');
-    const timestampString = block.timestamp instanceof Date
-      ? block.timestamp.toISOString()
-      : new Date(block.timestamp).toISOString();
-
-    const dataString = JSON.stringify(block.data, Object.keys(block.data).sort());
-    const blockString = [
-      block.index,
-      timestampString,
-      dataString,
-      block.previousHash,
-      block.nonce
-    ].join('|');
-
-    return crypto.createHash('sha256').update(blockString).digest('hex');
   }
 
 }

@@ -12,7 +12,7 @@ export class ProvenanceBlock {
   timestamp: number;
 
   @Prop({ type: MongooseSchema.Types.Mixed, required: true })
-  data: any;
+  data: Record<string, any>;
 
 //   @Prop({
 //     type: {
@@ -42,8 +42,8 @@ export class ProvenanceBlock {
   @Prop({ required: true, index: true })
   hash: string;
 
-  @Prop({ default: 0 })
-  nonce: number;
+ // @Prop({ default: 0 })
+  //nonce: number;
 }
 
 export const ProvenanceBlockSchema = SchemaFactory.createForClass(ProvenanceBlock);
