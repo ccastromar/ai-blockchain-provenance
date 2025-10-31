@@ -59,6 +59,8 @@ env/
 *.egg-info/
 *.pkl
 pip-log.txt
+**/state.json
+**/mlruns/
 
 # Frontend
 node_modules/
@@ -121,4 +123,5 @@ main
 .DS_Store
 
 # Rust
-target
+target/
+pkg/

@@ -38,29 +38,27 @@ In fields like healthcare, finance, and industry, **provenance and transparency 
 ## 🎯 Features
 
 - ✅ **Model Registration**: Register AI models with version control
-- ✅ **Inference Tracking**: Log every prediction with input/output hashes
+- ✅ **Inference Tracking**: Log every prediction with input/output hashes (no sensible data is received)
 - ✅ **Provenance Querying**: Complete audit trail for any model
 - ✅ **Chain Verification**: Cryptographic integrity validation
 - ✅ **Immutable History**: Tamper-proof record of all events
 - ✅ **Web Dashboard**: User-friendly interface for all operations
+- ✅ **CLI **: CLI tool to query hashchain
 
 ### Notes
 
-MLFlow is simulated in the scope of this PoC. In a real integration we could integrate with an MLFlow API and calculate the hash of the model.
-Also the log inference ouput is simulated:
-`const simulatedOutput = {
-      prediction: Math.random() > 0.5 ? 'positive' : 'negative',
-      confidence: Math.random(),
-      timestamp: new Date().toISOString()
-    };`
+MLFlow is simulated and out of the scope of this PoC. 
+In a real integration, Ernest should be integrated from Airflow or MLOps similar tools.
 
-Those inputs and outputs **are not stored in the Database**, only their hashes.    
+Those inferences inputs and outputs **are not stored in the Database**, only their hashes we receive.    
 
 ## Extras
 
-There is also a CLI in Go lang to interact with the MongoDB hashchain.
-Also there is a Hardhat project with the "Ernest contract", that will be used to help query the Anchoring events in the Ethereum EVM.
-And additionally there is an AI sandbox with some example with Python to train Iris datasets, and integrated with the NestJs backend.
+There are some extras that are interesting to complete this PoC:
+- a CLI in Go to interact with the MongoDB hashchain.
+- a Hardhat project with the solidity "Ernest contract", that will be used to help query the Anchoring events in the Ethereum EVM.
+- an AI sandbox with a Python example to train Iris datasets (scikit), and integrated with the NestJs backend.
+- a Rust project to build a merkle root calculation library (exportable to wasm)
 
 ## Visual demo
 
@@ -94,8 +92,13 @@ One for logging an inference with feature values for a bank client.
 `curl -X POST http://localhost:3001/api/models \
   -H "Content-Type: application/json" \
   -d '{
-    "modelName": "credit-risk-logreg-v1",
+    "modelId": "credit-risk-logreg-v1",
+    "modelName":"Credit Risk logaritmic regression version 1",
     "version": "1.0.0",
+    "mlflow": {
+      "modelHash": "8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45",
+      "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"
+    },
     "params": {
       "model_type": "LogisticRegression",
       "solver": "liblinear",
@@ -129,11 +132,13 @@ One for logging an inference with feature values for a bank client.
 
 ### Log Inference 
 
-`curl -X POST http://localhost:3001/api/inference \
+`curl -X POST http://localhost:3001/api/inferences \
   -H "Content-Type: application/json" \
   -d '{
     "modelId": "credit-risk-logreg-v1",
-    "input": {
+    "inferenceId": "f61c7b91-2e83-4f4a-8c9b-7c0cb90fca1e",
+    "inputHash":"e13236b63f7c5c5c8e7d1d52ebc4188e85f1dc474f0f3b2186e3b061087df6f5",
+    "input": {  //not send to Ernest, this is just to give an example
       "age": 34,
       "credit_amount": 12000,
       "duration": 24,
@@ -143,11 +148,11 @@ One for logging an inference with feature values for a bank client.
       "other_debtors": "none",
       "own_telephone": true
     },
+    "outputHash":"8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45",
     "params": {
       "return_probs": true
     },
     "metadata": {
-      "client_id": "C002193",
       "scoring_request_id": "score-20251027-1001",
       "source": "branch_app"
     }
@@ -163,6 +168,7 @@ Response:
 - [ ] Add authentication (JWT/OAuth)
 - [ ] Implement access control (RBAC)
 - [ ] Encrypt sensitive data
+- [ ] Add digital signatures when registering models and inferences
 - [ ] Add rate limiting
 - [ ] Use real blockchain (e.g., Hyperledger Fabric/EVM) if several organizations are involved
 - [ ] Implement HIPAA compliance
@@ -170,7 +176,7 @@ Response:
 - [ ] Secure API endpoints
 
 ## Sepolia smart contract
-MultiDomainMerkleAnchorModule#MultiDomainMerkleAnchor - 0xA62948582b9c99b2e9f7B735714662307Ede3836
+ErnestMerkleAnchor - 0xb55F5e61102a6f551BffD015998b02bC0688e41D
 
 ## 📝 Future Enhancements
 
@@ -178,7 +184,7 @@ MultiDomainMerkleAnchorModule#MultiDomainMerkleAnchor - 0xA62948582b9c99b2e9f7B7
 - [ ] Smart contracts (Solidity)
 - [ ] IPFS for large files
 - [ ] Multi-party signatures
-- [ ] Consensus mechanism
+- [ ] Consensus mechanism 
 - [ ] GraphQL API
 - [ ] Real-time updates (WebSockets)
 
