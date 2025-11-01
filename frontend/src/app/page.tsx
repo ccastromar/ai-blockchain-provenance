@@ -108,14 +108,16 @@ export default function Home() {
 
           <div className="p-6">
             {activeTab === 'register' && (
-              <ModelRegistration onSuccess={() => {
+              <ModelRegistration onSuccess={(modelId) => {
                 loadStats();
+                setSelectedModelId(modelId);
                 setActiveTab('inference');
               }} />
             )}
             
             {activeTab === 'inference' && (
               <InferenceLogger 
+                initialModelId={selectedModelId} 
                 onSuccess={(modelId) => {
                   loadStats();
                   setSelectedModelId(modelId);

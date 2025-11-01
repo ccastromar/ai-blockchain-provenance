@@ -44,7 +44,7 @@ export class ApiService {
     );
 
     await this.modelService.create({
-        modelId: dto.modelName,
+        modelId: dto.modelId,
         name: dto.modelName,
         version: dto.version,
         parameters: dto.params,

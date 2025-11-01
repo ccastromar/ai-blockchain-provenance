@@ -56,7 +56,7 @@ export default function StatsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                AITrace Statistics
+                 Hashchain statistics
               </h1>
               <p className="text-gray-600 text-lg">
                 Real-time blockchain chain monitoring dashboard
@@ -66,7 +66,7 @@ export default function StatsPage() {
               href="/"
               className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
             >
-              ← Back to App
+              ← Back to Dashboard
             </Link>
           </div>
           

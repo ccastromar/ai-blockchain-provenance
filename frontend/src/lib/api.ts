@@ -10,6 +10,7 @@ const api = axios.create({
 });
 
 export interface RegisterModelData {
+  modelId: string;
   modelName: string;
   version: string;
   modelPath?: string;
@@ -20,8 +21,11 @@ export interface RegisterModelData {
 
 export interface LogInferenceData {
   modelId: string;
-  input: any;
+  inferenceId: string;
+  inputHash: any;
+  outputHash: string;  
   params?: Record<string, any>;
+  metadata?: Record<string, any>;
 }
 
 export const registerModel = async (data: RegisterModelData) => {

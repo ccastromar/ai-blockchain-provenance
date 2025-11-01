@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'AITrace - PoC AI Provenance',
+  title: 'Ernest - PoC AI Provenance',
   description: 'Blockchain-based provenance tracking for AI models',
 }
 

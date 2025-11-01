@@ -4,16 +4,18 @@ import { useState } from 'react';
 import { registerModel } from '@/lib/api';
 
 interface Props {
-  onSuccess?: () => void;
+  onSuccess?: (modelId: string) => void;
 }
 
 export default function ModelRegistration({ onSuccess }: Props) {
   const [formData, setFormData] = useState({
+    modelId: '',
     modelName: '',
-    version: '1.0.0',
-    params: '',
-    metrics: '',
-    metadata: '',
+    version: '0.1.0',
+    params: '{"param1": "value1", "param2": 10}',
+    metrics: '{"accuracy": 0.9, "f1_score": 0.85}',
+    metadata: '{"dataset": "Sample Dataset", "framework": "PyTorch"}',
+    mlflow: '{"modelHash": "0000000000000000000000000000", "gitCommit": "abcdef1234567890abcdef1234567890abcdef12"}',
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -27,26 +29,32 @@ export default function ModelRegistration({ onSuccess }: Props) {
 
     try {
       const data = {
+        modelId: formData.modelId,
         modelName: formData.modelName,
         version: formData.version,
         params: formData.params ? JSON.parse(formData.params) : {},
         metrics: formData.metrics ? JSON.parse(formData.metrics) : {},
         metadata: formData.metadata ? JSON.parse(formData.metadata) : {},
+        mlflow: formData.mlflow ? JSON.parse(formData.mlflow) : {},
       };
 
       const response = await registerModel(data);
       setResult(response);
+
+      const newModelId = formData.modelId;
       
       // Reset form
       setFormData({
+        modelId: '',
         modelName: '',
-        version: '1.0.0',
-        params: '',
-        metrics: '',
-        metadata: '',
+        version: '0.1.0',
+        params: '{"param1": "value1", "param2": 10}',
+        metrics: '{"accuracy": 0.9, "f1_score": 0.85}',
+        metadata: '{"dataset": "Sample Dataset", "framework": "PyTorch"}',
+        mlflow: '{"modelHash": "0000000000000000000000000000", "gitCommit": "abcdef1234567890abcdef1234567890abcdef12"}',
       });
 
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(newModelId);
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to register model');
     } finally {
@@ -66,6 +74,19 @@ export default function ModelRegistration({ onSuccess }: Props) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Model Id *
+          </label>
+          <input
+            type="text"
+            required
+            value={formData.modelId}
+            onChange={(e) => setFormData({ ...formData, modelId: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            placeholder="e.g., chest-xray-classifier-v1"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Model Name *
           </label>
           <input
@@ -74,7 +95,7 @@ export default function ModelRegistration({ onSuccess }: Props) {
             value={formData.modelName}
             onChange={(e) => setFormData({ ...formData, modelName: e.target.value })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            placeholder="e.g., chest-xray-classifier-v1"
+            placeholder="e.g., Chest Xray Classifier v1"
           />
         </div>
 
@@ -128,6 +149,19 @@ export default function ModelRegistration({ onSuccess }: Props) {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-sm"
             rows={3}
             placeholder='{"dataset": "ChestX-ray14", "framework": "TensorFlow", "author": "Dr. Smith"}'
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            MLFlow (JSON)
+          </label>
+          <textarea
+            value={formData.mlflow}
+            onChange={(e) => setFormData({ ...formData, mlflow: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-sm"
+            rows={3}
+            placeholder='{"modelHash": "1111111111112121212121212112", "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"}'
           />
         </div>
 

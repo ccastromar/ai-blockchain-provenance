@@ -1,23 +1,42 @@
 'use client';
 
-import { useState } from 'react';
-import { logInference } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { logInference,getAllModelIds } from '@/lib/api';
 import { metadata } from '@/app/layout';
+import { init } from 'next/dist/compiled/webpack/webpack';
 
 interface Props {
+  initialModelId?: string;
   onSuccess?: (modelId: string) => void;
 }
 
-export default function InferenceLogger({ onSuccess }: Props) {
+export default function InferenceLogger({ initialModelId, onSuccess }: Props) {
+  const [modelId, setModelId] = useState(initialModelId);
+
   const [formData, setFormData] = useState({
-    modelId: '',
-    input: '',
-    params: '',
-    metadata: '',
+    modelId: initialModelId || '',
+    inferenceId: 'f61c7b91-2e83-4f4a-8c9b-7c0cb90fca1e',
+    input: 'a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1',
+    outputHash: 'd2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2',
+    params: '{"threshold": 0.8, "preprocessing": "normalize"}',
+    metadata: '{"dataset": "ChestX-ray14", "framework": "TensorFlow", "author": "Dr. Smith"}',
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [modelIds, setModelIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchIds() {
+      try {
+        const ids = await getAllModelIds(); 
+        setModelIds(ids);
+      } catch {
+        setModelIds([]);
+      }
+    }
+    fetchIds();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +47,9 @@ export default function InferenceLogger({ onSuccess }: Props) {
     try {
       const data = {
         modelId: formData.modelId,
-        input: JSON.parse(formData.input),
+        inferenceId: formData.inferenceId,
+        inputHash: formData.input,
+        outputHash: formData.outputHash,
         params: formData.params ? JSON.parse(formData.params) : {},
         metadata: formData.metadata ? JSON.parse(formData.metadata) : {},
       };
@@ -58,6 +79,7 @@ export default function InferenceLogger({ onSuccess }: Props) {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Model ID *
           </label>
+         
           <input
             type="text"
             required
@@ -70,7 +92,7 @@ export default function InferenceLogger({ onSuccess }: Props) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Input Data (JSON) *
+            Input hash *
           </label>
           <textarea
             required
@@ -78,7 +100,21 @@ export default function InferenceLogger({ onSuccess }: Props) {
             onChange={(e) => setFormData({ ...formData, input: e.target.value })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-sm"
             rows={5}
-            placeholder='{"patient_id": "P12345", "image_url": "xray_001.jpg", "age": 45, "symptoms": ["cough", "fever"]}'
+            placeholder='a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1'
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Output hash *
+          </label>
+          <textarea
+            required
+            value={formData.outputHash}
+            onChange={(e) => setFormData({ ...formData, outputHash: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-sm"
+            rows={5}
+            placeholder='d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2'
           />
         </div>
 
