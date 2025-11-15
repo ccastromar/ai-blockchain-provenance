@@ -33,10 +33,29 @@ def verify_chain():
     return result.stdout
 
 def list_events(limit=200):
-    r = requests.get(f"{ERNEST_URL}/events?limit={limit}", timeout=2)
+    r = requests.get(f"{ERNEST_URL}/api/events?limit={limit}", timeout=2)
     r.raise_for_status()
     return r.json()
 
+def list_models(limit=200):
+    r = requests.get(f"{ERNEST_URL}/api/models?limit={limit}", timeout=2)
+    r.raise_for_status()
+    return r.json()
+
+def provenance_by_model(model_id):
+    r = requests.get(f"{ERNEST_URL}/api/provenances/{model_id}", timeout=2)
+    r.raise_for_status()
+    return r.json()
+
+def get_block(block_id):
+    try:
+        r = requests.get(f"{ERNEST_URL}/api/blocks/{block_id}", timeout=2)
+        r.raise_for_status()
+        return r.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"[get_block] error fetching block {block_id}: {e}")
+        return {"error": str(e)}
+    
 def get_event(eid):
     return requests.get(f"{ERNEST_URL}/events/{eid}").json()
 
@@ -47,7 +66,6 @@ def verify_event_cli(eid):
     )
     return result.stdout
 
-
 def audit_inference(report):
     payload={"type":"audit_inference","timestamp":time.time(),"report":report}
     r=requests.post(f"{ERNEST_URL}/audit",json=payload)
@@ -57,4 +75,8 @@ TOOLS_MAP = {
     "healthcheck": ernest_health,
     "audit_inference": audit_inference,
     "verify_chain": verify_chain,
+    "list_models": list_models,
+    "list_events": list_events,
+    "provenance_by_model": provenance_by_model,
+    "get_block": get_block,
 }
