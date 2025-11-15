@@ -8,6 +8,7 @@ import { ApiService } from './api/api.service';
 import { AIModelModule } from './aimodels/aimodel.module';
 import { AIModelController } from './aimodels/aimodel.controller';
 import { AnchorEventsService } from './api/anchor-events.service';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { AnchorEventsService } from './api/anchor-events.service';
   ],
   controllers: [
     ApiController,
-    AIModelController
+    AIModelController,
+    HealthController
   ],
   providers: [
     ApiService,
