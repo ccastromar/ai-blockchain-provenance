@@ -1,0 +1,87 @@
+<html>
+
+<head>
+    <title>Agent Dashboard</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80px;
+        }
+
+        pre {
+            background: #111;
+            color: #0f0;
+            padding: 10px;
+            overflow-x: scroll;
+        }
+
+        ul {
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+            color: #ddd;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        .markdown {
+            background: #dab42a;
+            padding: 15px;
+            border-radius: 8px;
+            line-height: 1.4;
+        }
+
+        .markdown code {
+            background: #689adb;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        .markdown pre {
+            background: #6f97e8;
+            padding: 10px;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 AI Agent Dashboard</h1>
+
+    <form action="/ui/run" method="POST">
+        <textarea name="query" placeholder="Ask the agent...">{{ query or '' }}</textarea>
+        <button type="submit">Run</button>
+    </form>
+
+    {% if parsed %}
+    <h2>Response Summary</h2>
+    <div class="markdown">{{ parsed.summary | markdown | safe }}</div>
+
+    {% if parsed.tools %}
+    <h3>Tools Used</h3>
+    <ul>
+        {% for tool in parsed.tools %}
+        <li><strong>{{ tool.name }}</strong>
+            {% if tool.args %}
+            → args: {{ tool.args }}
+            {% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3>Raw JSON (debug)</h3>
+    <pre>{{ parsed.raw | tojson(indent=2) }}</pre>
+    {% endif %}
+
+</body>
+
+</html>
