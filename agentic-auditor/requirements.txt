@@ -3,3 +3,6 @@ uvicorn
 openai
 requests
 pydantic
+markdown2
+jinja2
+python-multipart
