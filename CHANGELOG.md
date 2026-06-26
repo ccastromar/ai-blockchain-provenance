@@ -27,6 +27,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ### Changed
 
+- Backend NestJS packages now target NestJS 11.
 - README examples now use copyable, valid JSON.
 - Iris sandbox now matches the real backend API contract and treats MLflow as optional.
 - Frontend model registration now sends valid MLflow hash metadata.
