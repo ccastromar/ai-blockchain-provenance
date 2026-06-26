@@ -71,6 +71,7 @@ Then open:
 
 - Dashboard: `http://localhost:3000`
 - Backend health: `http://localhost:3001/health`
+- API docs: `http://localhost:3001/api/docs`
 - Chain stats: `http://localhost:3001/api/stats`
 
 Run a minimal API smoke test:
@@ -119,6 +120,8 @@ Main endpoints:
 | `GET` | `/api/events` | Query on-chain anchor events |
 
 Request examples and response shapes: [docs/api.md](docs/api.md).
+
+When the backend is running, Swagger UI is available at `http://localhost:3001/api/docs` and the OpenAPI document at `http://localhost:3001/api/docs-json`.
 
 ## Security
 
@@ -210,7 +213,6 @@ Release checklist: [docs/release-checklist.md](docs/release-checklist.md).
 ## Roadmap
 
 - Real MLflow integration.
-- OpenAPI/Swagger generation.
 - User authentication and RBAC.
 - Digital signatures for model and inference events.
 - IPFS or object-store references for large artifacts.

@@ -20,6 +20,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Backend integrity tests using Node's native test runner.
 - Optional API key protection for write endpoints.
 - Configurable CORS origin.
+- Swagger UI and OpenAPI JSON for the public API contract.
 - GitHub Actions CI workflow.
 - Release checklist and GitHub issue templates.
 - Publication-oriented README, architecture guide, API reference, and security model.

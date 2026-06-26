@@ -12,6 +12,11 @@ If `ERNEST_API_KEY` is configured, write endpoints require:
 X-Ernest-Api-Key: <key>
 ```
 
+Interactive API documentation is available when the backend is running:
+
+- Swagger UI: `http://localhost:3001/api/docs`
+- OpenAPI JSON: `http://localhost:3001/api/docs-json`
+
 ## Health
 
 ```http
