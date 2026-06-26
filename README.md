@@ -1,238 +1,128 @@
-# 🛡️ AI Model Provenance & Auditing PoC - "Ernest"
+# Ernest: AI Provenance and Blockchain Anchoring PoC
 
 [![CI](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status: Alpha](https://img.shields.io/badge/status-0.1.0--alpha-orange.svg)](CHANGELOG.md)
 
-Welcome to "Ernest", the AI Model Provenance & Auditing Proof-of-Concept—a full-stack platform to **trace, audit, and anchor the lifecycle of AI models and their inferences**.
+Ernest is a proof-of-concept platform for tracing AI model lifecycle events and inference records through a local hashchain, then optionally anchoring Merkle roots to an Ethereum-compatible public testnet.
 
-## 📦 Versions
+The core idea is simple: store only provenance metadata and hashes, verify that the local event chain has not been tampered with, and publish periodic proofs of existence on-chain.
 
-| Component | Version | Description |
-|------------|----------|-------------|
-| **PoC "Ernest" (global)** | `0.1.0` | Combined release |
-| **Backend (NestJS)** | `0.1.0` | API & integrations |
-| **Frontend (Next.js)** | `0.1.0` | UI & client features |
+## What It Does
 
-## Why This Project?
+- Registers AI models with version, artifact hash, Git commit, parameters, metrics, and metadata.
+- Logs inference events using input/output hashes instead of raw sensitive data.
+- Stores events in a MongoDB-backed hashchain.
+- Verifies block hashes and `previousHash` links.
+- Computes a Merkle root over hashchain block hashes.
+- Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
+- Provides a Next.js dashboard, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
 
-In fields like healthcare, finance, and industry, **provenance and transparency for AI models are becoming mission-critical**—not just recommended. Regulations (EU AI Act, FDA, GDPR) and the drive for *trustworthy AI* demand that every decision, model update, and inference can be traced, reproduced, and publicly verified.
+## Status
 
-## What Does This PoC Offer?
+This project is currently `0.1.0-alpha`.
 
-- **Track every model, version, parameter & inference.**
-- **Anchor immutable digests (Merkle root) in a public blockchain (Ethereum testnet),** providing tamper-evidence and future-proof proof of existence.
-- **Generalist UI & API:** Ready to integrate any model, data type, or business logic—AI-native but extensible to *any provenance use case*.
-- **Modern stack:** Fast back-end (NestJS/Node.js + MongoDB), intuitive (React/Next.js) front-end.
-- **Auditable & extensible:** Designed for easy adaptation in domains where explainability, compliance, and data lineage matter.
+It is suitable for demos, technical evaluation, and research prototypes. It is not a production compliance system. Ernest can support auditability workflows, but it does not by itself provide HIPAA, GDPR, FDA, banking, or enterprise compliance.
 
-## Who Is This For?
+## Architecture
 
-- AI engineers, ML Ops & Data Scientists
-- Compliance/Risk officers
-- CTOs and product leads exploring **“Responsible AI”**
-- Anyone who needs auditable, blockchain-anchored history of AI actions
+```mermaid
+flowchart LR
+  UI["Next.js dashboard"] --> API["NestJS API"]
+  CLI["Go CLI"] --> Mongo["MongoDB hashchain"]
+  API --> Mongo
+  API --> Merkle["Merkle root"]
+  Merkle --> Contract["ErnestMerkleAnchor on Sepolia"]
+  Auditor["Optional auditor agent"] --> API
+  Sandbox["Python AI sandbox"] --> API
+```
+
+More detail: [docs/architecture.md](docs/architecture.md).
+
+## Components
+
+| Component | Path | Purpose |
+| --- | --- | --- |
+| Backend | `backend/` | NestJS API, validation, hashchain, anchoring |
+| Frontend | `frontend/` | Next.js dashboard |
+| Blockchain | `blockchain/` | Hardhat project and Solidity contract |
+| CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
+| Merkle WASM | `merkle-wasm/` | Rust Merkle helper |
+| AI sandbox | `ai-sandbox/` | Iris training/demo integration |
+| Auditor | `agentic-auditor/` | Optional FastAPI-based audit agent |
 
 ## Quick Start
 
-1. Clone the repo, install dependencies and launch both backend and frontend.
-2. Register your models and submit inferences through the API or web dashboard.
-3. Review provenance records, Merkle roots, and blockchain anchors in seconds.
+Copy environment examples:
 
-After the backend is running on `http://localhost:3001`, you can run a minimal end-to-end check:
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+Start the local stack:
+
+```bash
+docker compose up --build
+```
+
+Then open:
+
+- Dashboard: `http://localhost:3000`
+- Backend health: `http://localhost:3001/health`
+- Chain stats: `http://localhost:3001/api/stats`
+
+Run a minimal API smoke test:
 
 ```bash
 ./scripts/smoke.sh
 ```
 
-## 🎯 Features
+## Local Development
 
-- ✅ **Model Registration**: Register AI models with version control
-- ✅ **Inference Tracking**: Log every prediction with input/output hashes (no sensible data is received)
-- ✅ **Provenance Querying**: Complete audit trail for any model
-- ✅ **Chain Verification**: Cryptographic integrity validation
-- ✅ **Immutable History**: Tamper-proof record of all events
-- ✅ **Web Dashboard**: User-friendly interface for all operations
-- ✅ **CLI **: CLI tool to query hashchain
-
-### Notes
-
-MLFlow is simulated and out of the scope of this PoC. 
-In a real integration, Ernest should be integrated from Airflow or MLOps similar tools.
-
-Those inferences inputs and outputs **are not stored in the Database**, only their hashes we receive.    
-
-## Extras
-
-There are some extras that are interesting to complete this PoC:
-- a CLI in Go to interact with the MongoDB hashchain.
-- a Hardhat project with the solidity "Ernest contract", that will be used to help query the Anchoring events in the Ethereum EVM.
-- an AI sandbox with a Python example to train Iris datasets (scikit), and integrated with the NestJs backend.
-- a Rust project to build a merkle root calculation library (exportable to wasm)
-
-## Visual demo
-
-### Register AI Model
-![Register AI Model](docs/img/register-model-form.jpg)
-
-### Log Inference
-![Log Inference](docs/img/log-inference-form.jpg)
-
-### View Provenance
-![View Provenance](docs/img/view-provenance.jpg)
-
-### Hashchain stats
-![Show hashchain stats](docs/img/hashchain-stats.jpg)
-
-## 🏗️ Architecture
-
-The project follows a **modular architecture** built with **NestJS** for the backend and **Next.js** for the frontend.
-
-## API cURL Examples
-
-For credit risk scoring in banks, a popular model is a Logistic Regression (often starting from open datasets like the German Credit dataset, or via proprietary features), sometimes upgraded to Random Forests or XGBoost ensembles.
-
-Below are two ready-to-use curl examples:
-One for registering a credit risk model (let’s assume logistic regression trained on key financial features).
-
-One for logging an inference with feature values for a bank client.
-
-### Register Credit Risk Model
+Backend:
 
 ```bash
-curl -X POST http://localhost:3001/api/models \
-  -H "Content-Type: application/json" \
-  -d '{
-    "modelId": "credit-risk-logreg-v1",
-    "modelName": "Credit Risk logistic regression version 1",
-    "version": "1.0.0",
-    "mlflow": {
-      "modelHash": "8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45",
-      "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"
-    },
-    "params": {
-      "model_type": "LogisticRegression",
-      "solver": "liblinear",
-      "penalty": "l2",
-      "C": 1.0,
-      "random_state": 42
-    },
-    "metrics": {
-      "roc_auc": 0.81,
-      "accuracy": 0.76,
-      "precision": 0.72,
-      "recall": 0.69,
-      "f1_score": 0.70
-    },
-    "metadata": {
-      "framework": "scikit-learn",
-      "training_data": "German Credit Risk Dataset",
-      "feature_names": [
-        "age", "credit_amount", "duration", "housing", "employment_status", "job_type", "other_debtors", "own_telephone"
-      ],
-      "target": "creditworthiness",
-      "classes": ["Good", "Bad"],
-      "author": "Your Name",
-      "creation_date": "2025-10-27"
-    }
-  }'
+cd backend
+npm ci
+npm run start:dev
 ```
 
-Example response:
-
-```json
-{
-  "success": true,
-  "modelId": "credit-risk-logreg-v1",
-  "modelName": "Credit Risk logistic regression version 1",
-  "version": "1.0.0",
-  "blockIndex": 1,
-  "blockHash": "2a648a9bb807c0e3f23ecd89f387774f8f5dcd959587ce45dc1ffba31828fa18",
-  "mlflow": {
-    "modelHash": "8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45",
-    "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"
-  },
-  "blockchain": {
-    "index": 1,
-    "hash": "2a648a9bb807c0e3f23ecd89f387774f8f5dcd959587ce45dc1ffba31828fa18",
-    "timestamp": 1761562665
-  }
-}
-```
-
-
-### Log Inference 
-
-Ernest receives only the input/output hashes. The raw input below is shown only as business context and is intentionally placed in `metadata.exampleInput`, not as data to be processed or stored as the inference input.
+Frontend:
 
 ```bash
-curl -X POST http://localhost:3001/api/inferences \
-  -H "Content-Type: application/json" \
-  -d '{
-    "modelId": "credit-risk-logreg-v1",
-    "inferenceId": "f61c7b91-2e83-4f4a-8c9b-7c0cb90fca1e",
-    "inputHash": "e13236b63f7c5c5c8e7d1d52ebc4188e85f1dc474f0f3b2186e3b061087df6f5",
-    "outputHash": "8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45",
-    "params": {
-      "return_probs": true
-    },
-    "metadata": {
-      "scoring_request_id": "score-20251027-1001",
-      "source": "branch_app",
-      "exampleInput": {
-        "age": 34,
-        "credit_amount": 12000,
-        "duration": 24,
-        "housing": "own",
-        "employment_status": "permanent",
-        "job_type": "skilled",
-        "other_debtors": "none",
-        "own_telephone": true
-      }
-    }
-  }'
+cd frontend
+npm ci
+npm run dev
 ```
 
-Example response:
+MongoDB:
 
-```json
-{
-  "success": true,
-  "inferenceId": "f61c7b91-2e83-4f4a-8c9b-7c0cb90fca1e",
-  "modelId": "credit-risk-logreg-v1",
-  "blockIndex": 2,
-  "blockHash": "e8c59ba5a6cf54ca2140e2b4694e7b0c9c55c826759da5b1869a319143eede61",
-  "hashes": {
-    "input": "e13236b63f7c5c5c8e7d1d52ebc4188e85f1dc474f0f3b2186e3b061087df6f5",
-    "output": "8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45"
-  },
-  "blockchain": {
-    "index": 2,
-    "hash": "e8c59ba5a6cf54ca2140e2b4694e7b0c9c55c826759da5b1869a319143eede61",
-    "timestamp": 1761562689
-  }
-}
+```bash
+docker run -d -p 27017:27017 --name ernest-mongo mongo:7
 ```
 
-## 🔒 Security Considerations
+## API
 
-⚠️ **This is a POC**. For production:
+Main endpoints:
 
-- [x] Add optional API key protection for write endpoints
-- [x] Make CORS origins configurable
-- [ ] Add full authentication (JWT/OAuth)
-- [ ] Implement access control (RBAC)
-- [ ] Encrypt sensitive data
-- [ ] Add digital signatures when registering models and inferences
-- [ ] Add rate limiting
-- [ ] Use real blockchain (e.g., Hyperledger Fabric/EVM) if several organizations are involved
-- [ ] Implement HIPAA compliance
-- [ ] Add audit logging
-- [ ] Secure API endpoints
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/health` | Backend health |
+| `POST` | `/api/models` | Register a model and append a hashchain block |
+| `POST` | `/api/inferences` | Log an inference and append a hashchain block |
+| `GET` | `/api/provenances/:modelId` | Get model provenance |
+| `GET` | `/api/stats` | Get chain stats and latest anchor |
+| `GET` | `/api/verify` | Verify hashchain integrity |
+| `POST` | `/api/anchors` | Manually anchor the current Merkle root |
+| `GET` | `/api/events` | Query on-chain anchor events |
 
-### Deployment Safety Checklist
+Request examples and response shapes: [docs/api.md](docs/api.md).
 
-For public demos or official deployments, set at least:
+## Security
+
+Public demos should set:
 
 ```bash
 ERNEST_API_KEY=<long-random-secret>
@@ -252,18 +142,13 @@ Protected endpoints:
 - `POST /api/inferences`
 - `POST /api/anchors`
 
-The frontend can send `NEXT_PUBLIC_ERNEST_API_KEY` for a browser-only demo, but that value is public in the built JavaScript bundle. Do not treat it as a production secret. For a real deployment, put the backend behind an authenticated server, gateway, or reverse proxy and keep write credentials server-side.
+The frontend can send `NEXT_PUBLIC_ERNEST_API_KEY` for browser-only demos, but that value is public in the built JavaScript bundle. Do not treat it as a production secret.
 
-Keep MongoDB private, use a secrets manager for `PRIVATE_KEY`, use a low-balance Sepolia wallet for demos, and restrict CORS to the frontend origins you actually control.
-
-## Sepolia smart contract
-ErnestMerkleAnchor - 0xb55F5e61102a6f551BffD015998b02bC0688e41D
+Security model and limitations: [docs/security-model.md](docs/security-model.md). Responsible disclosure: [SECURITY.md](SECURITY.md).
 
 ## Blockchain Anchoring
 
-Ernest always stores a local MongoDB-backed hashchain. Optional Ethereum anchoring publishes the current Merkle root to the `ErnestMerkleAnchor` contract through `anchorRoot(bytes32 root, string organizationId, string organizationName, string domain)`.
-
-Required environment variables for Sepolia anchoring:
+The local hashchain works without Ethereum credentials. Sepolia anchoring is optional and requires:
 
 ```bash
 INFURA_URL=https://sepolia.infura.io/v3/...
@@ -275,60 +160,80 @@ ANCHOR_DOMAIN=ai-provenance
 ANCHOR_EVERY_N_BLOCKS=50
 ```
 
-Manual anchor for demos:
+Manual anchor:
 
 ```bash
-curl -X POST http://localhost:3001/api/anchors
+curl -X POST http://localhost:3001/api/anchors \
+  -H "X-Ernest-Api-Key: <key-if-configured>"
 ```
 
-Automatic anchoring runs after new blocks are added and only submits a transaction when at least `ANCHOR_EVERY_N_BLOCKS` new blocks have been appended since the last anchor.
+Deployed Sepolia contract:
 
-## 📝 Future Enhancements
+```text
+ErnestMerkleAnchor: 0xb55F5e61102a6f551BffD015998b02bC0688e41D
+```
 
-- [ ] Real MLflow integration
-- [ ] Smart contracts (Solidity)
-- [ ] IPFS for large files
-- [ ] Multi-party signatures
-- [ ] Consensus mechanism 
-- [ ] GraphQL API
-- [ ] Real-time updates (WebSockets)
+## Demo Assets
 
-## Release Process
+### Register AI Model
 
-- See [CHANGELOG.md](CHANGELOG.md) for release notes.
-- See [docs/release-checklist.md](docs/release-checklist.md) before publishing an official tag.
-- See [SECURITY.md](SECURITY.md) for responsible disclosure guidance.
+![Register AI Model](docs/img/register-model-form.jpg)
 
-## 🤝 Contributing
+### Log Inference
 
-This is a POC. For improvements:
-1. Fork the repo
-2. Create feature branch
-3. Make changes
-4. Test thoroughly
-5. Submit PR
+![Log Inference](docs/img/log-inference-form.jpg)
 
-## 📄 License
+### View Provenance
 
-MIT License - free to use and modify
+![View Provenance](docs/img/view-provenance.jpg)
 
-## 👥 Author
+### Hashchain Stats
+
+![Show hashchain stats](docs/img/hashchain-stats.jpg)
+
+## Verification
+
+Useful local checks:
+
+```bash
+cd backend && npm run test:integrity
+cd frontend && npm run build
+cd blockchain && npm ci && npx hardhat compile
+cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...
+cd merkle-wasm && cargo test
+python -m compileall ai-sandbox/domains/iris agentic-auditor/app
+bash -n scripts/smoke.sh setup.sh
+```
+
+Release checklist: [docs/release-checklist.md](docs/release-checklist.md).
+
+## Roadmap
+
+- Real MLflow integration.
+- OpenAPI/Swagger generation.
+- User authentication and RBAC.
+- Digital signatures for model and inference events.
+- IPFS or object-store references for large artifacts.
+- Stronger production deployment patterns.
+- Multi-party verification flows.
+- Real-time updates.
+
+## Contributing
+
+This is an alpha PoC. Issues and pull requests are welcome.
+
+Before proposing a release, check:
+
+- [CHANGELOG.md](CHANGELOG.md)
+- [docs/release-checklist.md](docs/release-checklist.md)
+- [SECURITY.md](SECURITY.md)
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
+
+## Author
 
 Developed and maintained by Carlos Castro Martos.
 
-This project was developed independently by me.
-
-**This repository is not sponsored, endorsed, or licensed by any employer, organization, or company. All code, ideas, and documentation are personal intellectual property and are published for the benefit of the global open source and AI community.**
-
-## 📞 Support
-
-For issues or questions:
-- Create GitHub issue
-- Check documentation
-- Review API endpoints
-
----
-
-Copyright © 2025 Carlos Castro Martos. Licensed under MIT, see LICENSE.
-
-**Built with ❤️ for medical AI transparency**
+This project was developed independently. It is not sponsored, endorsed, or licensed by any employer, organization, or company.

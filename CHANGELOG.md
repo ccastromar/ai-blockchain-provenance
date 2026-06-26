@@ -22,6 +22,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Configurable CORS origin.
 - GitHub Actions CI workflow.
 - Release checklist and GitHub issue templates.
+- Publication-oriented README, architecture guide, API reference, and security model.
 
 ### Changed
 

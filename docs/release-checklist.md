@@ -48,6 +48,9 @@ Use this checklist before publishing an official Ernest release.
 
 - [ ] README quickstart works from a clean clone.
 - [ ] API examples are valid JSON and match backend validation.
+- [ ] `docs/api.md` matches current backend endpoints and DTO validation.
+- [ ] `docs/architecture.md` matches the deployed stack.
+- [ ] `docs/security-model.md` describes current guarantees and non-goals.
 - [ ] Security notes describe PoC limitations honestly.
 - [ ] Screenshots are current.
 - [ ] License and author sections are accurate.
