@@ -4,10 +4,16 @@ import requests, subprocess, time
 from app.core.logger import get_logger
 
 ERNEST_URL = os.getenv("ERNEST_URL", "http://localhost:3001")
+ERNEST_API_KEY = os.getenv("ERNEST_API_KEY")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CLI_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "cli", "ernest"))
 
 logger = get_logger("tools")
+
+def ernest_headers():
+    if not ERNEST_API_KEY:
+        return {}
+    return {"X-Ernest-Api-Key": ERNEST_API_KEY}
 
 def ernest_health():
     try:
@@ -73,7 +79,7 @@ def audit_inference(input_text, output_text):
         "input_text": input_text,
         "output_text": output_text,
     }
-    r=requests.post(f"{ERNEST_URL}/audit",json=payload)
+    r=requests.post(f"{ERNEST_URL}/audit",json=payload,headers=ernest_headers())
     return {"status":r.status_code}
 
 TOOLS_MAP = {

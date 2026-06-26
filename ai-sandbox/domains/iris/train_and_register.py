@@ -1,8 +1,10 @@
 import argparse
 import hashlib
+import os
 import pickle
 import requests
 import json
+import uuid
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
@@ -10,7 +12,15 @@ import mlflow
 from mlflow.models import infer_signature
 
 STATE_FILE = "state.json"
-API_BASE = "http://localhost:3001/api" 
+API_BASE = os.getenv("ERNEST_API_BASE", "http://localhost:3001/api")
+ENABLE_MLFLOW = os.getenv("ENABLE_MLFLOW", "false").lower() == "true"
+ERNEST_API_KEY = os.getenv("ERNEST_API_KEY")
+
+def ernest_headers():
+    headers = {}
+    if ERNEST_API_KEY:
+        headers["X-Ernest-Api-Key"] = ERNEST_API_KEY
+    return headers
 
 def train_model():
     iris = datasets.load_iris()
@@ -18,12 +28,9 @@ def train_model():
         iris.data, iris.target, test_size=0.25, random_state=1
     )
 
-    # Define the model hyperparameters
     params = {
-        "solver": "lbfgs",
-        "max_iter": 1000,
-        "multi_class": "auto",
-        "random_state": 8888,
+        "model_type": "KNeighborsClassifier",
+        "n_neighbors": 3,
     }
 
     model = KNeighborsClassifier(n_neighbors=3)
@@ -38,49 +45,47 @@ def train_model():
     with open(model_file, "rb") as f:
         bytes_model = f.read()
     hash_main = hashlib.sha256(bytes_model).hexdigest()
+    git_commit = hashlib.sha1(bytes_model).hexdigest()
     print(f"Hash del artefacto: {hash_main}")
 
     state = {
         "model_id": "iris-classifier-v1",
+        "model_name": "Iris KNN classifier",
+        "version": "0.1.3",
         "hash_main": hash_main,
+        "git_commit": git_commit,
         "accuracy": accuracy,
-        "model_file": model_file
+        "model_file": model_file,
+        "params": params
     }
     with open(STATE_FILE, "w") as sf:
         json.dump(state, sf)
 
-    # START MLFlow integration - you can skip and comment this if not using MLflow
-    # Set our tracking server uri for logging
-    mlflow.set_tracking_uri(uri="http://127.0.0.1:8111")
+    if ENABLE_MLFLOW:
+        # START MLFlow integration - optional for local Ernest demos.
+        mlflow.set_tracking_uri(uri=os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:8111"))
 
-    # Create a new MLflow Experiment
-    mlflow.set_experiment("MLflow Quickstart")
+        mlflow.set_experiment("MLflow Quickstart")
 
-    # Start an MLflow run
-    with mlflow.start_run():
-        # Log the hyperparameters
-        mlflow.log_params(params)
+        with mlflow.start_run():
+            mlflow.log_params(params)
 
-        # Log the loss metric
-        mlflow.log_metric("accuracy", accuracy)
+            mlflow.log_metric("accuracy", accuracy)
 
-        # Infer the model signature
-        signature = infer_signature(X_train, model.predict(X_train))
+            signature = infer_signature(X_train, model.predict(X_train))
 
-        # Log the model, which inherits the parameters and metric
-        model_info = mlflow.sklearn.log_model(
-            sk_model=model,
-            name="iris_model",
-            signature=signature,
-            input_example=X_train,
-            registered_model_name="tracking-quickstart",
-        )
+            model_info = mlflow.sklearn.log_model(
+                sk_model=model,
+                name="iris_model",
+                signature=signature,
+                input_example=X_train,
+                registered_model_name="tracking-quickstart",
+            )
 
-        # Set a tag that we can use to remind ourselves what this model was for
-        mlflow.set_logged_model_tags(
-            model_info.model_id, {"Training Info": "Basic KNC model for iris data"}
-        )    
-    # END MLFlow integration - you can skip and comment this if not using MLflow    
+            mlflow.set_logged_model_tags(
+                model_info.model_id, {"Training Info": "Basic KNC model for iris data"}
+            )
+        # END MLFlow integration.
 
     return model, X_test, y_test, hash_main, accuracy
 
@@ -89,16 +94,25 @@ def register_model(hash_main, accuracy):
         state = json.load(sf)
 
     payload = {
-        "modelName": state["model_id"],
-        "version": "0.1.3",
-        "status": "published",
+        "modelId": state["model_id"],
+        "modelName": state["model_name"],
+        "version": state["version"],
+        "mlflow": {
+            "modelHash": state["hash_main"],
+            "gitCommit": state["git_commit"],
+        },
+        "params": state["params"],
+        "metrics": {
+            "accuracy": accuracy
+        },
         "metadata": {
             "dataset": "iris",
-            "accuracy": accuracy
+            "framework": "scikit-learn",
+            "source": "ai-sandbox/domains/iris"
         }
     }
 
-    resp = requests.post(f"{API_BASE}/models", json=payload)
+    resp = requests.post(f"{API_BASE}/models", json=payload, headers=ernest_headers())
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"Error al registrar modelo: {resp.status_code} {resp.text}")
     print("Modelo registrado correctamente:", resp.json())
@@ -123,9 +137,15 @@ def run_inference(model_file, hash_main):
     output_hash = hashlib.sha256(output_bytes).hexdigest()
     print(f"input_hash={input_hash}, output_hash={output_hash}")
 
+    state["last_input_hash"] = input_hash
+    state["last_output_hash"] = output_hash
+    state["last_prediction"] = int(predicted)
+    with open(STATE_FILE, "w") as sf:
+        json.dump(state, sf)
+
     return model_id, hash_main, input_hash, output_hash
 
-def register_inference(model_id, hash_main):
+def register_inference(model_id, input_hash=None, output_hash=None):
     if model_id is None:
         with open(STATE_FILE) as sf:
             state = json.load(sf)
@@ -133,19 +153,29 @@ def register_inference(model_id, hash_main):
         if model_id is None:
             raise RuntimeError("model_id no definido en el estado. Ejecute primero inferencia o train.")
     
-    if hash_main is None:
+    if input_hash is None or output_hash is None:
         with open(STATE_FILE) as sf:
             state = json.load(sf)
-        hash_main = state.get("hash_main")
-        if hash_main is None:
-            raise RuntimeError("hash_main no definido en el estado. Ejecute primero train o register.")
+        input_hash = input_hash or state.get("last_input_hash")
+        output_hash = output_hash or state.get("last_output_hash")
+        if input_hash is None or output_hash is None:
+            raise RuntimeError("input_hash/output_hash no definidos. Ejecute primero infer o all.")
 
     payload = {
         "modelId": model_id,
-        "input": {"hash": hash_main}
+        "inferenceId": f"iris-{uuid.uuid4()}",
+        "inputHash": input_hash,
+        "outputHash": output_hash,
+        "params": {
+            "return_probs": False
+        },
+        "metadata": {
+            "source": "ai-sandbox/domains/iris",
+            "dataset": "iris"
+        }
     }
 
-    resp = requests.post(f"{API_BASE}/inference", json=payload)
+    resp = requests.post(f"{API_BASE}/inferences", json=payload, headers=ernest_headers())
     if resp.status_code not in (200, 201):
         raise RuntimeError(f"Error al registrar inferencia: {resp.status_code} {resp.text}")
     print("Inferencia registrada correctamente:", resp.json())
@@ -187,9 +217,7 @@ def main():
         with open(STATE_FILE) as sf:
             state = json.load(sf)
         model_id = state["model_id"]
-        model_file = state["model_file"]
-        hash_main = state["hash_main"]
-        register_inference(model_id, hash_main)
+        register_inference(model_id)
 
 if __name__ == "__main__":
     main()

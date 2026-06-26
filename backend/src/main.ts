@@ -6,8 +6,19 @@ import { GlobalExceptionFilter } from './common/global.exception.filter';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  app.enableCors();
-  app.useGlobalPipes(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: true }));
+  const corsOrigin = process.env.CORS_ORIGIN;
+  app.enableCors(corsOrigin
+    ? {
+        origin: corsOrigin === '*'
+          ? true
+          : corsOrigin.split(',').map(origin => origin.trim()).filter(Boolean),
+      }
+    : undefined);
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
 
   app.useGlobalFilters(new GlobalExceptionFilter());
 

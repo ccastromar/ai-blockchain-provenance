@@ -1,4 +1,16 @@
-import { IsString, IsObject, IsOptional } from 'class-validator';
+import { IsHash, IsObject, IsOptional, IsString, Matches, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class MlflowMetadataDto {
+  @IsHash('sha256')
+  modelHash: string;
+
+  @IsString()
+  @Matches(/^[0-9a-fA-F]{7,40}$/, {
+    message: 'gitCommit must be a short or full hexadecimal Git commit hash',
+  })
+  gitCommit: string;
+}
 
 export class RegisterModelDto {
   
@@ -28,7 +40,8 @@ export class RegisterModelDto {
   metadata?: Record<string, any>;
 
   @IsObject()
-  @IsOptional()
-  mlflow?: Record<string, any>;
+  @ValidateNested()
+  @Type(() => MlflowMetadataDto)
+  mlflow: MlflowMetadataDto;
 
 }

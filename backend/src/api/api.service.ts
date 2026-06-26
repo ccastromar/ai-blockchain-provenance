@@ -4,7 +4,6 @@ import { MlflowService } from '../mlflow/mock.mlflow.service';
 import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AIModelService } from 'src/aimodels/aimodel.service';
-import { modelNames } from 'mongoose';
 
 @Injectable()
 export class ApiService {
@@ -19,6 +18,10 @@ export class ApiService {
 
   async registerModel(dto: RegisterModelDto) {
     this.logger.log(`Registering model: ${dto.modelName} with version: ${dto.version}`);
+    if (!dto.mlflow?.modelHash || !dto.mlflow?.gitCommit) {
+      throw new BadRequestException('mlflow.modelHash and mlflow.gitCommit are required.');
+    }
+
      const already = await this.modelService.findOneByName(dto.modelName, dto.version);
       if (already) {
         throw new BadRequestException(`Model with modelName '${dto.modelName}' and version '${dto.version}' already exists.`);
@@ -125,6 +128,10 @@ export class ApiService {
 
   async verifyChain() {
     return await this.blockchainService.verifyChain();
+  }
+
+  async anchorMerkleRoot() {
+    return await this.blockchainService.anchorMerkleRootToEthereum();
   }
 
   async getAllBlocks() {

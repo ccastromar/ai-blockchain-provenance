@@ -5,7 +5,7 @@ export type ProvenanceBlockDocument = ProvenanceBlock & Document;
 
 @Schema({ timestamps: true })
 export class ProvenanceBlock {
-  @Prop({ required: true, index: true })
+  @Prop({ required: true, unique: true, index: true })
   index: number;
 
   @Prop({ required: true, type: Number })
@@ -39,7 +39,7 @@ export class ProvenanceBlock {
   @Prop({ required: true })
   previousHash: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true, unique: true, index: true })
   hash: string;
 
  // @Prop({ default: 0 })
@@ -50,4 +50,3 @@ export const ProvenanceBlockSchema = SchemaFactory.createForClass(ProvenanceBloc
 
 // Índices para consultas rápidas
 ProvenanceBlockSchema.index({ 'data.modelId': 1 });
-//ProvenanceBlockSchema.index({ index: 1 });

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { logInference,getAllModelIds } from '@/lib/api';
-import { metadata } from '@/app/layout';
-import { init } from 'next/dist/compiled/webpack/webpack';
 
 interface Props {
   initialModelId?: string;

@@ -20,6 +20,11 @@ export class ScheduledBlockchainService {
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async confirmPendingAnchors() {
+    if (!process.env.INFURA_URL) {
+      this.logger.debug(`Skipping pending anchor confirmation: INFURA_URL is not configured`);
+      return;
+    }
+
     const pending = await this.anchorModel.find({ status: 'pending' }).lean();
 
     if (pending.length === 0) {

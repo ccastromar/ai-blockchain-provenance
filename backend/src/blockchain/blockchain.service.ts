@@ -4,7 +4,7 @@
  * Licensed under the MIT License – see root LICENSE
  */
 
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, OnModuleInit, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ProvenanceBlock, ProvenanceBlockDocument } from './models/provenance-block.schema';
@@ -13,7 +13,20 @@ import MerkleTree from 'merkletreejs';
 import keccak256 from 'keccak256';
 import { ethers } from 'ethers';
 import { Anchor, AnchorDocument } from './models/anchor.schema';
-import { canonicalize, canonicalizeEx } from 'json-canonicalize';
+import { canonicalizeEx } from 'json-canonicalize';
+import abiJson from '../abis/ErnestMerkleAnchor.json';
+
+const anchorAbi = abiJson.abi;
+const MAX_APPEND_RETRIES = 5;
+
+type AnchorConfig = {
+    rpcUrl: string;
+    privateKey: string;
+    contractAddress: string;
+    organizationId: string;
+    organizationName: string;
+    domain: string;
+};
 
 @Injectable()
 export class BlockchainService implements OnModuleInit {
@@ -54,8 +67,15 @@ export class BlockchainService implements OnModuleInit {
 
             genesisBlock.hash = this.calculateHash(genesisBlock);
 
-            await this.provenanceBlockModel.create(genesisBlock);
-            this.logger.log(`Genesis block created at ${new Date(timestamp * 1000).toISOString()}`);
+            const result = await this.provenanceBlockModel.updateOne(
+                { index: 0 },
+                { $setOnInsert: genesisBlock },
+                { upsert: true },
+            );
+
+            if (result.upsertedCount > 0) {
+                this.logger.log(`Genesis block created at ${new Date(timestamp * 1000).toISOString()}`);
+            }
         }
     }
 
@@ -63,41 +83,53 @@ export class BlockchainService implements OnModuleInit {
      * Añadir nuevo bloque a la cadena
      */
     async addBlock(data: ProvenanceBlock['data']): Promise<ProvenanceBlockDocument> {
-        const lastBlock = await this.provenanceBlockModel
-            .findOne()
-            .sort({ index: -1 })
-            .lean();
-
-        if (!lastBlock) {
-            throw new Error('Chain not initialized. Genesis block missing.');
-        }
-
-        //Limpiar datos antes de crear el bloque
         const cleanedData = this.cleanObject(data);
 
-        //Usar Unix timestamp en segundos
-        const timestamp = Math.floor(Date.now() / 1000);
+        for (let attempt = 1; attempt <= MAX_APPEND_RETRIES; attempt++) {
+            const lastBlock = await this.provenanceBlockModel
+                .findOne()
+                .sort({ index: -1 })
+                .lean();
 
-        const newBlock = {
-            index: lastBlock.index + 1,
-            timestamp: timestamp,
-            data: cleanedData,
-            previousHash: lastBlock.hash,
-            hash: '',
-            // nonce: 0
-        };
+            if (!lastBlock) {
+                throw new Error('Chain not initialized. Genesis block missing.');
+            }
 
-        // Calcular hash del nuevo bloque
-        newBlock.hash = this.calculateHash(newBlock);
+            const timestamp = Math.floor(Date.now() / 1000);
+            const newBlock = {
+                index: lastBlock.index + 1,
+                timestamp,
+                data: cleanedData,
+                previousHash: lastBlock.hash,
+                hash: '',
+            };
 
-        const createdBlock = await this.provenanceBlockModel.create(newBlock);
+            newBlock.hash = this.calculateHash(newBlock);
 
-        this.maybeAnchorNew().catch(e => this.logger.warn('Problem anchoring: ' + e.message));
+            try {
+                const createdBlock = await this.provenanceBlockModel.create(newBlock);
 
-        this.logger.log(`Block ${newBlock.index} added with hash: ${newBlock.hash}`);
-        this.logger.debug(`Block data: ${JSON.stringify(cleanedData)}`);
+                this.maybeAnchorNew().catch(e => this.logger.warn('Problem anchoring: ' + e.message));
 
-        return createdBlock;
+                this.logger.log(`Block ${newBlock.index} added with hash: ${newBlock.hash}`);
+                this.logger.debug(`Block data: ${JSON.stringify(cleanedData)}`);
+
+                return createdBlock;
+            } catch (error) {
+                if (this.isDuplicateKeyError(error) && attempt < MAX_APPEND_RETRIES) {
+                    this.logger.warn(`Hashchain append race detected, retrying (${attempt}/${MAX_APPEND_RETRIES})`);
+                    continue;
+                }
+
+                if (this.isDuplicateKeyError(error)) {
+                    throw new ConflictException('Could not append block after concurrent writes. Please retry.');
+                }
+
+                throw error;
+            }
+        }
+
+        throw new ConflictException('Could not append block after concurrent writes. Please retry.');
     }
 
     /**
@@ -230,7 +262,12 @@ export class BlockchainService implements OnModuleInit {
                 txHash: lastAnchor.txHash,
                 blockNumber: lastAnchor.blockNumber,
                 chainId: lastAnchor.chainId,
+                contractAddress: lastAnchor.contractAddress,
+                organizationId: lastAnchor.organizationId,
+                organizationName: lastAnchor.organizationName,
+                domain: lastAnchor.domain,
                 anchoredAt: lastAnchor.anchoredAt,
+                confirmedAt: lastAnchor.confirmedAt,
                 status: lastAnchor.status,
                 etherscanUrl: lastAnchor.txHash
                     ? `https://sepolia.etherscan.io/tx/${lastAnchor.txHash}`
@@ -338,6 +375,11 @@ export class BlockchainService implements OnModuleInit {
      * Check last anchor and decides to anchor a new one
      */
     async maybeAnchorNew() {
+        const config = this.getAnchorConfig(false);
+        if (!config) {
+            return { anchored: false, reason: 'Anchoring is not configured.' };
+        }
+
         // 1. Get last anchor
         const lastAnchor = await this.getLastAnchor();
         const lastBlockAnclado = lastAnchor?.lastBlockIndex ?? -1;
@@ -348,68 +390,107 @@ export class BlockchainService implements OnModuleInit {
             return { anchored: false, reason: 'No blocks yet.' };
         }
 
-        // 3. Check difference between last block index and last block anchored (every 50 blocks an anchor is done)
-        if (lastBlock.index - lastBlockAnclado < 50000000) {
-            return { anchored: false, reason: `Not enough new blocks (${lastBlock.index - lastBlockAnclado}), wait for 50.` };
+        const anchorEveryNBlocks = this.getAnchorEveryNBlocks();
+        const newBlocks = lastBlock.index - lastBlockAnclado;
+
+        // 3. Check difference between last block index and last block anchored
+        if (newBlocks < anchorEveryNBlocks) {
+            return { anchored: false, reason: `Not enough new blocks (${newBlocks}), wait for ${anchorEveryNBlocks}.` };
         }
 
-        // 4. If enough blocks have been stored then calculates and anchors Merkle root
-        const merkleRoot = await this.getMerkleRoot();
-        const provider = new ethers.JsonRpcProvider(process.env.INFURA_URL!);
-        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
-
-        const tx = await wallet.sendTransaction({
-            to: wallet.address,
-            value: 0,
-            data: merkleRoot
-        });
-        const receipt = await tx.wait();
-
-        // 5. Saves anchor with lastBlockIndex and pending status
-        await this.anchorModel.create({
-            merkleRoot,
-            txHash: receipt.hash,
-            blockNumber: receipt.blockNumber,
-            chainId: Number((await provider.getNetwork()).chainId),
-            lastBlockIndex: lastBlock.index,
-            anchoredAt: new Date(),
-            status: 'pending'
-        });
-
-        return {
-            anchored: true,
-            merkleRoot,
-            txHash: receipt.hash,
-            blockNumber: receipt.blockNumber,
-            lastBlockIndex: lastBlock.index
-        };
+        return await this.anchorMerkleRootToEthereum();
     }
 
     /**
      * Anchor Merkle root in Ethereum testnet
      */
     async anchorMerkleRootToEthereum(): Promise<any> {
-        const merkleRoot = await this.getMerkleRoot();
-        const provider = new ethers.JsonRpcProvider(process.env.INFURA_URL!);
-        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+        const config = this.getAnchorConfig(true)!;
+        const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
+        if (!lastBlock) {
+            throw new Error('No blocks found to anchor');
+        }
 
-        const tx = await wallet.sendTransaction({
-            to: wallet.address,
-            value: 0,
-            data: merkleRoot
-        });
+        const merkleRoot = await this.getMerkleRoot();
+        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const wallet = new ethers.Wallet(config.privateKey, provider);
+        const contract = new ethers.Contract(config.contractAddress, anchorAbi, wallet);
+
+        const tx = await contract.anchorRoot(
+            merkleRoot,
+            config.organizationId,
+            config.organizationName,
+            config.domain,
+        );
 
         const receipt = await tx.wait();
+        if (!receipt) {
+            throw new Error(`Anchor transaction ${tx.hash} was submitted but no receipt was returned`);
+        }
 
-        await this.anchorModel.create({
+        const network = await provider.getNetwork();
+
+        const anchor = await this.anchorModel.create({
             merkleRoot,
-            txHash: receipt.hash,
+            txHash: tx.hash,
             blockNumber: receipt.blockNumber,
-            chainId: (await provider.getNetwork()).chainId,
-            anchoredAt: new Date()
+            chainId: Number(network.chainId),
+            contractAddress: config.contractAddress,
+            walletAddress: wallet.address,
+            organizationId: config.organizationId,
+            organizationName: config.organizationName,
+            domain: config.domain,
+            lastBlockIndex: lastBlock.index,
+            anchoredAt: new Date(),
+            confirmedAt: new Date(),
+            status: 'confirmed',
         });
 
-        return { anchorTx: receipt.hash, merkleRoot };
+        return {
+            anchored: true,
+            merkleRoot,
+            txHash: tx.hash,
+            blockNumber: receipt.blockNumber,
+            chainId: Number(network.chainId),
+            contractAddress: config.contractAddress,
+            organizationId: config.organizationId,
+            organizationName: config.organizationName,
+            domain: config.domain,
+            lastBlockIndex: lastBlock.index,
+            status: anchor.status,
+        };
+    }
+
+    private getAnchorEveryNBlocks(): number {
+        const raw = process.env.ANCHOR_EVERY_N_BLOCKS || '50';
+        const parsed = Number.parseInt(raw, 10);
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 50;
+    }
+
+    private getAnchorConfig(required: boolean): AnchorConfig | null {
+        const rpcUrl = process.env.INFURA_URL;
+        const privateKey = process.env.PRIVATE_KEY;
+        const contractAddress = process.env.CONTRACT_ADDRESS;
+
+        if (!rpcUrl || !privateKey || !contractAddress) {
+            if (required) {
+                throw new ServiceUnavailableException('Ethereum anchoring is not configured. Set INFURA_URL, PRIVATE_KEY and CONTRACT_ADDRESS.');
+            }
+            return null;
+        }
+
+        return {
+            rpcUrl,
+            privateKey,
+            contractAddress,
+            organizationId: process.env.ANCHOR_ORGANIZATION_ID || 'ernest-demo',
+            organizationName: process.env.ANCHOR_ORGANIZATION_NAME || 'Ernest Demo',
+            domain: process.env.ANCHOR_DOMAIN || 'ai-provenance',
+        };
+    }
+
+    private isDuplicateKeyError(error: any): boolean {
+        return error?.code === 11000 || (error?.name === 'MongoServerError' && error?.code === 11000);
     }
 
     /**

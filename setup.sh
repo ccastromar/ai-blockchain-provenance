@@ -60,7 +60,7 @@ elif [ "$choice" = "2" ]; then
     echo ""
     echo -e "${BLUE}Installing backend dependencies...${NC}"
     cd backend
-    npm install
+    npm ci
     
     # Crear .env si no existe
     if [ ! -f .env ]; then
@@ -69,6 +69,8 @@ elif [ "$choice" = "2" ]; then
 PORT=3001
 MONGODB_URI=mongodb://localhost:27017/ernest
 NODE_ENV=development
+CORS_ORIGIN=http://localhost:3000
+ERNEST_API_KEY=
 EOF
     fi
     
@@ -78,7 +80,7 @@ EOF
     echo ""
     echo -e "${BLUE}Installing frontend dependencies...${NC}"
     cd frontend
-    npm install
+    npm ci
     cd ..
     
     echo ""

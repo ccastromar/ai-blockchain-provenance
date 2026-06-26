@@ -15,7 +15,7 @@ export default function ModelRegistration({ onSuccess }: Props) {
     params: '{"param1": "value1", "param2": 10}',
     metrics: '{"accuracy": 0.9, "f1_score": 0.85}',
     metadata: '{"dataset": "Sample Dataset", "framework": "PyTorch"}',
-    mlflow: '{"modelHash": "0000000000000000000000000000", "gitCommit": "abcdef1234567890abcdef1234567890abcdef12"}',
+    mlflow: '{"modelHash": "0000000000000000000000000000000000000000000000000000000000000000", "gitCommit": "abcdef1234567890abcdef1234567890abcdef12"}',
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -51,7 +51,7 @@ export default function ModelRegistration({ onSuccess }: Props) {
         params: '{"param1": "value1", "param2": 10}',
         metrics: '{"accuracy": 0.9, "f1_score": 0.85}',
         metadata: '{"dataset": "Sample Dataset", "framework": "PyTorch"}',
-        mlflow: '{"modelHash": "0000000000000000000000000000", "gitCommit": "abcdef1234567890abcdef1234567890abcdef12"}',
+        mlflow: '{"modelHash": "0000000000000000000000000000000000000000000000000000000000000000", "gitCommit": "abcdef1234567890abcdef1234567890abcdef12"}',
       });
 
       if (onSuccess) onSuccess(newModelId);
@@ -161,7 +161,7 @@ export default function ModelRegistration({ onSuccess }: Props) {
             onChange={(e) => setFormData({ ...formData, mlflow: e.target.value })}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent dark:bg-gray-700 dark:border-gray-600 dark:text-white font-mono text-sm"
             rows={3}
-            placeholder='{"modelHash": "1111111111112121212121212112", "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"}'
+            placeholder='{"modelHash": "8caa1ff8cf0eb5080f6fc2c157e53b1a239a2b58075b0cc9ed01215d7ac0dc45", "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"}'
           />
         </div>
 

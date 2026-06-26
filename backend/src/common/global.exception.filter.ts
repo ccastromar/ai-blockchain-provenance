@@ -7,10 +7,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse();
     const request = ctx.getRequest();
 
+    const isDuplicateKey = exception?.code === 11000;
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+        : isDuplicateKey
+          ? HttpStatus.CONFLICT
+          : HttpStatus.INTERNAL_SERVER_ERROR;
 
     let message = '';
     if (exception instanceof HttpException) {
@@ -19,6 +22,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         typeof resp === 'string'
           ? resp
           : resp?.message || resp?.error || exception.message;
+    } else if (isDuplicateKey) {
+      message = 'Duplicate resource';
     } else {
       message = exception?.message || exception.toString();
     }

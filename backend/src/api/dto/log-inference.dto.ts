@@ -1,4 +1,4 @@
-import { IsString, IsObject, IsOptional } from 'class-validator';
+import { IsHash, IsString, IsObject, IsOptional } from 'class-validator';
 
 export class LogInferenceDto {
   @IsString()
@@ -7,10 +7,10 @@ export class LogInferenceDto {
   @IsString()
   inferenceId: string;
 
-  @IsString()
+  @IsHash('sha256')
   inputHash: string;
   
-  @IsString()
+  @IsHash('sha256')
   outputHash: string;
   
   @IsObject()

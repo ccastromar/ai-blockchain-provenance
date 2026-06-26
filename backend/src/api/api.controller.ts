@@ -1,8 +1,9 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, UseGuards } from '@nestjs/common';
 import { ApiService } from './api.service';
 import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AnchorEventsService } from './anchor-events.service';
+import { ApiKeyGuard } from '../common/api-key.guard';
 
 @Controller('api')
 export class ApiController {
@@ -10,11 +11,10 @@ export class ApiController {
 
   constructor(private readonly apiService: ApiService,
     private readonly anchorEventsService: AnchorEventsService
-  ) { 
-    console.log("ApiController initialized!");
-  }
+  ) {}
 
   @Post('models')
+  @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.CREATED)
   async registerModel(@Body() dto: RegisterModelDto) {
     this.logger.log(`Received registerModel request for model: ${dto.modelName}`);
@@ -22,6 +22,7 @@ export class ApiController {
   }
 
   @Post('inferences')
+  @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.OK)
   async logInference(@Body() dto: LogInferenceDto) {
     this.logger.log(`Received logInference request for model ID: ${dto.modelId}`);
@@ -43,6 +44,13 @@ export class ApiController {
     return await this.apiService.verifyChain();
   }
 
+  @Post('anchors')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  async anchorMerkleRoot() {
+    return await this.apiService.anchorMerkleRoot();
+  }
+
   @Get('blocks')
   async getAllBlocks() {
     return await this.apiService.getAllBlocks();
@@ -52,13 +60,17 @@ export class ApiController {
   async getBlockByIndex(@Param('index', ParseIntPipe) index: number) {
     const block = await this.apiService.getBlockByIndex(index);
     if (!block) {
-      return { error: 'Block not found' };
+      throw new NotFoundException('Block not found');
     }
     return block;
   }
 
   @Get('debug/data-structure')
   async debugDataStructure() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotFoundException('Not found');
+    }
+
     const blocks = await this.apiService.getAllBlocks();
 
     return blocks.map(block => ({

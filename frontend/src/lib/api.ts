@@ -6,6 +6,9 @@ const api = axios.create({
   baseURL: `${API_URL}/api`,
   headers: {
     'Content-Type': 'application/json',
+    ...(process.env.NEXT_PUBLIC_ERNEST_API_KEY
+      ? { 'X-Ernest-Api-Key': process.env.NEXT_PUBLIC_ERNEST_API_KEY }
+      : {}),
   },
 });
 
@@ -14,6 +17,10 @@ export interface RegisterModelData {
   modelName: string;
   version: string;
   modelPath?: string;
+  mlflow: {
+    modelHash: string;
+    gitCommit: string;
+  };
   params?: Record<string, any>;
   metrics?: Record<string, number>;
   metadata?: Record<string, any>;
@@ -22,7 +29,7 @@ export interface RegisterModelData {
 export interface LogInferenceData {
   modelId: string;
   inferenceId: string;
-  inputHash: any;
+  inputHash: string;
   outputHash: string;  
   params?: Record<string, any>;
   metadata?: Record<string, any>;
@@ -68,4 +75,3 @@ export const getAllModelIds = async () => {
   const response = await api.get('/models/ids');
   return response.data;
 };
-

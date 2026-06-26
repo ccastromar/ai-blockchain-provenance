@@ -9,6 +9,7 @@ import { AIModelModule } from './aimodels/aimodel.module';
 import { AIModelController } from './aimodels/aimodel.controller';
 import { AnchorEventsService } from './api/anchor-events.service';
 import { HealthController } from './health/health.controller';
+import { ApiKeyGuard } from './common/api-key.guard';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { HealthController } from './health/health.controller';
   ],
   providers: [
     ApiService,
-    AnchorEventsService],
+    AnchorEventsService,
+    ApiKeyGuard],
 })
 export class AppModule {}

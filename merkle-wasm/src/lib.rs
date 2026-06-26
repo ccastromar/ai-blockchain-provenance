@@ -1,6 +1,16 @@
 use wasm_bindgen::prelude::*;
 use sha2::{Sha256, Digest};
 
+#[cfg(target_arch = "wasm32")]
+fn js_error(message: &str) -> JsValue {
+    JsValue::from_str(message)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn js_error(_message: &str) -> JsValue {
+    JsValue::NULL
+}
+
 /// Calculate the Merkle root from an array of hash strings
 /// 
 /// # Arguments
@@ -11,14 +21,14 @@ use sha2::{Sha256, Digest};
 #[wasm_bindgen]
 pub fn calculate_merkle_root(hashes: Vec<String>) -> Result<String, JsValue> {
     if hashes.is_empty() {
-        return Err(JsValue::from_str("Cannot calculate merkle root from empty array"));
+        return Err(js_error("Cannot calculate merkle root from empty array"));
     }
 
     // Convert hex strings to byte arrays
     let mut leaves: Vec<Vec<u8>> = Vec::new();
     for hash_str in hashes {
         let bytes = hex::decode(&hash_str)
-            .map_err(|e| JsValue::from_str(&format!("Invalid hex string: {}", e)))?;
+            .map_err(|e| js_error(&format!("Invalid hex string: {}", e)))?;
         leaves.push(bytes);
     }
 
@@ -32,7 +42,7 @@ pub fn calculate_merkle_root(hashes: Vec<String>) -> Result<String, JsValue> {
 /// Build a Merkle tree from leaf nodes
 fn build_merkle_tree(mut layer: Vec<Vec<u8>>) -> Result<Vec<u8>, JsValue> {
     if layer.is_empty() {
-        return Err(JsValue::from_str("Empty layer"));
+        return Err(js_error("Empty layer"));
     }
 
     // Continue hashing pairs until only root remains

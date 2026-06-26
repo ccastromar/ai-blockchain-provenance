@@ -9,7 +9,13 @@ export class Anchor {
   @Prop() txHash: string;
   @Prop() blockNumber: number;
   @Prop() chainId: number;
+  @Prop() contractAddress: string;
+  @Prop() walletAddress: string;
+  @Prop() organizationId: string;
+  @Prop() organizationName: string;
+  @Prop() domain: string;
   @Prop() anchoredAt: Date;
+  @Prop() confirmedAt: Date;
   @Prop({ default: 'pending' }) status: string;
 }
 export type AnchorDocument = Anchor & Document;

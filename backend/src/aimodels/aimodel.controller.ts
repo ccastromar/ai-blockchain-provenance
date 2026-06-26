@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Logger } from '@nestjs/common';
+import { Controller, Get, Param, Logger } from '@nestjs/common';
 import { AIModelService } from './aimodel.service';
 
 @Controller('api/models')
@@ -18,18 +18,4 @@ export class AIModelController {
     return await this.modelService.findOne(modelId);
   }
 
-  @Post()
-  async create(@Body() data: any) {
-    return await this.modelService.create(data);
-  }
-
-  @Put(':modelId')
-  async update(@Param('modelId') modelId: string, @Body() update: any) {
-    return await this.modelService.update(modelId, update);
-  }
-
-  @Delete(':modelId')
-  async remove(@Param('modelId') modelId: string) {
-    return await this.modelService.remove(modelId);
-  }
 }
