@@ -3,7 +3,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 pnpm-lock.yaml
 
 # VSCode/IDE
@@ -86,6 +85,7 @@ out/
 **/artifacts/
 **/cache/
 **/typechain-types/
+blockchain/types/
 
 # CLI in Go
 # Binaries for programs and plugins
@@ -117,6 +117,7 @@ tmp/
 
 # Project build
 main
+ernest
 *templ.go
 
 # OS X generated file

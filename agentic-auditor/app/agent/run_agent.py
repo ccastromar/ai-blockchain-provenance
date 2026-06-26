@@ -1,4 +1,5 @@
 import json
+import os
 from openai import OpenAI
 from app.agent.tools import TOOLS_MAP
 from app.core.logger import get_logger
@@ -6,7 +7,11 @@ import traceback
 
 logger = get_logger("agent")
 
-client = OpenAI(base_url="http://192.168.1.74:11434/v1", api_key="not-needed")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:11434/v1")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "qwen3:8b")
+
+client = OpenAI(base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY)
 
 TOOLS_SCHEMA = [
     {
@@ -110,7 +115,7 @@ def run_agent(user_message: str):
 
     try:
         response = client.chat.completions.create(
-            model="qwen3:8b",
+            model=OPENAI_MODEL,
             messages=messages,
             tools=TOOLS_SCHEMA,
             timeout=60,
@@ -161,7 +166,7 @@ def run_agent(user_message: str):
 
     try:
         second = client.chat.completions.create(
-            model="qwen3:8b",
+            model=OPENAI_MODEL,
             messages=messages + followup_messages,
             timeout=60,
         )

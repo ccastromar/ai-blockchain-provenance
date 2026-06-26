@@ -3,7 +3,7 @@ import os
 import requests, subprocess, time
 from app.core.logger import get_logger
 
-ERNEST_URL = "http://localhost:3001"
+ERNEST_URL = os.getenv("ERNEST_URL", "http://localhost:3001")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CLI_PATH = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "cli", "ernest"))
 
@@ -66,8 +66,13 @@ def verify_event_cli(eid):
     )
     return result.stdout
 
-def audit_inference(report):
-    payload={"type":"audit_inference","timestamp":time.time(),"report":report}
+def audit_inference(input_text, output_text):
+    payload={
+        "type":"audit_inference",
+        "timestamp":time.time(),
+        "input_text": input_text,
+        "output_text": output_text,
+    }
     r=requests.post(f"{ERNEST_URL}/audit",json=payload)
     return {"status":r.status_code}
 

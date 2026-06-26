@@ -33,6 +33,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy app source
 # ------------------------------------------------------
 COPY app ./app
+COPY cli ./cli
 
 # ------------------------------------------------------
 # ENV (FastAPI config)
@@ -48,4 +49,4 @@ EXPOSE 8000
 # ------------------------------------------------------
 # Start FastAPI + Uvicorn
 # ------------------------------------------------------
-CMD ["uvicorn", "app.fastapi_app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.api.fastapi_app:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,0 +1,6 @@
+ernest
+main
+.env
+.env.*
+!.env.example
+tmp

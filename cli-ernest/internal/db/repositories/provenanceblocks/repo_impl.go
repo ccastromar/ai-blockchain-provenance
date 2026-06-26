@@ -80,7 +80,7 @@ func (r *mongoRepository) GetByIndex(index int64) (map[string]interface{}, error
 	err := coll.FindOne(ctx, bson.D{{"index", index}}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, fmt.Errorf("no block found with index %s", index)
+			return nil, fmt.Errorf("no block found with index %d", index)
 		}
 		return nil, fmt.Errorf("error finding block: %w", err)
 	}

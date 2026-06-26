@@ -5,13 +5,11 @@ all: build test
 
 build:
 	@echo "Building..."
-	
-	
-	@go build -o main cmd/api/main.go
+	@go build -o ernest .
 
 # Run the application
 run:
-	@go run cmd/api/main.go
+	@go run .
 # Create DB container
 docker-run:
 	@if docker compose up --build 2>/dev/null; then \
@@ -42,7 +40,7 @@ itest:
 # Clean the binary
 clean:
 	@echo "Cleaning..."
-	@rm -f main
+	@rm -f ernest
 
 # Live Reload
 watch:
