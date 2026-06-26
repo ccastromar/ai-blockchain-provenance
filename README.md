@@ -80,6 +80,8 @@ Run a minimal API smoke test:
 ./scripts/smoke.sh
 ```
 
+For a small public VPS deployment, see [docs/deployment-vps.md](docs/deployment-vps.md).
+
 ## Local Development
 
 Backend:
@@ -206,6 +208,7 @@ cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...
 cd merkle-wasm && cargo test
 python -m compileall ai-sandbox/domains/iris agentic-auditor/app
 bash -n scripts/smoke.sh setup.sh
+./scripts/deploy-check.sh
 ```
 
 Release checklist: [docs/release-checklist.md](docs/release-checklist.md).

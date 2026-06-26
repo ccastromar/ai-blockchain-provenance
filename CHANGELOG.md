@@ -21,6 +21,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Optional API key protection for write endpoints.
 - Configurable CORS origin.
 - Swagger UI and OpenAPI JSON for the public API contract.
+- VPS deployment guide and post-deploy health check script.
 - GitHub Actions CI workflow.
 - Release checklist and GitHub issue templates.
 - Publication-oriented README, architecture guide, API reference, and security model.
@@ -28,6 +29,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 ### Changed
 
 - Backend NestJS packages now target NestJS 11.
+- Docker Compose binds service ports to localhost, adds healthchecks, and rotates container logs.
 - README examples now use copyable, valid JSON.
 - Iris sandbox now matches the real backend API contract and treats MLflow as optional.
 - Frontend model registration now sends valid MLflow hash metadata.

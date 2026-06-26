@@ -14,8 +14,10 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `backend/package-lock.json`, `frontend/package-lock.json`, and `blockchain/package-lock.json` are committed.
 - [ ] `npm ci` works in `backend`, `frontend`, and `blockchain`.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
+- [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.
 - [ ] `.env.example` files match the current runtime configuration.
 - [ ] `./scripts/smoke.sh` passes against a clean local stack.
+- [ ] `./scripts/deploy-check.sh` passes against the target deployment URL.
 
 ## Verification
 
@@ -50,6 +52,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] API examples are valid JSON and match backend validation.
 - [ ] `docs/api.md` matches current backend endpoints and DTO validation.
 - [ ] `http://localhost:3001/api/docs` and `/api/docs-json` load correctly.
+- [ ] `docs/deployment-vps.md` matches the current Docker Compose setup.
 - [ ] `docs/architecture.md` matches the deployed stack.
 - [ ] `docs/security-model.md` describes current guarantees and non-goals.
 - [ ] Security notes describe PoC limitations honestly.
