@@ -11,8 +11,8 @@ Use this checklist before publishing an official Ernest release.
 
 ## Reproducibility
 
-- [ ] `backend/package-lock.json`, `frontend/package-lock.json`, and `blockchain/package-lock.json` are committed.
-- [ ] `npm ci` works in `backend`, `frontend`, and `blockchain`.
+- [ ] `pnpm-lock.yaml` is committed.
+- [ ] `pnpm install --frozen-lockfile` works from the repository root.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
 - [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.
 - [ ] `.env.example` files match the current runtime configuration.
@@ -21,9 +21,9 @@ Use this checklist before publishing an official Ernest release.
 
 ## Verification
 
-- [ ] `cd backend && npm run test:integrity`
-- [ ] `cd frontend && npm run build`
-- [ ] `cd blockchain && npm ci && npx hardhat compile`
+- [ ] `pnpm run backend:test`
+- [ ] `pnpm run frontend:build`
+- [ ] `pnpm run blockchain:compile`
 - [ ] `cd merkle-wasm && cargo test`
 - [ ] `cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...`
 - [ ] `python -m compileall ai-sandbox/domains/iris agentic-auditor/app`
@@ -37,7 +37,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `PRIVATE_KEY` is stored in a secrets manager, not in `.env` committed files.
 - [ ] Sepolia demo wallet has only limited funds.
 - [ ] `NEXT_PUBLIC_ERNEST_API_KEY` is used only for browser demos, never as a production secret.
-- [ ] Known `npm audit` findings are reviewed and accepted or remediated.
+- [ ] Known `pnpm audit` findings are reviewed and accepted or remediated.
 
 ## Blockchain Anchoring
 

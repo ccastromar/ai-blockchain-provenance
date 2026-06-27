@@ -1,0 +1,12 @@
+{
+  "name": "ernest-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "backend:test": "pnpm --filter ernest-backend test:integrity",
+    "frontend:build": "pnpm --filter ernest-frontend build",
+    "blockchain:compile": "pnpm --filter blockchain exec hardhat compile",
+    "release:check": "pnpm run backend:test && pnpm run frontend:build && pnpm run blockchain:compile"
+  }
+}

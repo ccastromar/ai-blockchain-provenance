@@ -1,0 +1,17 @@
+packages:
+  - backend
+  - frontend
+  - blockchain
+
+confirmModulesPurge: false
+
+onlyBuiltDependencies:
+  - esbuild
+  - keccak
+
+ignoredBuiltDependencies:
+  - "@scarf/scarf"
+allowBuilds:
+  '@scarf/scarf': false
+  esbuild: true
+  keccak: true

@@ -27,8 +27,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: ernest-backend
     ports:
       - "127.0.0.1:3001:3001"
@@ -58,8 +58,8 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     container_name: ernest-frontend
     ports:
       - "127.0.0.1:3000:3000"

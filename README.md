@@ -88,16 +88,22 @@ Backend:
 
 ```bash
 cd backend
-npm ci
-npm run start:dev
+pnpm install
+pnpm run start:dev
 ```
 
 Frontend:
 
 ```bash
 cd frontend
-npm ci
-npm run dev
+pnpm install
+pnpm run dev
+```
+
+Or install all JavaScript workspace dependencies from the repository root:
+
+```bash
+pnpm install
 ```
 
 MongoDB:
@@ -201,13 +207,13 @@ ErnestMerkleAnchor: 0xb55F5e61102a6f551BffD015998b02bC0688e41D
 Useful local checks:
 
 ```bash
-cd backend && npm run test:integrity
-cd frontend && npm run build
-cd blockchain && npm ci && npx hardhat compile
+pnpm run backend:test
+pnpm run frontend:build
+pnpm run blockchain:compile
 cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...
 cd merkle-wasm && cargo test
 python -m compileall ai-sandbox/domains/iris agentic-auditor/app
-bash -n scripts/smoke.sh setup.sh
+bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
 ./scripts/deploy-check.sh
 ```
 

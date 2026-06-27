@@ -1,25 +1,33 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 
-WORKDIR /app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
-COPY package*.json ./
-RUN npm ci
+WORKDIR /repo
 
-COPY . .
-RUN npm run build
+RUN corepack enable
 
-FROM node:20-alpine AS runner
+FROM base AS builder
 
-WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY backend/package.json ./backend/package.json
+RUN pnpm install --filter ernest-backend... --frozen-lockfile
+
+COPY backend ./backend
+RUN pnpm --filter ernest-backend build
+
+FROM base AS runner
+
 ENV NODE_ENV=production
 
-COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY backend/package.json ./backend/package.json
+RUN pnpm install --filter ernest-backend --prod --frozen-lockfile && pnpm store prune
 
-COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /repo/backend/dist ./backend/dist
 
 EXPOSE 3001
 
 USER node
 
-CMD ["npm", "run", "start:prod"]
+CMD ["pnpm", "--filter", "ernest-backend", "start:prod"]

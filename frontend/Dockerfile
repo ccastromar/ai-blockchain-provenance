@@ -1,25 +1,34 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 
-WORKDIR /app
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
 
-COPY package*.json ./
-RUN npm ci
+WORKDIR /repo
 
-COPY . .
-RUN npm run build
+RUN corepack enable
 
-FROM node:20-alpine
+FROM base AS builder
 
-WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/package.json
+RUN pnpm install --filter ernest-frontend... --frozen-lockfile
+
+COPY frontend ./frontend
+RUN pnpm --filter ernest-frontend build
+
+FROM base AS runner
+
 ENV NODE_ENV=production
 
-COPY --from=builder --chown=node:node /app/package*.json ./
-COPY --from=builder --chown=node:node /app/next.config.js ./next.config.js
-COPY --from=builder --chown=node:node /app/.next ./.next
-RUN npm ci --omit=dev && npm cache clean --force
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY frontend/package.json ./frontend/package.json
+RUN pnpm install --filter ernest-frontend --prod --frozen-lockfile && pnpm store prune
+
+COPY --from=builder --chown=node:node /repo/frontend/next.config.js ./frontend/next.config.js
+COPY --from=builder --chown=node:node /repo/frontend/.next ./frontend/.next
 
 EXPOSE 3000
 
 USER node
 
-CMD ["npm", "start"]
+CMD ["pnpm", "--filter", "ernest-frontend", "start"]

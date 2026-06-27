@@ -7,6 +7,7 @@ This guide targets a small single-node demo server, for example 2 GB RAM and 50 
 - Docker Compose on one VPS.
 - MongoDB, backend, and frontend on the private Docker network.
 - Host ports bound to `127.0.0.1`.
+- pnpm workspace lockfile for reproducible JavaScript container builds.
 - Caddy or Nginx terminates HTTPS and proxies public traffic to the local frontend/backend ports.
 - `ERNEST_API_KEY` enabled for all public demos.
 

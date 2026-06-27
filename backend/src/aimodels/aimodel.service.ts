@@ -34,7 +34,11 @@ export class AIModelService {
     return await this.aimodelModel.findOneAndUpdate({ modelId }, update, { new: true }).lean();
   }
 
-  async remove(modelId: string) {
-    return await this.aimodelModel.deleteOne({ modelId });
+  async remove(modelId: string): Promise<{ acknowledged: boolean; deletedCount: number }> {
+    const result = await this.aimodelModel.deleteOne({ modelId }).exec();
+    return {
+      acknowledged: result.acknowledged,
+      deletedCount: result.deletedCount,
+    };
   }
 }
