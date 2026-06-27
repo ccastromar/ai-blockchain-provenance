@@ -5,7 +5,7 @@
 
   let { initialModelId = '' }: { initialModelId?: string } = $props();
 
-  let modelId      = $state(initialModelId ?? '');
+  let modelId      = $state('');
   let provenance   = $state<any>(null);
   let loading      = $state(false);
   let error        = $state<string | null>(null);
@@ -20,7 +20,10 @@
 
   onMount(async () => {
     try { modelIds = await getAllModelIds(); } catch { modelIds = []; }
-    if (initialModelId) handleSearch();
+    if (initialModelId) {
+      modelId = initialModelId;
+      handleSearch();
+    }
   });
 
   async function handleSearch() {

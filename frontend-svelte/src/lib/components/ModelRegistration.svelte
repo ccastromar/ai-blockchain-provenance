@@ -78,10 +78,10 @@
 
   {#if existingModels.length}
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-      <label class="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2 block">
+      <label for="reg-preset" class="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2 block">
         Quick-fill from existing model
       </label>
-      <select onchange={applyPreset} bind:value={selectedPreset} class="field-input text-sm">
+      <select id="reg-preset" onchange={applyPreset} bind:value={selectedPreset} class="field-input text-sm">
         <option value="">— Select a model to pre-fill —</option>
         {#each existingModels as m}
           <option value={m.modelId}>{m.modelId} · {m.name ?? 'No name'} · v{m.version}</option>

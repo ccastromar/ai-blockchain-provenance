@@ -13,7 +13,7 @@
     return Array.from(buf).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  let modelId    = $state(initialModelId);
+  let modelId    = $state('');
   let inferenceId = $state('f61c7b91-2e83-4f4a-8c9b-7c0cb90fca1e');
   let input      = $state('a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1');
   let outputHash = $state('d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2');
@@ -26,6 +26,7 @@
   let modelIds = $state<string[]>([]);
 
   onMount(async () => {
+    modelId = initialModelId;
     try { modelIds = await getAllModelIds(); } catch { modelIds = []; }
   });
 
