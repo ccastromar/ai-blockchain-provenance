@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -31,4 +31,3 @@ COPY frontend-svelte/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /repo/frontend-svelte/build /usr/share/nginx/html
 
 EXPOSE 3000
-
