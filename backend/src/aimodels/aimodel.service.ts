@@ -16,8 +16,14 @@ export class AIModelService {
     return await this.aimodelModel.create(data);
   }
 
-  async findAll() {
-    return await this.aimodelModel.find().sort({ createdAt: -1 }).lean();
+  async findAll(page = 1, limit = 20, organizationId?: string) {
+    const filter = organizationId ? { organizationId } : {};
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+      this.aimodelModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      this.aimodelModel.countDocuments(filter),
+    ]);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(modelId: string) {

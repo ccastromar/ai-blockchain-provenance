@@ -1,0 +1,16 @@
+PORT=3001
+MONGODB_URI=mongodb://localhost:27017/ernest
+CORS_ORIGIN=http://localhost:3000
+
+# Optional. If set, POST /api/models, /api/inferences and /api/anchors require this header:
+# X-Ernest-Api-Key: <value>
+ERNEST_API_KEY=
+
+# Optional. Required only for Sepolia anchoring and /api/events queries.
+INFURA_URL=
+PRIVATE_KEY=
+CONTRACT_ADDRESS=
+ANCHOR_ORGANIZATION_ID=ernest-demo
+ANCHOR_ORGANIZATION_NAME=Ernest Demo
+ANCHOR_DOMAIN=ai-provenance
+ANCHOR_EVERY_N_BLOCKS=50

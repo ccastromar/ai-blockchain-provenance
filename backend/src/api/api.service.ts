@@ -43,7 +43,8 @@ export class ApiService {
       dto.mlflow.gitCommit,
       dto.params,
       dto.metrics,
-      dto.metadata      
+      dto.metadata,
+      dto.organizationId,
     );
 
     await this.modelService.create({
@@ -53,7 +54,8 @@ export class ApiService {
         parameters: dto.params,
         metrics: dto.metrics,
         metadata: dto.metadata,
-    });
+        organizationId: dto.organizationId,
+    } as any);
 
     return {
       success: true,
@@ -118,8 +120,8 @@ export class ApiService {
     };
   }
 
-  async getProvenance(modelId: string) {
-    return await this.blockchainService.getProvenance(modelId);
+  async getProvenance(modelId: string, filters?: { type?: string; from?: number; to?: number; organizationId?: string }) {
+    return await this.blockchainService.getProvenance(modelId, filters);
   }
 
   async getChainStats() {
@@ -134,15 +136,23 @@ export class ApiService {
     return await this.blockchainService.anchorMerkleRootToEthereum();
   }
 
-  async getAllBlocks() {
-    return await this.blockchainService.getAllBlocks();
+  async getAllBlocks(page = 1, limit = 20) {
+    return await this.blockchainService.getAllBlocks(page, limit);
   }
 
   async getBlockByIndex(index: number) {
     return await this.blockchainService.getBlockByIndex(index);
   }
 
-  async getAllModels() {
-    return await this.modelService.findAll();   
+  async getAllModels(page = 1, limit = 200) {
+    return await this.modelService.findAll(page, limit);
+  }
+
+  async verifyModelIntegrity(modelId: string) {
+    return await this.blockchainService.verifyModelIntegrity(modelId);
+  }
+
+  async exportProvenance(modelId: string) {
+    return await this.blockchainService.exportProvenance(modelId);
   }  
 }

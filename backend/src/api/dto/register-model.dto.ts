@@ -78,6 +78,14 @@ export class RegisterModelDto {
   @IsOptional()
   metadata?: Record<string, any>;
 
+  @ApiPropertyOptional({
+    description: 'Organization identifier for multi-tenant isolation. Can also be sent via X-Ernest-Org-Id header.',
+    example: 'ernest-demo',
+  })
+  @IsString()
+  @IsOptional()
+  organizationId?: string;
+
   @ApiProperty({
     description: 'MLflow-style artifact hash and source commit metadata.',
     type: MlflowMetadataDto,

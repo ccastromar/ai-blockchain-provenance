@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
+export type ModelStatus = 'active' | 'deprecated' | 'archived';
+
 @Schema({ timestamps: true })
 export class AIModel {
   @Prop({ required: true })
@@ -11,6 +13,12 @@ export class AIModel {
 
   @Prop({ required: true })
   version: string;
+
+  @Prop({ type: String, enum: ['active', 'deprecated', 'archived'], default: 'active' })
+  status: ModelStatus;
+
+  @Prop({ type: String, index: true })
+  organizationId?: string;
 
   @Prop({ type: Object })
   parameters: Record<string, any>;

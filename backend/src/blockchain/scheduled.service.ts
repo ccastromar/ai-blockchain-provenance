@@ -12,8 +12,8 @@ export class ScheduledBlockchainService {
 
   constructor(
     @InjectModel(Anchor.name) private anchorModel: Model<AnchorDocument>,
-  ) {}  
-  
+  ) {}
+
   /**
    * Periodically check the pending anchors and update them if they are mined.
    * Executed every 10 minutes.
@@ -29,8 +29,8 @@ export class ScheduledBlockchainService {
 
     if (pending.length === 0) {
       this.logger.debug(`No pending anchors...`);
-      return
-    };
+      return;
+    }
 
     const provider = new ethers.JsonRpcProvider(process.env.INFURA_URL!);
     this.logger.debug(`Checking ${pending.length} pending anchors...`);
@@ -41,25 +41,52 @@ export class ScheduledBlockchainService {
         if (receipt && receipt.blockNumber) {
           await this.anchorModel.updateOne(
             { _id: anchor._id },
-            { 
+            {
               $set: {
                 blockNumber: receipt.blockNumber,
-                status: 'confirmed', 
-                confirmedAt: new Date()
-              }
-            }
+                status: 'confirmed',
+                confirmedAt: new Date(),
+              },
+            },
           );
-          this.logger.log(
-            `Anchor ${anchor.txHash} confirmed in block ${receipt.blockNumber}`
-          );
+          this.logger.log(`Anchor ${anchor.txHash} confirmed in block ${receipt.blockNumber}`);
+          await this.notifyWebhook(anchor.txHash, anchor.merkleRoot, receipt.blockNumber, anchor.organizationId);
         } else {
-          this.logger.log(
-            `Anchor ${anchor.txHash} still pending...`
-          );
+          this.logger.log(`Anchor ${anchor.txHash} still pending...`);
         }
       } catch (e: any) {
         this.logger.warn(`Error checking anchor ${anchor.txHash}: ${e.message}`);
       }
+    }
+  }
+
+  private async notifyWebhook(
+    txHash: string,
+    merkleRoot: string,
+    blockNumber: number,
+    organizationId: string,
+  ) {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) return;
+
+    const payload = {
+      event: 'anchor.confirmed',
+      txHash,
+      merkleRoot,
+      blockNumber,
+      organizationId,
+      confirmedAt: new Date().toISOString(),
+    };
+
+    try {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      this.logger.log(`Webhook notified: ${webhookUrl} → ${res.status}`);
+    } catch (e: any) {
+      this.logger.warn(`Webhook delivery failed (${webhookUrl}): ${e.message}`);
     }
   }
 }

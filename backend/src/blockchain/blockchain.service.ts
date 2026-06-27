@@ -206,11 +206,25 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Get full provenance by modelId
+     * Get full provenance by modelId with optional filters
      */
-    async getProvenance(modelId: string) {
+    async getProvenance(modelId: string, filters?: { type?: string; from?: number; to?: number; organizationId?: string }) {
+        const query: any = { 'data.modelId': modelId };
+
+        if (filters?.type) {
+            query['data.type'] = filters.type;
+        }
+        if (filters?.from || filters?.to) {
+            query.timestamp = {};
+            if (filters.from) query.timestamp.$gte = filters.from;
+            if (filters.to) query.timestamp.$lte = filters.to;
+        }
+        if (filters?.organizationId) {
+            query['data.organizationId'] = filters.organizationId;
+        }
+
         const blocks = await this.provenanceBlockModel
-            .find({ 'data.modelId': modelId })
+            .find(query)
             .sort({ index: 1 })
             .lean();
 
@@ -287,7 +301,8 @@ export class BlockchainService implements OnModuleInit {
         gitCommit: string,
         params?: Record<string, any>,
         metrics?: Record<string, any>,
-        metadata?: Record<string, any>
+        metadata?: Record<string, any>,
+        organizationId?: string,
     ) {
         return await this.addBlock({
             type: 'model_registration',
@@ -297,8 +312,9 @@ export class BlockchainService implements OnModuleInit {
             modelHash,
             gitCommit,
             params,
-            metrics,        
-            metadata
+            metrics,
+            metadata,
+            organizationId,
         });
     }
 
@@ -326,14 +342,69 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Get all blocks
+     * Get all blocks (paginated)
      */
-    async getAllBlocks(): Promise<any[]> {
+    async getAllBlocks(page = 1, limit = 20): Promise<any> {
+        const skip = (page - 1) * limit;
+        const [items, total] = await Promise.all([
+            this.provenanceBlockModel.find().sort({ index: 1 }).skip(skip).limit(limit).lean(),
+            this.provenanceBlockModel.countDocuments(),
+        ]);
+        return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+    }
 
-        return await this.provenanceBlockModel
-            .find()
+    /**
+     * Export provenance for a model as a signed JSON bundle
+     */
+    async exportProvenance(modelId: string): Promise<{ bundle: object; signature: string; algorithm: string }> {
+        const provenance = await this.getProvenance(modelId);
+
+        const bundle = {
+            exportedAt: new Date().toISOString(),
+            generator: 'ernest-api',
+            ...provenance,
+        };
+
+        const secret = process.env.ERNEST_API_KEY || '';
+        const signature = crypto
+            .createHmac('sha256', secret)
+            .update(JSON.stringify(bundle))
+            .digest('hex');
+
+        return { bundle, signature, algorithm: 'hmac-sha256' };
+    }
+
+    /**
+     * Verify integrity only for blocks belonging to a specific model
+     */
+    async verifyModelIntegrity(modelId: string): Promise<{ modelId: string; isValid: boolean; totalBlocks: number; errors: string[] }> {
+        const modelBlocks = await this.provenanceBlockModel
+            .find({ 'data.modelId': modelId })
             .sort({ index: 1 })
             .lean();
+
+        if (modelBlocks.length === 0) {
+            return { modelId, isValid: false, totalBlocks: 0, errors: [`No blocks found for model ${modelId}`] };
+        }
+
+        const errors: string[] = [];
+
+        for (let i = 0; i < modelBlocks.length; i++) {
+            const block = modelBlocks[i];
+            const calculatedHash = this.calculateHash(block);
+
+            if (block.hash !== calculatedHash) {
+                errors.push(`Block ${block.index}: hash mismatch`);
+            }
+
+            // Verify chain link to previous block in the global chain
+            const prevBlock = await this.provenanceBlockModel.findOne({ index: block.index - 1 }).lean();
+            if (prevBlock && block.previousHash !== prevBlock.hash) {
+                errors.push(`Block ${block.index}: broken link to previous block ${block.index - 1}`);
+            }
+        }
+
+        return { modelId, isValid: errors.length === 0, totalBlocks: modelBlocks.length, errors };
     }
 
     /**

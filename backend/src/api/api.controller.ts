@@ -1,5 +1,7 @@
 import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, UseGuards } from '@nestjs/common';
-import { ApiAcceptedResponse, ApiCreatedResponse, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiAcceptedResponse, ApiCreatedResponse, ApiHeader, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { PaginationDto } from '../common/dto/pagination.dto';
+import { OrgId } from '../common/org-id.decorator';
 import { ApiService } from './api.service';
 import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
@@ -20,10 +22,11 @@ export class ApiController {
   @HttpCode(HttpStatus.CREATED)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Register a model and append a model block to the hashchain.' })
+  @ApiHeader({ name: 'X-Ernest-Org-Id', required: false, description: 'Organization scope (overrides body.organizationId)' })
   @ApiCreatedResponse({ description: 'Model registered and stored in the hashchain.' })
-  async registerModel(@Body() dto: RegisterModelDto) {
+  async registerModel(@Body() dto: RegisterModelDto, @OrgId() orgId?: string) {
     this.logger.log(`Received registerModel request for model: ${dto.modelName}`);
-    return await this.apiService.registerModel(dto);
+    return await this.apiService.registerModel({ ...dto, organizationId: orgId ?? dto.organizationId });
   }
 
   @Post('inferences')
@@ -38,11 +41,26 @@ export class ApiController {
   }
 
   @Get('provenances/:modelId')
-  @ApiOperation({ summary: 'Return all provenance blocks for a model.' })
+  @ApiOperation({ summary: 'Return provenance blocks for a model.' })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
+  @ApiQuery({ name: 'type', required: false, enum: ['model_registration', 'inference'], description: 'Filter by block type' })
+  @ApiQuery({ name: 'from', required: false, type: Number, description: 'Unix timestamp (seconds) — start of range' })
+  @ApiQuery({ name: 'to', required: false, type: Number, description: 'Unix timestamp (seconds) — end of range' })
+  @ApiHeader({ name: 'X-Ernest-Org-Id', required: false, description: 'Scope results to an organization' })
   @ApiOkResponse({ description: 'Model provenance and current chain verification status.' })
-  async getProvenance(@Param('modelId') modelId: string) {
-    return await this.apiService.getProvenance(modelId);
+  async getProvenance(
+    @Param('modelId') modelId: string,
+    @Query('type') type?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @OrgId() orgId?: string,
+  ) {
+    return await this.apiService.getProvenance(modelId, {
+      type,
+      from: from ? Number(from) : undefined,
+      to: to ? Number(to) : undefined,
+      organizationId: orgId,
+    });
   }
 
   @Get('stats')
@@ -70,10 +88,10 @@ export class ApiController {
   }
 
   @Get('blocks')
-  @ApiOperation({ summary: 'Return all raw hashchain blocks.' })
-  @ApiOkResponse({ description: 'Raw hashchain blocks.' })
-  async getAllBlocks() {
-    return await this.apiService.getAllBlocks();
+  @ApiOperation({ summary: 'Return raw hashchain blocks (paginated).' })
+  @ApiOkResponse({ description: 'Paginated raw hashchain blocks.' })
+  async getAllBlocks(@Query() pagination: PaginationDto) {
+    return await this.apiService.getAllBlocks(pagination.page, pagination.limit);
   }
 
   @Get('blocks/:index')
@@ -95,7 +113,7 @@ export class ApiController {
       throw new NotFoundException('Not found');
     }
 
-    const blocks = await this.apiService.getAllBlocks();
+    const { items: blocks } = await this.apiService.getAllBlocks(1, 200);
 
     return blocks.map(block => ({
       index: block.index,
@@ -106,12 +124,28 @@ export class ApiController {
     }));
   }
 
+  @Get('provenances/:modelId/export')
+  @ApiOperation({ summary: 'Export provenance for a model as a signed JSON bundle.' })
+  @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
+  @ApiOkResponse({ description: 'Signed provenance bundle (HMAC-SHA256 using ERNEST_API_KEY).' })
+  async exportProvenance(@Param('modelId') modelId: string) {
+    return await this.apiService.exportProvenance(modelId);
+  }
+
+  @Get('models/:modelId/integrity')
+  @ApiOperation({ summary: 'Verify hashchain integrity for a specific model.' })
+  @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
+  @ApiOkResponse({ description: 'Integrity check result for the model blocks.' })
+  async verifyModelIntegrity(@Param('modelId') modelId: string) {
+    return await this.apiService.verifyModelIntegrity(modelId);
+  }
+
   @Get('models/ids')
   @ApiOperation({ summary: 'Return registered model identifiers.' })
   @ApiOkResponse({ description: 'List of registered model IDs.' })
   async getModelIds() {
-    const models = await this.apiService.getAllModels();
-    return models.map(m => m.modelId);
+    const { items } = await this.apiService.getAllModels();
+    return items.map(m => m.modelId);
   }
 
   @Get('events')
