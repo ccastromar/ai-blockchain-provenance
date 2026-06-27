@@ -1,0 +1,28 @@
+name: Docker Smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-compose:
+    name: Docker Compose Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Show services
+        run: docker compose ps
+
+      - name: Run deploy check
+        run: ./scripts/deploy-check.sh
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down --volumes

@@ -16,7 +16,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
 - [ ] Docker Compose serves the SvelteKit frontend, not the deprecated Next.js frontend.
 - [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.
-- [ ] The manual GitHub Actions Docker Compose smoke job passes before tagging.
+- [ ] The manual GitHub Actions `Docker Smoke` workflow passes before tagging.
 - [ ] `.env.example` files match the current runtime configuration.
 - [ ] `./scripts/smoke.sh` passes against a clean local stack.
 - [ ] `./scripts/deploy-check.sh` passes against the target deployment URL.

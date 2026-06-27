@@ -6,12 +6,6 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-    inputs:
-      docker_smoke:
-        description: "Run the Docker Compose smoke test"
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -158,24 +152,3 @@ jobs:
 
       - name: Check Python syntax
         run: python -m compileall ai-sandbox/domains/iris agentic-auditor/app
-
-  docker-compose:
-    name: Docker Compose Smoke
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.docker_smoke
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Start stack
-        run: docker compose up -d --build
-
-      - name: Show services
-        run: docker compose ps
-
-      - name: Run deploy check
-        run: ./scripts/deploy-check.sh
-
-      - name: Stop stack
-        if: always()
-        run: docker compose down --volumes
