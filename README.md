@@ -16,7 +16,7 @@ The core idea is simple: store only provenance metadata and hashes, verify that 
 - Verifies block hashes and `previousHash` links.
 - Computes a Merkle root over hashchain block hashes.
 - Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
-- Provides a Next.js dashboard, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
+- Provides a SvelteKit dashboard, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
 
 ## Status
 
@@ -59,7 +59,7 @@ Copy environment examples:
 ```bash
 cp .env.example .env
 cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp frontend-svelte/.env.example frontend-svelte/.env
 ```
 
 Start the local stack:
@@ -96,7 +96,7 @@ pnpm run start:dev
 Frontend:
 
 ```bash
-cd frontend
+cd frontend-svelte
 pnpm install
 pnpm run dev
 ```
@@ -154,7 +154,7 @@ Protected endpoints:
 - `POST /api/inferences`
 - `POST /api/anchors`
 
-The frontend can send `NEXT_PUBLIC_ERNEST_API_KEY` for browser-only demos, but that value is public in the built JavaScript bundle. Do not treat it as a production secret.
+The frontend can send `PUBLIC_ERNEST_API_KEY` for browser-only demos, but that value is public in the built JavaScript bundle. Do not treat it as a production secret.
 
 Security model and limitations: [docs/security-model.md](docs/security-model.md). Responsible disclosure: [SECURITY.md](SECURITY.md).
 
@@ -209,9 +209,8 @@ Useful local checks:
 
 ```bash
 pnpm run backend:test
+pnpm run frontend:check
 pnpm run frontend:build
-pnpm run frontend-svelte:check
-pnpm run frontend-svelte:build
 pnpm run blockchain:compile
 pnpm run audit:prod
 cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...

@@ -14,6 +14,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `pnpm-lock.yaml` is committed.
 - [ ] `pnpm install --frozen-lockfile` works from the repository root.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
+- [ ] Docker Compose serves the SvelteKit frontend, not the deprecated Next.js frontend.
 - [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.
 - [ ] `.env.example` files match the current runtime configuration.
 - [ ] `./scripts/smoke.sh` passes against a clean local stack.
@@ -22,9 +23,8 @@ Use this checklist before publishing an official Ernest release.
 ## Verification
 
 - [ ] `pnpm run backend:test`
+- [ ] `pnpm run frontend:check`
 - [ ] `pnpm run frontend:build`
-- [ ] `pnpm run frontend-svelte:check`
-- [ ] `pnpm run frontend-svelte:build`
 - [ ] `pnpm run blockchain:compile`
 - [ ] `pnpm run audit:prod`
 - [ ] `pnpm run audit:all` findings are reviewed before tagging.
@@ -40,7 +40,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] MongoDB is private and not exposed to the public internet.
 - [ ] `PRIVATE_KEY` is stored in a secrets manager, not in `.env` committed files.
 - [ ] Sepolia demo wallet has only limited funds.
-- [ ] `NEXT_PUBLIC_ERNEST_API_KEY` is used only for browser demos, never as a production secret.
+- [ ] `PUBLIC_ERNEST_API_KEY` is used only for browser demos, never as a production secret.
 - [ ] Known `pnpm audit` findings are reviewed and accepted or remediated.
 - [ ] `docs/dependency-risk.md` reflects current dependency risk decisions.
 

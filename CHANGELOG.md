@@ -33,6 +33,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Backend NestJS packages now target NestJS 11.
 - Docker Compose binds service ports to localhost, adds healthchecks, and rotates container logs.
 - JavaScript Docker and CI flows now install dependencies with pnpm.
+- Docker Compose now serves the SvelteKit frontend as the official dashboard.
 - README examples now use copyable, valid JSON.
 - Iris sandbox now matches the real backend API contract and treats MLflow as optional.
 - Frontend model registration now sends valid MLflow hash metadata.

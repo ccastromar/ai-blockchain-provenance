@@ -26,11 +26,11 @@ Set at least:
 ```bash
 ERNEST_API_KEY=<long-random-secret>
 CORS_ORIGIN=https://ernest.example.com
-NEXT_PUBLIC_API_URL=https://ernest.example.com
-NEXT_PUBLIC_ERNEST_API_KEY=<same-key-only-for-browser-demo>
+PUBLIC_API_URL=https://ernest.example.com
+PUBLIC_ERNEST_API_KEY=<same-key-only-for-browser-demo>
 ```
 
-For a browser-only demo, `NEXT_PUBLIC_ERNEST_API_KEY` lets the frontend call protected write endpoints. It is public in the JavaScript bundle, so treat it as a demo convenience only.
+For a browser-only demo, `PUBLIC_ERNEST_API_KEY` lets the frontend call protected write endpoints. It is public in the JavaScript bundle, so treat it as a demo convenience only. The SvelteKit frontend is a static image, so rebuild the frontend container after changing any `PUBLIC_*` value.
 
 ## Start
 

@@ -72,6 +72,10 @@ CORS_ORIGIN=https://your-frontend.example
 
 Multiple origins can be comma-separated.
 
+## Browser Demo Key
+
+The SvelteKit frontend can be built with `PUBLIC_ERNEST_API_KEY` so browser demos can call protected write endpoints. This value is public in the generated JavaScript bundle and must not be treated as a production secret.
+
 ## Blockchain Key Safety
 
 For public demos:
