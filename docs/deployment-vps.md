@@ -21,6 +21,12 @@ cd ai-blockchain-provenance
 cp .env.example .env
 ```
 
+Create a non-root deploy user when possible, keep the repository owned by that user, and restrict the environment file:
+
+```bash
+chmod 600 .env
+```
+
 Set at least:
 
 ```bash
@@ -31,6 +37,12 @@ PUBLIC_ERNEST_API_KEY=<same-key-only-for-browser-demo>
 ```
 
 For a browser-only demo, `PUBLIC_ERNEST_API_KEY` lets the frontend call protected write endpoints. It is public in the JavaScript bundle, so treat it as a demo convenience only. The SvelteKit frontend is a static image, so rebuild the frontend container after changing any `PUBLIC_*` value.
+
+Generate a long API key with a local password manager or with:
+
+```bash
+openssl rand -hex 32
+```
 
 ## Start
 
@@ -143,5 +155,9 @@ docker compose up -d --build
 - `CORS_ORIGIN` is the final HTTPS origin.
 - MongoDB is not exposed publicly.
 - The reverse proxy serves HTTPS.
+- Firewall allows only SSH, HTTP, and HTTPS from the public internet.
+- `.env` is readable only by the deploy user.
+- Backups are copied off the VPS or rotated aggressively.
+- OS and Docker security updates are applied before publishing.
 - `/api/docs` and `/api/docs-json` are reachable if you want public API docs.
 - Sepolia private keys, if configured, use a low-fund demo wallet.

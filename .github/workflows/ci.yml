@@ -6,6 +6,12 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      docker_smoke:
+        description: "Run the Docker Compose smoke test"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -38,32 +44,6 @@ jobs:
         run: pnpm --filter ernest-backend test:integrity
 
   frontend:
-    name: Frontend
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build
-        run: pnpm --filter ernest-frontend build
-
-  frontend-svelte:
     name: Frontend Svelte
     runs-on: ubuntu-latest
     steps:
@@ -87,10 +67,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check
-        run: pnpm --filter ernest-frontend-svelte check
+        run: pnpm run frontend:check
 
       - name: Build
-        run: pnpm --filter ernest-frontend-svelte build
+        run: pnpm run frontend:build
 
   blockchain:
     name: Blockchain
@@ -178,3 +158,24 @@ jobs:
 
       - name: Check Python syntax
         run: python -m compileall ai-sandbox/domains/iris agentic-auditor/app
+
+  docker-compose:
+    name: Docker Compose Smoke
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.docker_smoke
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up -d --build
+
+      - name: Show services
+        run: docker compose ps
+
+      - name: Run deploy check
+        run: ./scripts/deploy-check.sh
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down --volumes

@@ -1,0 +1,44 @@
+# Release Assets
+
+Use this checklist when preparing a public Ernest alpha release.
+
+## GitHub Release
+
+- Title: `Ernest v0.1.0-alpha`
+- Tag: `v0.1.0-alpha`
+- Mark the release as pre-release.
+- Link to `README.md`, `docs/deployment-vps.md`, `docs/security-model.md`, and `docs/dependency-risk.md`.
+- State clearly that this is a PoC for demos and technical evaluation, not a production compliance system.
+
+## Screenshots
+
+Capture screenshots from the official SvelteKit frontend after `docker compose up --build`:
+
+- Register AI model form.
+- Log inference form.
+- Provenance view.
+- Hashchain stats view.
+
+Save them under `docs/img/` with the existing filenames unless the README is updated at the same time.
+
+## Release Notes
+
+Include:
+
+- SvelteKit dashboard is the official frontend.
+- NestJS 11 backend.
+- pnpm workspace and lockfile.
+- Docker Compose demo stack for a small VPS.
+- Optional Sepolia anchoring.
+- Known alpha limitations: no full auth, no RBAC, no regulated-workload guarantees.
+
+## Pre-Publish Proof
+
+Attach or paste the latest successful output summary for:
+
+- `pnpm run backend:test`
+- `pnpm run frontend:check`
+- `pnpm run frontend:build`
+- `pnpm run blockchain:compile`
+- `pnpm run audit:prod`
+- `./scripts/deploy-check.sh` against the release deployment

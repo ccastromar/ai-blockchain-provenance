@@ -16,6 +16,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
 - [ ] Docker Compose serves the SvelteKit frontend, not the deprecated Next.js frontend.
 - [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.
+- [ ] The manual GitHub Actions Docker Compose smoke job passes before tagging.
 - [ ] `.env.example` files match the current runtime configuration.
 - [ ] `./scripts/smoke.sh` passes against a clean local stack.
 - [ ] `./scripts/deploy-check.sh` passes against the target deployment URL.
@@ -38,6 +39,9 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `ERNEST_API_KEY` is set for any public deployment.
 - [ ] `CORS_ORIGIN` is restricted to controlled frontend origins.
 - [ ] MongoDB is private and not exposed to the public internet.
+- [ ] The VPS firewall exposes only SSH, HTTP, and HTTPS.
+- [ ] `.env` files on the VPS are readable only by the deploy user.
+- [ ] Backups are rotated and important snapshots are copied off the VPS.
 - [ ] `PRIVATE_KEY` is stored in a secrets manager, not in `.env` committed files.
 - [ ] Sepolia demo wallet has only limited funds.
 - [ ] `PUBLIC_ERNEST_API_KEY` is used only for browser demos, never as a production secret.
@@ -63,6 +67,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `docs/security-model.md` describes current guarantees and non-goals.
 - [ ] Security notes describe PoC limitations honestly.
 - [ ] Screenshots are current.
+- [ ] Release assets follow `docs/release-assets.md`.
 - [ ] License and author sections are accurate.
 
 ## GitHub
