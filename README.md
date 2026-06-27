@@ -28,7 +28,7 @@ It is suitable for demos, technical evaluation, and research prototypes. It is n
 
 ```mermaid
 flowchart LR
-  UI["Next.js dashboard"] --> API["NestJS API"]
+  UI["Svelte dashboard"] --> API["NestJS API"]
   CLI["Go CLI"] --> Mongo["MongoDB hashchain"]
   API --> Mongo
   API --> Merkle["Merkle root"]
@@ -44,7 +44,8 @@ More detail: [docs/architecture.md](docs/architecture.md).
 | Component | Path | Purpose |
 | --- | --- | --- |
 | Backend | `backend/` | NestJS API, validation, hashchain, anchoring |
-| Frontend | `frontend/` | Next.js dashboard |
+| Frontend | `frontend-svelte/` | SvelteKit dashboard |
+| Legacy frontend | `frontend/` | Deprecated Next.js dashboard |
 | Blockchain | `blockchain/` | Hardhat project and Solidity contract |
 | CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
 | Merkle WASM | `merkle-wasm/` | Rust Merkle helper |
@@ -212,6 +213,7 @@ pnpm run frontend:build
 pnpm run frontend-svelte:check
 pnpm run frontend-svelte:build
 pnpm run blockchain:compile
+pnpm run audit:prod
 cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...
 cd merkle-wasm && cargo test
 python -m compileall ai-sandbox/domains/iris agentic-auditor/app
@@ -220,6 +222,7 @@ bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
 ```
 
 Release checklist: [docs/release-checklist.md](docs/release-checklist.md).
+Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
 
 ## Roadmap
 

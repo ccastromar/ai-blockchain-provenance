@@ -1,13 +1,13 @@
 # Architecture
 
-Ernest is a modular proof-of-concept for AI provenance. The default stack uses a Next.js dashboard, a NestJS API, MongoDB for local hashchain storage, and an optional Sepolia smart contract for public anchoring.
+Ernest is a modular proof-of-concept for AI provenance. The default stack uses a SvelteKit dashboard, a NestJS API, MongoDB for local hashchain storage, and an optional Sepolia smart contract for public anchoring.
 
 ## System View
 
 ```mermaid
 flowchart TD
   User["User or demo operator"]
-  UI["Next.js frontend"]
+  UI["SvelteKit frontend"]
   API["NestJS backend API"]
   Mongo["MongoDB<br/>provenanceblocks + anchors + aimodels"]
   Hashchain["Hashchain service<br/>canonical JSON + SHA-256"]

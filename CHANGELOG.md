@@ -9,11 +9,12 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 ### Added
 
 - Full-stack AI provenance PoC with NestJS backend, Next.js frontend, MongoDB hashchain, Go CLI, Rust Merkle helper, Python auditor, and Hardhat contract project.
-- Reproducible npm lockfiles for backend, frontend, and blockchain.
+- Reproducible pnpm lockfile for backend, frontends, and blockchain.
 - Docker hardening for backend, frontend, CLI, and auditor images.
 - `.env.example` files and `.dockerignore` files for release-oriented setup.
 - Backend validation for model registration and inference hashes.
 - Smoke test script for the local API lifecycle.
+- pnpm dependency audit scripts and dependency risk documentation.
 - Contract-based Sepolia anchoring through `ErnestMerkleAnchor.anchorRoot`.
 - Manual `POST /api/anchors` endpoint for demo anchoring.
 - Unique hashchain indexes and append retry handling for concurrent writes.
@@ -40,6 +41,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 ### Security
 
 - Optional `ERNEST_API_KEY` protects `POST /api/models`, `POST /api/inferences`, and `POST /api/anchors`.
+- Dependency audit policy documents current high-severity findings and release decisions.
 - Deployment safety checklist documents API key, CORS, MongoDB, and Sepolia private-key expectations.
 
 ### Known Limitations

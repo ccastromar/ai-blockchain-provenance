@@ -26,6 +26,8 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `pnpm run frontend-svelte:check`
 - [ ] `pnpm run frontend-svelte:build`
 - [ ] `pnpm run blockchain:compile`
+- [ ] `pnpm run audit:prod`
+- [ ] `pnpm run audit:all` findings are reviewed before tagging.
 - [ ] `cd merkle-wasm && cargo test`
 - [ ] `cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...`
 - [ ] `python -m compileall ai-sandbox/domains/iris agentic-auditor/app`
@@ -40,6 +42,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] Sepolia demo wallet has only limited funds.
 - [ ] `NEXT_PUBLIC_ERNEST_API_KEY` is used only for browser demos, never as a production secret.
 - [ ] Known `pnpm audit` findings are reviewed and accepted or remediated.
+- [ ] `docs/dependency-risk.md` reflects current dependency risk decisions.
 
 ## Blockchain Anchoring
 
@@ -55,6 +58,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `docs/api.md` matches current backend endpoints and DTO validation.
 - [ ] `http://localhost:3001/api/docs` and `/api/docs-json` load correctly.
 - [ ] `docs/deployment-vps.md` matches the current Docker Compose setup.
+- [ ] `docs/dependency-risk.md` matches current audit expectations.
 - [ ] `docs/architecture.md` matches the deployed stack.
 - [ ] `docs/security-model.md` describes current guarantees and non-goals.
 - [ ] Security notes describe PoC limitations honestly.
