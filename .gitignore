@@ -19,6 +19,7 @@ yarn-error.log*
 # Dist/build/output
 dist/
 build/
+.svelte-kit/
 .next/
 out/
 

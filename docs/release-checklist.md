@@ -23,6 +23,8 @@ Use this checklist before publishing an official Ernest release.
 
 - [ ] `pnpm run backend:test`
 - [ ] `pnpm run frontend:build`
+- [ ] `pnpm run frontend-svelte:check`
+- [ ] `pnpm run frontend-svelte:build`
 - [ ] `pnpm run blockchain:compile`
 - [ ] `cd merkle-wasm && cargo test`
 - [ ] `cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...`

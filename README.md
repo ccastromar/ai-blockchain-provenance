@@ -209,6 +209,8 @@ Useful local checks:
 ```bash
 pnpm run backend:test
 pnpm run frontend:build
+pnpm run frontend-svelte:check
+pnpm run frontend-svelte:build
 pnpm run blockchain:compile
 cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...
 cd merkle-wasm && cargo test

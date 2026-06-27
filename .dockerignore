@@ -13,8 +13,9 @@ node_modules
 **/out
 **/coverage
 **/.turbo
+frontend-svelte/.svelte-kit
+frontend-svelte/build
 
-frontend-svelte
 agentic-auditor
 ai-sandbox
 cli-ernest

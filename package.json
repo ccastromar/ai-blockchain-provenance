@@ -6,7 +6,9 @@
   "scripts": {
     "backend:test": "pnpm --filter ernest-backend test:integrity",
     "frontend:build": "pnpm --filter ernest-frontend build",
+    "frontend-svelte:build": "pnpm --filter ernest-frontend-svelte build",
+    "frontend-svelte:check": "pnpm --filter ernest-frontend-svelte check",
     "blockchain:compile": "pnpm --filter blockchain exec hardhat compile",
-    "release:check": "pnpm run backend:test && pnpm run frontend:build && pnpm run blockchain:compile"
+    "release:check": "pnpm run backend:test && pnpm run frontend:build && pnpm run frontend-svelte:check && pnpm run frontend-svelte:build && pnpm run blockchain:compile"
   }
 }

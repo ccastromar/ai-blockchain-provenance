@@ -1,6 +1,7 @@
 packages:
   - backend
   - frontend
+  - frontend-svelte
   - blockchain
 
 confirmModulesPurge: false

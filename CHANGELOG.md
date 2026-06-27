@@ -22,7 +22,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Configurable CORS origin.
 - Swagger UI and OpenAPI JSON for the public API contract.
 - VPS deployment guide and post-deploy health check script.
-- pnpm workspace with a single JavaScript lockfile for backend, frontend, and blockchain.
+- pnpm workspace with a single JavaScript lockfile for backend, frontend, Svelte frontend, and blockchain.
 - GitHub Actions CI workflow.
 - Release checklist and GitHub issue templates.
 - Publication-oriented README, architecture guide, API reference, and security model.
