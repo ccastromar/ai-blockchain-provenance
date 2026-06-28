@@ -18,11 +18,11 @@ def ernest_headers():
 def ernest_health():
     try:
         r = requests.get(f"{ERNEST_URL}/health", timeout=1)
-        logger.info("[healthcheck] status:", r.status_code)
+        logger.info(f"[healthcheck] status: {r.status_code}")
 
         return "ALIVE" if r.status_code==200 else "DOWN"
     except Exception as e:
-        logger.error("[healthcheck] error:", e)
+        logger.error(f"[healthcheck] error: {e}")
         return "DOWN"
 
 def verify_chain():

@@ -83,6 +83,24 @@ TOOLS_SCHEMA = [
     },
 ]
 
+
+def assistant_tool_message(msg):
+    return {
+        "role": "assistant",
+        "content": msg.content,
+        "tool_calls": [
+            {
+                "id": call.id,
+                "type": "function",
+                "function": {
+                    "name": call.function.name,
+                    "arguments": call.function.arguments or "{}",
+                },
+            }
+            for call in (msg.tool_calls or [])
+        ],
+    }
+
 def run_agent(user_message: str):
     logger.info(f"New request: {user_message}")
 
@@ -144,7 +162,10 @@ def run_agent(user_message: str):
         logger.info(f"Tool-call: {name} args={args}")
 
         try:
-            result = TOOLS_MAP[name](**args)
+            tool = TOOLS_MAP.get(name)
+            if tool is None:
+                raise ValueError(f"Unknown tool: {name}")
+            result = tool(**args)
         except Exception as e:
             result = {"error": str(e), "trace": traceback.format_exc()}
             logger.error(f"Tool error: {name}", exc_info=True)
@@ -153,12 +174,12 @@ def run_agent(user_message: str):
 
     # Segunda pasada al LLM
     followup_messages = [
-        msg,
+        assistant_tool_message(msg),
         *[
             {
                 "role": "tool",
                 "tool_call_id": tr["id"],
-                "content": json.dumps(tr["result"]),
+                "content": json.dumps(tr["result"], default=str),
             }
             for tr in tool_results
         ],
@@ -176,5 +197,5 @@ def run_agent(user_message: str):
 
     final_text = second.choices[0].message.content
 
-    logger.info("Final agent response", extra={"final": final_text})
+    logger.info(f"Final agent response: {final_text}")
     return {"response": final_text, "tools": tool_results}
