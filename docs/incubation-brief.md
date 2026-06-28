@@ -73,5 +73,6 @@ Poor pilot environments:
 Supporting material:
 
 - `docs/demo-script.md` for a short stakeholder demo.
+- `docs/presentation-deck.md` for a company-facing slide structure.
 - `docs/maturity-model.md` for alpha-to-enterprise planning.
 - `docs/threat-model.md` for security review.
