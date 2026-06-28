@@ -12,6 +12,14 @@ If `ERNEST_API_KEY` is configured, write endpoints require:
 X-Ernest-Api-Key: <key>
 ```
 
+Some endpoints accept an optional organization scope:
+
+```text
+X-Ernest-Org-Id: <organization-id>
+```
+
+This is useful for demos and integration testing. It is not a substitute for enterprise tenant isolation or authorization.
+
 Interactive API documentation is available when the backend is running:
 
 - Swagger UI: `http://localhost:3001/api/docs`
@@ -44,6 +52,8 @@ Required fields:
 - `version`: model version.
 - `mlflow.modelHash`: SHA-256 hash of the model artifact.
 - `mlflow.gitCommit`: short or full hexadecimal Git commit.
+
+Optional organization scoping can be sent either as `organizationId` in the body or as `X-Ernest-Org-Id`. The header takes precedence.
 
 Example:
 
@@ -160,6 +170,7 @@ GET /api/provenances/:modelId
 ```
 
 Returns all hashchain blocks for a model and includes current chain verification status.
+Accepts optional `type`, `from`, and `to` query filters. `X-Ernest-Org-Id` can scope results by organization.
 
 ## Get Stats
 

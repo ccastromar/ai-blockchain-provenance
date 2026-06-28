@@ -2,6 +2,8 @@
 
 Ernest is a modular proof-of-concept for AI provenance. The default stack uses a SvelteKit dashboard, a NestJS API, MongoDB for local hashchain storage, and an optional Sepolia smart contract for public anchoring.
 
+The design intentionally separates the provenance control plane from raw AI data. Ernest records hashes, model metadata, and audit-oriented events; source systems remain responsible for raw prompts, inference payloads, training data, model binaries, access control, and retention policies.
+
 ## System View
 
 ```mermaid
@@ -27,6 +29,29 @@ flowchart TD
   Merkle --> Contract
   CLI --> Mongo
 ```
+
+## Deployment View
+
+```mermaid
+flowchart TD
+  Dev["Developer workstation"] -->|push| GitHub["GitHub repo"]
+  GitHub --> CI["GitHub Actions CI"]
+  GitHub --> Publish["Publish Images workflow"]
+  Publish --> GHCR["GitHub Container Registry"]
+  GHCR --> VPS["VPS Docker Compose"]
+  VPS --> Proxy["Caddy or Nginx HTTPS"]
+  Proxy --> Browser["Browser dashboard"]
+  Proxy --> APIClient["API clients"]
+  VPS --> Mongo["MongoDB volume"]
+  VPS --> Sepolia["Optional Sepolia anchoring"]
+```
+
+The repository supports two deployment modes:
+
+- Local build mode: `docker compose up --build` builds backend and frontend images on the target host.
+- Prebuilt image mode: `docker-compose.prod.yml` pulls backend and frontend images from GHCR and starts the stack with Docker Compose.
+
+Prebuilt image mode is preferred for repeatable demos because the running server does not need to compile JavaScript dependencies.
 
 ## Core Flow
 
@@ -98,3 +123,30 @@ Ernest verifies integrity of records it receives. It does not prove that the ori
 - `merkle-wasm`: Rust implementation for Merkle/hash utilities.
 
 These are useful for demos and experiments, but the core stack is backend, frontend, MongoDB, and optional Sepolia anchoring.
+
+## Enterprise Integration Points
+
+- Model registry: map `modelId`, version, artifact hash, and Git commit from MLflow, SageMaker, Vertex AI, Azure ML, or an internal registry.
+- Inference systems: compute `inputHash` and `outputHash` at the application boundary and submit only hashes plus non-sensitive metadata.
+- Identity layer: replace the alpha API key with OIDC/JWT, mTLS, or an API gateway policy.
+- Evidence export: use provenance and anchor endpoints to feed audit reports, GRC workflows, or internal compliance review.
+- Key management: move Sepolia or future mainnet private keys to a managed secrets system.
+
+## Design Trade-Offs
+
+| Choice | Benefit | Trade-off |
+| --- | --- | --- |
+| Hash-only event payloads | Avoids centralizing sensitive inference data | Ernest cannot prove the original raw data was hashed honestly |
+| MongoDB hashchain | Simple to inspect, query, and demo | High-throughput production use needs stronger serialization |
+| Optional public anchoring | External proof of existence without storing data on-chain | Requires RPC credentials and wallet operations |
+| Static SvelteKit frontend | Small deployable dashboard image | Runtime API URL changes should use same-origin proxying |
+| API key protection | Easy public PoC hardening | Not sufficient for enterprise identity and authorization |
+
+## Incubation Roadmap
+
+1. Replace API key demos with enterprise identity and role-based authorization.
+2. Add signed client submissions so Ernest can verify which system produced each hash.
+3. Add stronger append serialization for higher write throughput.
+4. Integrate with a real model registry and one production-like inference event source.
+5. Add operational metrics, audit logs for write attempts, and backup validation.
+6. Package evidence exports for compliance or model-risk review workflows.

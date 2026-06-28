@@ -1,6 +1,6 @@
 # Security Policy
 
-Ernest is currently a proof-of-concept. Please do not use it as-is for regulated, sensitive, or production workloads without adding the controls described in the README security checklist.
+Ernest is currently an alpha proof-of-concept. Please do not use it as-is for regulated, sensitive, or production workloads without adding the controls described in the README security checklist and `docs/security-model.md`.
 
 ## Reporting a Vulnerability
 
@@ -15,7 +15,7 @@ Security-sensitive areas include:
 - Write endpoints protected by `ERNEST_API_KEY`.
 - MongoDB hashchain integrity.
 - Sepolia anchoring and private-key handling.
-- Frontend handling of `NEXT_PUBLIC_ERNEST_API_KEY`.
+- Frontend handling of `PUBLIC_ERNEST_API_KEY`.
 - Auditor and sandbox integrations that call the backend.
 
 ## Expectations
@@ -25,3 +25,5 @@ Security-sensitive areas include:
 - Keep MongoDB private.
 - Store `PRIVATE_KEY` in a secrets manager.
 - Use a low-balance Sepolia wallet for demos.
+- Treat browser-demo API keys as public values.
+- Add enterprise identity, RBAC, rate limiting, and signed submissions before production pilots with real sensitive data.

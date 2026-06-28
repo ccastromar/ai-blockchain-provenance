@@ -8,6 +8,20 @@ Ernest is a proof-of-concept platform for tracing AI model lifecycle events and 
 
 The core idea is simple: store only provenance metadata and hashes, verify that the local event chain has not been tampered with, and publish periodic proofs of existence on-chain.
 
+## Incubator Pitch
+
+Ernest is aimed at organizations evaluating how to make AI systems more auditable without moving raw model artifacts, prompts, inputs, or outputs into a new central platform. It provides a narrow provenance layer that can sit beside existing ML platforms and business applications.
+
+The current alpha demonstrates:
+
+- Tamper-evident registration of model lifecycle events.
+- Hash-only logging of inference events.
+- Local verification through a MongoDB-backed hashchain.
+- Optional public proof of existence through Sepolia anchoring.
+- A deployable dashboard/API stack suitable for a public PoC or internal pilot.
+
+For an incubation program, the next engineering milestones are enterprise identity, signed client submissions, stronger append serialization, and integrations with real model registries or application event streams.
+
 ## What It Does
 
 - Registers AI models with version, artifact hash, Git commit, parameters, metrics, and metadata.
@@ -28,7 +42,7 @@ It is suitable for demos, technical evaluation, and research prototypes. It is n
 
 ```mermaid
 flowchart LR
-  UI["Svelte dashboard"] --> API["NestJS API"]
+  UI["SvelteKit dashboard"] --> API["NestJS API"]
   CLI["Go CLI"] --> Mongo["MongoDB hashchain"]
   API --> Mongo
   API --> Merkle["Merkle root"]
@@ -82,6 +96,8 @@ Run a minimal API smoke test:
 ```
 
 For a small public VPS deployment, see [docs/deployment-vps.md](docs/deployment-vps.md).
+For a company-facing summary, see [docs/incubation-brief.md](docs/incubation-brief.md).
+For the documentation map, see [docs/index.md](docs/index.md).
 
 ## Local Development
 
@@ -225,6 +241,8 @@ Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
 
 ## Roadmap
 
+- Enterprise identity integration.
+- Signed client submissions.
 - Real MLflow integration.
 - User authentication and RBAC.
 - Digital signatures for model and inference events.

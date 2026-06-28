@@ -26,6 +26,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - pnpm workspace with a single JavaScript lockfile for backend, frontend, Svelte frontend, and blockchain.
 - GitHub Actions CI workflow.
 - GitHub Actions workflows for Docker smoke checks and GHCR image publishing.
+- Incubation brief and documentation map for company-facing evaluation.
 - Release checklist and GitHub issue templates.
 - Publication-oriented README, architecture guide, API reference, and security model.
 
