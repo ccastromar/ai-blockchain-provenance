@@ -46,9 +46,27 @@ openssl rand -hex 32
 
 ## Start
 
+Build images locally on the VPS:
+
 ```bash
 docker compose up -d --build
 docker compose ps
+```
+
+Or pull prebuilt images from GitHub Container Registry after the `Publish Images` workflow has run:
+
+```bash
+ERNEST_IMAGE_NAMESPACE=ghcr.io/ccastromar
+ERNEST_IMAGE_TAG=latest
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml ps
+```
+
+Use a release tag such as `v0.1.0-alpha` instead of `latest` for reproducible deployments. If the GHCR packages are private, log in on the VPS with a token that has `read:packages`:
+
+```bash
+docker login ghcr.io
 ```
 
 Local checks on the VPS:
@@ -143,9 +161,20 @@ Keep only a small number of backups on a 50 GB server, and move important snapsh
 
 ## Update
 
+For local VPS builds:
+
 ```bash
 git pull
 docker compose up -d --build
+./scripts/deploy-check.sh
+```
+
+For GHCR-based deployments:
+
+```bash
+git pull
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
 ./scripts/deploy-check.sh
 ```
 

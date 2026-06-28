@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: ernest-mongodb
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=ernest
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
+  backend:
+    image: ${ERNEST_IMAGE_NAMESPACE:-ghcr.io/ccastromar}/ai-blockchain-provenance-backend:${ERNEST_IMAGE_TAG:-latest}
+    container_name: ernest-backend
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/ernest
+      - NODE_ENV=production
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - ERNEST_API_KEY=${ERNEST_API_KEY:-}
+      - INFURA_URL=${INFURA_URL:-}
+      - PRIVATE_KEY=${PRIVATE_KEY:-}
+      - CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-}
+      - ANCHOR_ORGANIZATION_ID=${ANCHOR_ORGANIZATION_ID:-ernest-demo}
+      - ANCHOR_ORGANIZATION_NAME=${ANCHOR_ORGANIZATION_NAME:-Ernest Demo}
+      - ANCHOR_DOMAIN=${ANCHOR_DOMAIN:-ai-provenance}
+      - ANCHOR_EVERY_N_BLOCKS=${ANCHOR_EVERY_N_BLOCKS:-50}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
+  frontend:
+    image: ${ERNEST_IMAGE_NAMESPACE:-ghcr.io/ccastromar}/ai-blockchain-provenance-frontend:${ERNEST_IMAGE_TAG:-latest}
+    container_name: ernest-frontend
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NGINX_ENTRYPOINT_QUIET_LOGS=1
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  ernest-network:
+    driver: bridge

@@ -212,7 +212,7 @@
           <a href="/?tab=provenance" class="flex items-center gap-2 btn-outline w-full justify-center text-sm">
             🔍 View Provenance
           </a>
-          <a href="http://localhost:3001/api/stats" target="_blank" rel="noopener noreferrer"
+          <a href="/api/stats" target="_blank" rel="noopener noreferrer"
             class="flex items-center gap-2 btn-outline w-full justify-center text-sm">
             📄 Raw JSON API
           </a>

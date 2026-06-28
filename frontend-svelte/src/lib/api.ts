@@ -1,6 +1,6 @@
 import axios, { type AxiosError } from 'axios';
 
-const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:3001';
+const apiUrl = import.meta.env.PUBLIC_API_URL ?? '';
 const apiKey = import.meta.env.PUBLIC_ERNEST_API_KEY as string | undefined;
 
 const api = axios.create({
