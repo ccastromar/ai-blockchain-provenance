@@ -12,6 +12,25 @@ Use this checklist when preparing a public Ernest alpha release.
 - For company-facing presentations, also link to `docs/incubation-brief.md`, `docs/presentation-deck.md`, `docs/demo-script.md`, and `docs/maturity-model.md`.
 - State clearly that this is a PoC for demos and technical evaluation, not a production compliance system.
 
+## Downloadable Assets
+
+The `Release` workflow creates downloadable assets when a `v*` tag is pushed:
+
+- `ernest-<tag>.tar.gz`
+- `ernest-<tag>.zip`
+- `SHA256SUMS`
+
+GitHub also adds source-code archives automatically.
+
+Manual flow:
+
+```bash
+git tag v0.1.0-alpha
+git push origin v0.1.0-alpha
+```
+
+The release bundle includes the README, changelog, license, security policy, environment example, Docker Compose files, docs, scripts, and integrations.
+
 ## Screenshots
 
 Capture screenshots from the official SvelteKit frontend after `docker compose up --build`:

@@ -97,6 +97,7 @@ Run a minimal API smoke test:
 ```
 
 For a small public VPS deployment, see [docs/deployment-vps.md](docs/deployment-vps.md).
+For a fast evaluator path, see [docs/quick-eval.md](docs/quick-eval.md).
 For a company-facing summary, see [docs/incubation-brief.md](docs/incubation-brief.md).
 For the documentation map, see [docs/index.md](docs/index.md).
 

@@ -15,6 +15,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `pnpm-lock.yaml` is committed.
 - [ ] `pnpm install --frozen-lockfile` works from the repository root.
 - [ ] The `Publish Images` workflow has pushed backend and frontend images to GHCR.
+- [ ] The `Release` workflow has attached downloadable `.tar.gz`, `.zip`, and `SHA256SUMS` assets.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
 - [ ] `docker compose -f docker-compose.prod.yml pull` works with the selected image tag.
 - [ ] Docker Compose serves the SvelteKit frontend, not the deprecated Next.js frontend.

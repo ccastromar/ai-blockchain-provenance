@@ -5,6 +5,7 @@ Use this map when presenting Ernest to evaluators, incubator reviewers, or techn
 ## Start Here
 
 - `README.md`: project overview, quickstart, components, verification, and roadmap.
+- `docs/quick-eval.md`: 10-minute evaluator path.
 - `docs/incubation-brief.md`: company-facing summary for an IT incubator or internal sponsor.
 - `docs/presentation-deck.md`: 6-8 slide structure for company presentation.
 - `docs/demo-script.md`: 5-minute presentation flow and talk track.

@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0-alpha"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build Release Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release bundle
+        run: |
+          TAG="${{ steps.release.outputs.tag }}"
+          BUNDLE="ernest-${TAG}"
+          mkdir -p "dist/${BUNDLE}"
+          cp README.md CHANGELOG.md LICENSE SECURITY.md .env.example docker-compose.yml docker-compose.prod.yml "dist/${BUNDLE}/"
+          cp -R docs scripts integrations "dist/${BUNDLE}/"
+          tar -C dist -czf "dist/${BUNDLE}.tar.gz" "${BUNDLE}"
+          (cd dist && zip -qr "${BUNDLE}.zip" "${BUNDLE}")
+          (cd dist && shasum -a 256 "${BUNDLE}.tar.gz" "${BUNDLE}.zip" > SHA256SUMS)
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: Ernest ${{ steps.release.outputs.tag }}
+          body_path: docs/releases/v0.1.0-alpha.md
+          prerelease: true
+          files: |
+            dist/ernest-${{ steps.release.outputs.tag }}.tar.gz
+            dist/ernest-${{ steps.release.outputs.tag }}.zip
+            dist/SHA256SUMS
