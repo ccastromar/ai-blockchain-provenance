@@ -45,6 +45,7 @@ docker compose -f docker-compose.prod.yml up -d
 - `docs/threat-model.md`: security gaps and mitigations.
 - `docs/maturity-model.md`: alpha-to-enterprise path.
 - `docs/integrations.md`: AI tooling integrations.
+- `/auditor`: local evidence review and optional browser-side WebLLM memo.
 
 ## Demo Flow
 
@@ -52,8 +53,9 @@ docker compose -f docker-compose.prod.yml up -d
 2. Log an inference with input/output hashes.
 3. View model provenance.
 4. Verify the hashchain.
-5. Show API docs.
-6. Optionally anchor a Merkle root.
+5. Open the local auditor and export an evidence packet.
+6. Show API docs.
+7. Optionally anchor a Merkle root.
 
 ## Evaluation Questions
 

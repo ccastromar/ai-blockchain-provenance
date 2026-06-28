@@ -30,7 +30,7 @@ For an incubation program, the next engineering milestones are enterprise identi
 - Verifies block hashes and `previousHash` links.
 - Computes a Merkle root over hashchain block hashes.
 - Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
-- Provides a SvelteKit dashboard, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
+- Provides a SvelteKit dashboard with a local audit add-on, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
 
 ## Status
 
@@ -58,7 +58,7 @@ More detail: [docs/architecture.md](docs/architecture.md).
 | Component | Path | Purpose |
 | --- | --- | --- |
 | Backend | `backend/` | NestJS API, validation, hashchain, anchoring |
-| Frontend | `frontend-svelte/` | SvelteKit dashboard |
+| Frontend | `frontend-svelte/` | SvelteKit dashboard and local WebLLM auditor add-on |
 | Legacy frontend | `frontend/` | Deprecated Next.js dashboard |
 | Blockchain | `blockchain/` | Hardhat project and Solidity contract |
 | CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
@@ -89,6 +89,7 @@ Then open:
 - Backend health: `http://localhost:3001/health`
 - API docs: `http://localhost:3001/api/docs`
 - Chain stats: `http://localhost:3001/api/stats`
+- Local auditor: `http://localhost:3000/auditor`
 
 Run a minimal API smoke test:
 

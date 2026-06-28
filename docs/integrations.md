@@ -4,6 +4,19 @@ Ernest is designed to sit beside existing AI platforms. Integrations should subm
 
 ## Current Integration
 
+### Local WebLLM Auditor
+
+The SvelteKit dashboard includes an optional browser-side auditor at `/auditor`.
+
+It can:
+
+- Load model, provenance, chain stats, and verification evidence from Ernest.
+- Produce a deterministic local audit score without calling an external LLM.
+- Export a Markdown evidence packet for reviewers.
+- Optionally load WebLLM in WebGPU-capable browsers to draft a local audit memo.
+
+The WebLLM path is deliberately optional: the add-on stays useful in locked-down browsers, CI builds, and simple VPS demos where local model loading is not available.
+
 ### MLflow
 
 The first integration lives in `integrations/mlflow/`.

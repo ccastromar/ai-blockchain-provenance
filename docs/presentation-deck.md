@@ -51,7 +51,7 @@ Core components:
 - NestJS API.
 - MongoDB hashchain.
 - Optional Sepolia smart contract.
-- Go CLI and optional auditor/sandbox tools.
+- Go CLI, local WebLLM auditor, and optional sandbox tools.
 - Docker Compose deployment with optional GHCR images.
 
 ```mermaid
@@ -75,9 +75,10 @@ Show:
 1. Register model.
 2. Log inference.
 3. View provenance.
-4. Verify chain.
-5. Show API docs.
-6. Optional: anchor root.
+4. Run the local auditor and export an evidence packet.
+5. Verify chain.
+6. Show API docs.
+7. Optional: anchor root.
 
 Speaker note:
 
@@ -113,6 +114,7 @@ Next milestones:
 - Signed client submissions.
 - Integration with a real model registry or inference event stream.
 - Metrics, backups, audit logs, and evidence exports.
+- Private browser-local audit assistance with WebLLM.
 
 Speaker note:
 

@@ -29,6 +29,7 @@ Raw prompts, inference inputs, outputs, training datasets, and model binaries re
 - Docker Compose deployment for local demos or a small VPS.
 - GHCR image publishing for repeatable container deployments.
 - MLflow adapter for registering model lifecycle events from existing experiment tracking.
+- Local WebLLM auditor add-on for browser-side evidence review and audit-memo drafting.
 
 ## What This Proves
 
@@ -70,6 +71,7 @@ Poor pilot environments:
 4. Add write-attempt audit logs and rate limiting.
 5. Validate backup/restore and disaster recovery for MongoDB.
 6. Produce structured evidence exports for audit or GRC review.
+7. Validate browser-local LLM workflows for private audit assistance.
 
 Supporting material:
 
