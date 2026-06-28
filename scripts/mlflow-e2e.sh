@@ -2,11 +2,14 @@
 set -euo pipefail
 
 COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.mlflow.yml)
-if [[ -f .env ]]; then
-  ENV_FILE=(--env-file .env)
-else
-  ENV_FILE=()
-fi
+
+compose() {
+  if [[ -f .env ]]; then
+    docker compose "${COMPOSE_FILES[@]}" --env-file .env "$@"
+  else
+    docker compose "${COMPOSE_FILES[@]}" "$@"
+  fi
+}
 
 RUN_ID="$(date +%Y%m%d%H%M%S)"
 export IRIS_MODEL_ID="${IRIS_MODEL_ID:-iris-classifier-${RUN_ID}}"
@@ -14,8 +17,8 @@ export IRIS_MODEL_NAME="${IRIS_MODEL_NAME:-Iris KNN classifier}"
 export IRIS_MODEL_VERSION="${IRIS_MODEL_VERSION:-${RUN_ID}}"
 export IRIS_REGISTERED_MODEL_NAME="${IRIS_REGISTERED_MODEL_NAME:-ernest-iris-demo}"
 
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILE[@]}" up -d --build mongodb backend frontend mlflow
-docker compose "${COMPOSE_FILES[@]}" "${ENV_FILE[@]}" run --rm mlflow-demo
+compose up -d --build mongodb backend frontend mlflow
+compose run --rm mlflow-demo
 
 cat <<MSG
 
