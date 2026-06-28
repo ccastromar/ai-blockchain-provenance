@@ -65,6 +65,7 @@ More detail: [docs/architecture.md](docs/architecture.md).
 | Merkle WASM | `merkle-wasm/` | Rust Merkle helper |
 | AI sandbox | `ai-sandbox/` | Iris training/demo integration |
 | Auditor | `agentic-auditor/` | Optional FastAPI-based audit agent |
+| Integrations | `integrations/` | Adapters for AI/ML tooling such as MLflow |
 
 ## Quick Start
 
@@ -145,6 +146,7 @@ Main endpoints:
 | `GET` | `/api/events` | Query on-chain anchor events |
 
 Request examples and response shapes: [docs/api.md](docs/api.md).
+AI tooling integrations: [docs/integrations.md](docs/integrations.md).
 
 When the backend is running, Swagger UI is available at `http://localhost:3001/api/docs` and the OpenAPI document at `http://localhost:3001/api/docs-json`.
 

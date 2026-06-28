@@ -28,6 +28,7 @@ Raw prompts, inference inputs, outputs, training datasets, and model binaries re
 - Go CLI for direct verification/query workflows.
 - Docker Compose deployment for local demos or a small VPS.
 - GHCR image publishing for repeatable container deployments.
+- MLflow adapter for registering model lifecycle events from existing experiment tracking.
 
 ## What This Proves
 

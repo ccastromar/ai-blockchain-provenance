@@ -25,7 +25,9 @@ Use this map when presenting Ernest to evaluators, incubator reviewers, or techn
 ## Integrate
 
 - `docs/api.md`: API reference and request examples.
+- `docs/integrations.md`: current and planned AI tooling integrations.
 - `cli-ernest/README.md`: CLI-oriented verification and querying.
+- `integrations/mlflow/`: MLflow-to-Ernest registration adapter.
 - `ai-sandbox/`: sample AI workflow that registers demo model events.
 - `agentic-auditor/`: optional auditor assistant integration.
 
