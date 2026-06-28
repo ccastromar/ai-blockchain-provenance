@@ -136,6 +136,10 @@ export class ApiService {
     return await this.blockchainService.anchorMerkleRootToEthereum();
   }
 
+  async getAnchorStatus() {
+    return await this.blockchainService.getAnchorStatus();
+  }
+
   async getAllBlocks(page = 1, limit = 20) {
     return await this.blockchainService.getAllBlocks(page, limit);
   }

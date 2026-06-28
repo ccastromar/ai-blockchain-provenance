@@ -97,6 +97,16 @@ Run a minimal API smoke test:
 ./scripts/smoke.sh
 ```
 
+Run the same stack with a local Hardhat blockchain for anchoring demos:
+
+```bash
+cp .env.local-chain.example .env.local-chain
+docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build
+curl http://localhost:3001/api/anchors/status
+curl -X POST http://localhost:3001/api/anchors \
+  -H "X-Ernest-Api-Key: <key-if-configured>"
+```
+
 For a small public VPS deployment, see [docs/deployment-vps.md](docs/deployment-vps.md).
 For a fast evaluator path, see [docs/quick-eval.md](docs/quick-eval.md).
 For a company-facing summary, see [docs/incubation-brief.md](docs/incubation-brief.md).
@@ -144,6 +154,7 @@ Main endpoints:
 | `GET` | `/api/provenances/:modelId` | Get model provenance |
 | `GET` | `/api/stats` | Get chain stats and latest anchor |
 | `GET` | `/api/verify` | Verify hashchain integrity |
+| `GET` | `/api/anchors/status` | Inspect anchoring mode and RPC reachability |
 | `POST` | `/api/anchors` | Manually anchor the current Merkle root |
 | `GET` | `/api/events` | Query on-chain anchor events |
 

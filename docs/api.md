@@ -204,13 +204,21 @@ GET /api/blocks/:index
 
 Returns raw hashchain blocks. `GET /api/blocks/:index` returns `404` when the block is missing.
 
+## Anchor Status
+
+```http
+GET /api/anchors/status
+```
+
+Returns whether anchoring is configured, which mode is active (`local`, `sepolia`, `custom`, or `disabled`), RPC reachability, contract address, chain ID, latest block, and the latest stored anchor.
+
 ## Anchor Merkle Root
 
 ```http
 POST /api/anchors
 ```
 
-Manually computes the current Merkle root and submits it to the configured `ErnestMerkleAnchor` contract. Requires `INFURA_URL`, `PRIVATE_KEY`, and `CONTRACT_ADDRESS`.
+Manually computes the current Merkle root and submits it to the configured `ErnestMerkleAnchor` contract. Requires `INFURA_URL`, `PRIVATE_KEY`, and `CONTRACT_ADDRESS`. For local demos, `docker-compose.local-chain.yml` sets these values against the local Hardhat chain.
 
 Example:
 

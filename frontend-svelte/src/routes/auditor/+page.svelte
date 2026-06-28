@@ -76,18 +76,20 @@
     webLlmMemo = '';
 
     try {
-      const [model, modelProvenance, loadedStats, loadedVerification] = await Promise.all([
-        getModelById(selectedModelId),
-        getProvenance(selectedModelId),
+      const listedModel = models.find((model) => getModelId(model) === selectedModelId) ?? null;
+      const [modelResult, provenanceResult, loadedStats, loadedVerification] = await Promise.all([
+        getModelById(selectedModelId).catch(() => listedModel ?? { modelId: selectedModelId }),
+        getProvenance(selectedModelId).catch(() => ({ blocks: [] })),
         getChainStats(),
         verifyChain()
       ]);
 
+      const model = modelResult ?? listedModel ?? { modelId: selectedModelId };
       selectedModel = model;
-      provenance = modelProvenance;
+      provenance = provenanceResult;
       stats = loadedStats;
       verification = loadedVerification;
-      report = buildLocalAuditReport({ model, provenance: modelProvenance, stats: loadedStats, verification: loadedVerification });
+      report = buildLocalAuditReport({ model, provenance: provenanceResult, stats: loadedStats, verification: loadedVerification });
     } catch (e: any) {
       error = e?.message ?? 'Could not run local audit.';
     } finally {

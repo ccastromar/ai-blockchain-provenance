@@ -17,6 +17,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - pnpm dependency audit scripts and dependency risk documentation.
 - Contract-based Sepolia anchoring through `ErnestMerkleAnchor.anchorRoot`.
 - Manual `POST /api/anchors` endpoint for demo anchoring.
+- Optional local Hardhat blockchain stack for self-contained anchoring demos.
+- `GET /api/anchors/status` endpoint for anchoring mode and RPC reachability.
 - Unique hashchain indexes and append retry handling for concurrent writes.
 - Backend integrity tests using Node's native test runner.
 - Optional API key protection for write endpoints.

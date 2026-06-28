@@ -17,6 +17,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] The `Publish Images` workflow has pushed backend and frontend images to GHCR.
 - [ ] The `Release` workflow has attached downloadable `.tar.gz`, `.zip`, and `SHA256SUMS` assets.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
+- [ ] `docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build` starts the optional local anchoring stack.
 - [ ] `docker compose -f docker-compose.prod.yml pull` works with the selected image tag.
 - [ ] Docker Compose serves the SvelteKit frontend, not the deprecated Next.js frontend.
 - [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.
@@ -59,6 +60,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `INFURA_URL` or RPC provider is configured.
 - [ ] `ANCHOR_ORGANIZATION_ID`, `ANCHOR_ORGANIZATION_NAME`, and `ANCHOR_DOMAIN` are correct.
 - [ ] `POST /api/anchors` has been tested on the target network if anchoring is part of the release demo.
+- [ ] `GET /api/anchors/status` reports the expected anchoring mode (`local`, `sepolia`, `custom`, or `disabled`).
 
 ## Documentation
 

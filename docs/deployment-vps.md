@@ -83,6 +83,21 @@ ERNEST_API_ORIGIN=https://ernest.example.com ./scripts/deploy-check.sh
 
 If `ERNEST_API_KEY` is exported in the shell, the check also registers a short-lived test model.
 
+## Optional Local Blockchain
+
+For a self-contained PoC, run Hardhat as another background service and anchor against a local `ErnestMerkleAnchor` contract instead of Sepolia:
+
+```bash
+cp .env.local-chain.example .env.local-chain
+docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build
+docker compose -f docker-compose.yml -f docker-compose.local-chain.yml ps
+curl http://localhost:3001/api/anchors/status
+```
+
+The local chain binds RPC to `127.0.0.1:8545`, deploys the contract through a one-shot `contract-deploy` service, and configures the backend to anchor with the default Hardhat demo wallet.
+
+Use this for demos, CI-like validation, and private incubation environments. It is not an external proof of existence; use Sepolia or another public network when reviewers need a timestamp outside the VPS.
+
 ## Caddy Example
 
 ```caddyfile

@@ -8,6 +8,7 @@ Use this script for a 5-minute company or incubator presentation. It assumes the
 - API docs: `http://localhost:3001/api/docs` or `/api/docs` behind the proxy.
 - Optional terminal ready for `./scripts/deploy-check.sh`.
 - If write protection is enabled, have `ERNEST_API_KEY` available.
+- For local anchoring, start with `docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build`.
 
 ## Talk Track
 
@@ -64,13 +65,14 @@ Explain:
 
 ### 6. Optional Anchor
 
-If Sepolia credentials are configured, trigger an anchor.
+For a self-contained demo, open `GET /api/anchors/status` and show `mode: local`, then trigger `POST /api/anchors`. Sepolia can be used later with real RPC credentials and a low-fund demo wallet.
 
 Explain:
 
 - Ernest computes a Merkle root over the local chain.
 - Only the root and organizational metadata go on-chain.
-- The blockchain provides an external proof of existence, not raw data storage.
+- The local Hardhat chain proves the anchoring flow without requiring Sepolia funds.
+- Public Sepolia anchoring provides an external proof of existence, not raw data storage.
 
 ### 7. Close With Roadmap
 

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  local-chain:
+    build:
+      context: .
+      dockerfile: blockchain/Dockerfile.local-chain
+    image: ernest-local-chain:dev
+    container_name: ernest-local-chain
+    ports:
+      - "127.0.0.1:8545:8545"
+    command: ["pnpm", "--filter", "blockchain", "local:node"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8545',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_chainId',params:[]})}).then(r=>r.json()).then(j=>process.exit(j.result?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
+  contract-deploy:
+    image: ernest-local-chain:dev
+    container_name: ernest-contract-deploy
+    depends_on:
+      local-chain:
+        condition: service_healthy
+    environment:
+      - LOCAL_CHAIN_RPC_URL=http://local-chain:8545
+      - LOCAL_CHAIN_DEPLOYMENT_ENV=/deployments/local-chain.env
+    command: ["pnpm", "--filter", "blockchain", "local:deploy"]
+    volumes:
+      - local_chain_deployments:/deployments
+    networks:
+      - ernest-network
+    restart: "no"
+
+  backend:
+    environment:
+      - INFURA_URL=http://local-chain:8545
+      - PRIVATE_KEY=${LOCAL_CHAIN_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80}
+      - CONTRACT_ADDRESS=${LOCAL_CHAIN_CONTRACT_ADDRESS:-0x5FbDB2315678afecb367f032d93F642f64180aa3}
+      - ANCHOR_ORGANIZATION_ID=${ANCHOR_ORGANIZATION_ID:-ernest-local}
+      - ANCHOR_ORGANIZATION_NAME=${ANCHOR_ORGANIZATION_NAME:-Ernest Local Demo}
+      - ANCHOR_DOMAIN=${ANCHOR_DOMAIN:-local-ai-provenance}
+      - ANCHOR_EVERY_N_BLOCKS=${ANCHOR_EVERY_N_BLOCKS:-1}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      contract-deploy:
+        condition: service_completed_successfully
+
+volumes:
+  local_chain_deployments:

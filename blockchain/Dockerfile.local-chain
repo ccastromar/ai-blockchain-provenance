@@ -1,0 +1,21 @@
+FROM node:24-alpine
+
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+WORKDIR /repo
+
+RUN corepack enable
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY backend/package.json ./backend/package.json
+COPY blockchain/package.json ./blockchain/package.json
+COPY frontend/package.json ./frontend/package.json
+COPY frontend-svelte/package.json ./frontend-svelte/package.json
+RUN pnpm install --filter blockchain... --frozen-lockfile
+
+COPY blockchain ./blockchain
+
+EXPOSE 8545
+
+CMD ["pnpm", "--filter", "blockchain", "local:node"]

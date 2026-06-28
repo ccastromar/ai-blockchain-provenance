@@ -532,6 +532,53 @@ export class BlockchainService implements OnModuleInit {
         };
     }
 
+    async getAnchorStatus(): Promise<any> {
+        const config = this.getAnchorConfig(false);
+        const lastAnchor = await this.getLastAnchor();
+
+        if (!config) {
+            return {
+                configured: false,
+                mode: 'disabled',
+                reason: 'Set INFURA_URL, PRIVATE_KEY and CONTRACT_ADDRESS to enable anchoring.',
+                lastAnchor,
+            };
+        }
+
+        let chainId: number | null = null;
+        let latestBlock: number | null = null;
+        let reachable = false;
+        let error: string | undefined;
+
+        try {
+            const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+            const [network, blockNumber] = await Promise.all([
+                provider.getNetwork(),
+                provider.getBlockNumber(),
+            ]);
+            chainId = Number(network.chainId);
+            latestBlock = blockNumber;
+            reachable = true;
+        } catch (e: any) {
+            error = e?.message ?? 'Unknown RPC error';
+        }
+
+        return {
+            configured: true,
+            mode: this.getAnchorMode(config.rpcUrl),
+            reachable,
+            rpcUrl: this.redactRpcUrl(config.rpcUrl),
+            contractAddress: config.contractAddress,
+            organizationId: config.organizationId,
+            organizationName: config.organizationName,
+            domain: config.domain,
+            chainId,
+            latestBlock,
+            lastAnchor,
+            error,
+        };
+    }
+
     private getAnchorEveryNBlocks(): number {
         const raw = process.env.ANCHOR_EVERY_N_BLOCKS || '50';
         const parsed = Number.parseInt(raw, 10);
@@ -558,6 +605,29 @@ export class BlockchainService implements OnModuleInit {
             organizationName: process.env.ANCHOR_ORGANIZATION_NAME || 'Ernest Demo',
             domain: process.env.ANCHOR_DOMAIN || 'ai-provenance',
         };
+    }
+
+    private getAnchorMode(rpcUrl: string): 'local' | 'sepolia' | 'custom' {
+        if (rpcUrl.includes('local-chain') || rpcUrl.includes('127.0.0.1') || rpcUrl.includes('localhost')) {
+            return 'local';
+        }
+        if (rpcUrl.includes('sepolia')) {
+            return 'sepolia';
+        }
+        return 'custom';
+    }
+
+    private redactRpcUrl(rpcUrl: string): string {
+        try {
+            const url = new URL(rpcUrl);
+            if (url.username || url.password) {
+                url.username = url.username ? '***' : '';
+                url.password = url.password ? '***' : '';
+            }
+            return url.toString();
+        } catch {
+            return rpcUrl;
+        }
     }
 
     private isDuplicateKeyError(error: any): boolean {

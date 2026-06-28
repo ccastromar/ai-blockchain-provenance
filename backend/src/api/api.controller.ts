@@ -87,6 +87,13 @@ export class ApiController {
     return await this.apiService.anchorMerkleRoot();
   }
 
+  @Get('anchors/status')
+  @ApiOperation({ summary: 'Return anchoring configuration and local/Sepolia RPC reachability.' })
+  @ApiOkResponse({ description: 'Anchoring mode, RPC reachability, contract address, and latest stored anchor.' })
+  async getAnchorStatus() {
+    return await this.apiService.getAnchorStatus();
+  }
+
   @Get('blocks')
   @ApiOperation({ summary: 'Return raw hashchain blocks (paginated).' })
   @ApiOkResponse({ description: 'Paginated raw hashchain blocks.' })

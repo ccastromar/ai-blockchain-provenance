@@ -1,6 +1,6 @@
 # Architecture
 
-Ernest is a modular proof-of-concept for AI provenance. The default stack uses a SvelteKit dashboard, a NestJS API, MongoDB for local hashchain storage, and an optional Sepolia smart contract for public anchoring.
+Ernest is a modular proof-of-concept for AI provenance. The default stack uses a SvelteKit dashboard, a NestJS API, MongoDB for local hashchain storage, and optional EVM anchoring through either a local Hardhat chain or Sepolia.
 
 The design intentionally separates the provenance control plane from raw AI data. Ernest records hashes, model metadata, and audit-oriented events; source systems remain responsible for raw prompts, inference payloads, training data, model binaries, access control, and retention policies.
 
@@ -14,7 +14,7 @@ flowchart TD
   Mongo["MongoDB<br/>provenanceblocks + anchors + aimodels"]
   Hashchain["Hashchain service<br/>canonical JSON + SHA-256"]
   Merkle["Merkle root<br/>keccak pair tree"]
-  Contract["ErnestMerkleAnchor<br/>Sepolia"]
+  Contract["ErnestMerkleAnchor<br/>local Hardhat or Sepolia"]
   CLI["Go CLI"]
   Sandbox["Python AI sandbox"]
   Auditor["Optional auditor agent"]
@@ -43,6 +43,7 @@ flowchart TD
   Proxy --> Browser["Browser dashboard"]
   Proxy --> APIClient["API clients"]
   VPS --> Mongo["MongoDB volume"]
+  VPS --> LocalChain["Optional local Hardhat chain"]
   VPS --> Sepolia["Optional Sepolia anchoring"]
 ```
 
@@ -50,6 +51,7 @@ The repository supports two deployment modes:
 
 - Local build mode: `docker compose up --build` builds backend and frontend images on the target host.
 - Prebuilt image mode: `docker-compose.prod.yml` pulls backend and frontend images from GHCR and starts the stack with Docker Compose.
+- Local anchoring mode: `docker-compose.local-chain.yml` adds a Hardhat RPC service and one-shot contract deployment for self-contained demos.
 
 Prebuilt image mode is preferred for repeatable demos because the running server does not need to compile JavaScript dependencies.
 
@@ -82,7 +84,7 @@ sequenceDiagram
   API->>DB: Store anchor metadata
 ```
 
-Anchoring is optional. If `INFURA_URL`, `PRIVATE_KEY`, and `CONTRACT_ADDRESS` are not configured, the local hashchain still works.
+Anchoring is optional. If `INFURA_URL`, `PRIVATE_KEY`, and `CONTRACT_ADDRESS` are not configured, the local hashchain still works. `GET /api/anchors/status` reports whether the backend is disabled, connected to the local chain, or configured for Sepolia/custom RPC.
 
 ## Data Stored
 
