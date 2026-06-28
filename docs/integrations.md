@@ -67,7 +67,7 @@ docker compose -f docker-compose.yml -f docker-compose.mlflow.yml up -d --build 
 docker compose -f docker-compose.yml -f docker-compose.mlflow.yml run --rm mlflow-demo
 ```
 
-The MLflow service allows `localhost`, `127.0.0.1`, `mlflow`, and `ernest-mlflow` host headers so the browser and Docker-network demo job can both call the tracking server.
+The MLflow service uses `--allowed-hosts "*"` in the demo overlay so the browser and Docker-network job can both call the tracking server without DNS-rebinding host-header failures. The service is bound to `127.0.0.1` on the host and is intended for local PoC use only.
 
 ## Recommended Next Integrations
 
