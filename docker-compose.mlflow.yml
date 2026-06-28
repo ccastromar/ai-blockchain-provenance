@@ -18,7 +18,9 @@ services:
         "--backend-store-uri",
         "sqlite:////mlflow/mlflow.db",
         "--default-artifact-root",
-        "/mlflow/artifacts"
+        "/mlflow/artifacts",
+        "--allowed-hosts",
+        "127.0.0.1,localhost,mlflow,ernest-mlflow"
       ]
     ports:
       - "127.0.0.1:8111:8111"
@@ -52,7 +54,7 @@ services:
       - demo
     environment:
       - ENABLE_MLFLOW=true
-      - MLFLOW_TRACKING_URI=http://mlflow:8111
+      - MLFLOW_TRACKING_URI=http://ernest-mlflow:8111
       - ERNEST_API_BASE=http://backend:3001/api
       - ERNEST_API_KEY=${ERNEST_API_KEY:-}
       - IRIS_MODEL_ID=${IRIS_MODEL_ID:-iris-classifier-v1}
