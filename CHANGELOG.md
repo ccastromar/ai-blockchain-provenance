@@ -4,11 +4,11 @@ All notable changes to Ernest will be documented in this file.
 
 The format follows the spirit of Keep a Changelog, and this project uses semantic versioning once releases are tagged.
 
-## [0.1.0-alpha] - Unreleased
+## [0.1.0-alpha] - 2026-06-28
 
 ### Added
 
-- Full-stack AI provenance PoC with NestJS backend, Next.js frontend, MongoDB hashchain, Go CLI, Rust Merkle helper, Python auditor, and Hardhat contract project.
+- Full-stack AI provenance PoC with NestJS backend, SvelteKit frontend, MongoDB hashchain, Go CLI, Rust Merkle helper, Python auditor, and Hardhat contract project.
 - Reproducible pnpm lockfile for backend, frontends, and blockchain.
 - Docker hardening for backend, frontend, CLI, and auditor images.
 - `.env.example` files and `.dockerignore` files for release-oriented setup.
@@ -25,6 +25,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - VPS deployment guide and post-deploy health check script.
 - pnpm workspace with a single JavaScript lockfile for backend, frontend, Svelte frontend, and blockchain.
 - GitHub Actions CI workflow.
+- GitHub Actions workflows for Docker smoke checks and GHCR image publishing.
 - Release checklist and GitHub issue templates.
 - Publication-oriented README, architecture guide, API reference, and security model.
 
@@ -34,6 +35,9 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Docker Compose binds service ports to localhost, adds healthchecks, and rotates container logs.
 - JavaScript Docker and CI flows now install dependencies with pnpm.
 - Docker Compose now serves the SvelteKit frontend as the official dashboard.
+- Docker Compose production deployment can pull prebuilt GHCR backend and frontend images.
+- Node.js runtime and CI jobs now target Node 24.
+- Generated SvelteKit output is no longer tracked in git.
 - README examples now use copyable, valid JSON.
 - Iris sandbox now matches the real backend API contract and treats MLflow as optional.
 - Frontend model registration now sends valid MLflow hash metadata.

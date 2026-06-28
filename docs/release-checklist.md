@@ -7,6 +7,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] Decide the release tag, for example `v0.1.0-alpha`.
 - [ ] Update versions in the root README and component manifests if needed.
 - [ ] Update `CHANGELOG.md`.
+- [ ] Prepare release notes under `docs/releases/`.
 - [ ] Confirm the release scope is described as PoC, alpha, beta, or stable.
 
 ## Reproducibility
