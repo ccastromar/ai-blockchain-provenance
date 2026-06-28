@@ -36,7 +36,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `cd merkle-wasm && cargo test`
 - [ ] `cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...`
 - [ ] `python -m compileall ai-sandbox/domains/iris agentic-auditor/app`
-- [ ] `bash -n scripts/smoke.sh setup.sh`
+- [ ] `bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh agentic-auditor/run.sh`
 
 ## Security
 

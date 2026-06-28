@@ -148,7 +148,7 @@ jobs:
           python-version: "3.12"
 
       - name: Check shell scripts
-        run: bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
+        run: bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh agentic-auditor/run.sh
 
       - name: Check Python syntax
         run: python -m compileall ai-sandbox/domains/iris agentic-auditor/app
