@@ -383,14 +383,14 @@ export class BlockchainService implements OnModuleInit {
     /**
      * Verify integrity only for blocks belonging to a specific model
      */
-    async verifyModelIntegrity(modelId: string): Promise<{ modelId: string; isValid: boolean; totalBlocks: number; errors: string[] }> {
+    async verifyModelIntegrity(modelId: string): Promise<{ modelId: string; isValid: boolean; valid: boolean; totalBlocks: number; errors: string[] }> {
         const modelBlocks = await this.provenanceBlockModel
             .find({ 'data.modelId': modelId })
             .sort({ index: 1 })
             .lean();
 
         if (modelBlocks.length === 0) {
-            return { modelId, isValid: false, totalBlocks: 0, errors: [`No blocks found for model ${modelId}`] };
+            return { modelId, isValid: false, valid: false, totalBlocks: 0, errors: [`No blocks found for model ${modelId}`] };
         }
 
         const errors: string[] = [];
@@ -410,7 +410,8 @@ export class BlockchainService implements OnModuleInit {
             }
         }
 
-        return { modelId, isValid: errors.length === 0, totalBlocks: modelBlocks.length, errors };
+        const isValid = errors.length === 0;
+        return { modelId, isValid, valid: isValid, totalBlocks: modelBlocks.length, errors };
     }
 
     /**

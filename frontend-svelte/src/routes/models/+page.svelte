@@ -88,6 +88,10 @@
 
   function goPage(p: number) { page = p; loadList(); }
 
+  function integrityValid(result: any) {
+    return (result?.valid ?? result?.isValid) === true;
+  }
+
   const STATUS_STYLES: Record<string, string> = {
     active:     'bg-emerald-100 text-emerald-700',
     deprecated: 'bg-amber-100 text-amber-700',
@@ -240,11 +244,11 @@
               {#if integrity}
                 <div class="flex items-center gap-2">
                   <div class="w-7 h-7 rounded-full flex items-center justify-center text-sm
-                    {integrity.valid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">
-                    {integrity.valid ? '✓' : '✗'}
+                    {integrityValid(integrity) ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}">
+                    {integrityValid(integrity) ? '✓' : '✗'}
                   </div>
-                  <span class="text-sm font-medium {integrity.valid ? 'text-emerald-700' : 'text-red-700'}">
-                    {integrity.valid ? 'All blocks are valid' : 'Integrity issues found'}
+                  <span class="text-sm font-medium {integrityValid(integrity) ? 'text-emerald-700' : 'text-red-700'}">
+                    {integrityValid(integrity) ? 'All blocks are valid' : 'Integrity issues found'}
                   </span>
                 </div>
                 {#if integrity.errors?.length}
