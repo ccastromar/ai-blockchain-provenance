@@ -9,8 +9,6 @@ from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 import mlflow
-import mlflow.sklearn
-from mlflow.models import infer_signature
 
 STATE_FILE = "state.json"
 API_BASE = os.getenv("ERNEST_API_BASE", "http://localhost:3001/api")
@@ -71,39 +69,19 @@ def train_model():
 
         with mlflow.start_run() as run:
             mlflow.log_params(params)
-
             mlflow.log_metric("accuracy", accuracy)
-
-            signature = infer_signature(X_train, model.predict(X_train))
-
-            try:
-                model_info = mlflow.sklearn.log_model(
-                    sk_model=model,
-                    name="iris_model",
-                    signature=signature,
-                    input_example=X_train,
-                    registered_model_name=IRIS_REGISTERED_MODEL_NAME,
-                )
-            except TypeError:
-                model_info = mlflow.sklearn.log_model(
-                    sk_model=model,
-                    artifact_path="iris_model",
-                    signature=signature,
-                    input_example=X_train,
-                    registered_model_name=IRIS_REGISTERED_MODEL_NAME,
-                )
-
-            try:
-                mlflow.set_logged_model_tags(
-                    model_info.model_id, {"Training Info": "Basic KNC model for iris data"}
-                )
-            except Exception:
-                mlflow.set_tags({"Training Info": "Basic KNC model for iris data"})
+            mlflow.log_artifact(model_file, artifact_path="iris_model")
+            mlflow.set_tags({
+                "Training Info": "Basic KNC model for iris data",
+                "ernest.registered_model_name": IRIS_REGISTERED_MODEL_NAME,
+                "ernest.model_id": IRIS_MODEL_ID,
+                "ernest.model_hash": hash_main,
+            })
 
             state["mlflow_run_id"] = run.info.run_id
             state["mlflow_experiment_id"] = run.info.experiment_id
             state["mlflow_artifact_uri"] = run.info.artifact_uri
-            state["mlflow_model_uri"] = getattr(model_info, "model_uri", None)
+            state["mlflow_model_uri"] = f"runs:/{run.info.run_id}/iris_model/{model_file}"
         # END MLFlow integration.
 
     with open(STATE_FILE, "w") as sf:
