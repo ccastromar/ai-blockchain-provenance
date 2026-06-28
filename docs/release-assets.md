@@ -9,6 +9,7 @@ Use this checklist when preparing a public Ernest alpha release.
 - Mark the release as pre-release.
 - Use `docs/releases/v0.1.0-alpha.md` as the release note base.
 - Link to `README.md`, `docs/deployment-vps.md`, `docs/security-model.md`, and `docs/dependency-risk.md`.
+- For company-facing presentations, also link to `docs/incubation-brief.md`, `docs/demo-script.md`, and `docs/maturity-model.md`.
 - State clearly that this is a PoC for demos and technical evaluation, not a production compliance system.
 
 ## Screenshots

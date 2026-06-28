@@ -69,3 +69,9 @@ Poor pilot environments:
 4. Add write-attempt audit logs and rate limiting.
 5. Validate backup/restore and disaster recovery for MongoDB.
 6. Produce structured evidence exports for audit or GRC review.
+
+Supporting material:
+
+- `docs/demo-script.md` for a short stakeholder demo.
+- `docs/maturity-model.md` for alpha-to-enterprise planning.
+- `docs/threat-model.md` for security review.

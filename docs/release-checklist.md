@@ -67,6 +67,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `docs/deployment-vps.md` matches the current Docker Compose setup.
 - [ ] `docs/dependency-risk.md` matches current audit expectations.
 - [ ] `docs/architecture.md` matches the deployed stack.
+- [ ] `docs/demo-script.md`, `docs/maturity-model.md`, and `docs/threat-model.md` match the current alpha scope.
 - [ ] `docs/security-model.md` describes current guarantees and non-goals.
 - [ ] Security notes describe PoC limitations honestly.
 - [ ] Screenshots are current.
