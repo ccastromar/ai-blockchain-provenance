@@ -47,6 +47,7 @@ flowchart LR
   API --> Mongo
   API --> Merkle["Merkle root"]
   Merkle --> Contract["ErnestMerkleAnchor on Sepolia"]
+  MLflow["MLflow demo"] --> Sandbox["Python AI sandbox"]
   Auditor["Optional auditor agent"] --> API
   Sandbox["Python AI sandbox"] --> API
 ```
@@ -58,7 +59,7 @@ More detail: [docs/architecture.md](docs/architecture.md).
 | Component | Path | Purpose |
 | --- | --- | --- |
 | Backend | `backend/` | NestJS API, validation, hashchain, anchoring |
-| Frontend | `frontend-svelte/` | SvelteKit dashboard and local WebLLM auditor add-on |
+| Frontend | `frontend-svelte/` | SvelteKit dashboard and Audit Readiness evidence review |
 | Legacy frontend | `frontend/` | Deprecated Next.js dashboard |
 | Blockchain | `blockchain/` | Hardhat project and Solidity contract |
 | CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
@@ -96,6 +97,17 @@ Run a minimal API smoke test:
 ```bash
 ./scripts/smoke.sh
 ```
+
+Run the MLflow-to-Ernest demo:
+
+```bash
+./scripts/mlflow-e2e.sh
+```
+
+Then open:
+
+- MLflow UI: `http://localhost:8111`
+- Audit Readiness: `http://localhost:3000/auditor`
 
 Run the same stack with a local Hardhat blockchain for anchoring demos:
 
@@ -258,7 +270,7 @@ Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
 
 - Enterprise identity integration.
 - Signed client submissions.
-- Real MLflow integration.
+- In-product MLflow import UI and signed integration submissions.
 - User authentication and RBAC.
 - Digital signatures for model and inference events.
 - IPFS or object-store references for large artifacts.

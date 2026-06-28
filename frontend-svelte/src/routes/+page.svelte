@@ -42,7 +42,7 @@
         <nav class="flex items-center gap-2">
           <a href="/models" class="btn-ghost text-sm py-2 px-4">Models</a>
           <a href="/stats" class="btn-ghost text-sm py-2 px-4">Statistics</a>
-          <a href="/auditor" class="btn-ghost text-sm py-2 px-4">Auditor</a>
+          <a href="/auditor" class="btn-ghost text-sm py-2 px-4">Audit</a>
         </nav>
 
         <!-- Live stats chips -->

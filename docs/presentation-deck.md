@@ -51,7 +51,8 @@ Core components:
 - NestJS API.
 - MongoDB hashchain.
 - Optional Sepolia smart contract.
-- Go CLI, local WebLLM auditor, and optional sandbox tools.
+- Go CLI, Audit Readiness review, and optional sandbox tools.
+- Optional MLflow demo stack for train-to-audit evidence flow.
 - Docker Compose deployment with optional GHCR images.
 
 ```mermaid
@@ -72,10 +73,10 @@ Explain that source systems keep raw data; Ernest stores proof material.
 
 Show:
 
-1. Register model.
+1. Run MLflow Iris demo or register a model manually.
 2. Log inference.
 3. View provenance.
-4. Run the local auditor and export an evidence packet.
+4. Run Audit Readiness and export an evidence packet.
 5. Verify chain.
 6. Show API docs.
 7. Optional: anchor root.

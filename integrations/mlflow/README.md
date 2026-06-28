@@ -20,6 +20,16 @@ pip install mlflow
 
 The script uses only Python standard-library HTTP for the Ernest API call.
 
+## One-Command Demo
+
+Run the full local MLflow-to-Ernest flow:
+
+```bash
+./scripts/mlflow-e2e.sh
+```
+
+This starts MLflow, trains the Iris sandbox model, logs MLflow params/metrics/artifacts, registers the model in Ernest, records an inference, and leaves the model ready in Audit Readiness at `http://localhost:3000/auditor`.
+
 ## Register By Run ID
 
 ```bash

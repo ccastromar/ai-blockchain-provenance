@@ -29,7 +29,8 @@ Raw prompts, inference inputs, outputs, training datasets, and model binaries re
 - Docker Compose deployment for local demos or a small VPS.
 - GHCR image publishing for repeatable container deployments.
 - MLflow adapter for registering model lifecycle events from existing experiment tracking.
-- Local WebLLM auditor add-on for browser-side evidence review and audit-memo drafting.
+- Optional MLflow Compose demo that trains Iris, logs MLflow evidence, registers Ernest provenance, and feeds Audit Readiness.
+- Audit Readiness add-on for browser-side evidence review, score dimensions, and optional audit-memo drafting.
 
 ## What This Proves
 

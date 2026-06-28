@@ -4,14 +4,15 @@ Ernest is designed to sit beside existing AI platforms. Integrations should subm
 
 ## Current Integration
 
-### Local WebLLM Auditor
+### Audit Readiness
 
-The SvelteKit dashboard includes an optional browser-side auditor at `/auditor`.
+The SvelteKit dashboard includes an evidence-readiness review at `/auditor`.
 
 It can:
 
 - Load model, provenance, chain stats, and verification evidence from Ernest.
-- Produce a deterministic local audit score without calling an external LLM.
+- Show the end-to-end flow from MLflow-style registration evidence to Ernest provenance, inference hashes, hashchain verification, and anchoring.
+- Produce deterministic readiness checks without calling an external LLM.
 - Export a Markdown evidence packet for reviewers.
 - Optionally load WebLLM in WebGPU-capable browsers to draft a local audit memo.
 
@@ -41,6 +42,30 @@ python integrations/mlflow/register_mlflow_run.py \
 ```
 
 Use `--dry-run` to inspect the Ernest payload before sending it.
+
+### MLflow E2E Demo
+
+The repository also includes a Docker Compose overlay that runs MLflow in the background and executes the Iris sandbox as a one-shot demo job:
+
+```bash
+./scripts/mlflow-e2e.sh
+```
+
+That flow:
+
+1. Starts MongoDB, backend, frontend, and MLflow.
+2. Trains an Iris KNN model.
+3. Logs params, metrics, and the model artifact to MLflow.
+4. Registers the model evidence in Ernest.
+5. Logs one inference hash event in Ernest.
+6. Leaves the model visible in `/auditor` for Audit Readiness review.
+
+Manual Compose equivalent:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.mlflow.yml up -d --build mongodb backend frontend mlflow
+docker compose -f docker-compose.yml -f docker-compose.mlflow.yml run --rm mlflow-demo
+```
 
 ## Recommended Next Integrations
 

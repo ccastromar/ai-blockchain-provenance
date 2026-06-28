@@ -9,12 +9,17 @@ from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 import mlflow
+import mlflow.sklearn
 from mlflow.models import infer_signature
 
 STATE_FILE = "state.json"
 API_BASE = os.getenv("ERNEST_API_BASE", "http://localhost:3001/api")
 ENABLE_MLFLOW = os.getenv("ENABLE_MLFLOW", "false").lower() == "true"
 ERNEST_API_KEY = os.getenv("ERNEST_API_KEY")
+IRIS_MODEL_ID = os.getenv("IRIS_MODEL_ID", "iris-classifier-v1")
+IRIS_MODEL_NAME = os.getenv("IRIS_MODEL_NAME", "Iris KNN classifier")
+IRIS_MODEL_VERSION = os.getenv("IRIS_MODEL_VERSION", "0.1.3")
+IRIS_REGISTERED_MODEL_NAME = os.getenv("IRIS_REGISTERED_MODEL_NAME", "tracking-quickstart")
 
 def ernest_headers():
     headers = {}
@@ -49,43 +54,60 @@ def train_model():
     print(f"Hash del artefacto: {hash_main}")
 
     state = {
-        "model_id": "iris-classifier-v1",
-        "model_name": "Iris KNN classifier",
-        "version": "0.1.3",
+        "model_id": IRIS_MODEL_ID,
+        "model_name": IRIS_MODEL_NAME,
+        "version": IRIS_MODEL_VERSION,
         "hash_main": hash_main,
         "git_commit": git_commit,
         "accuracy": accuracy,
         "model_file": model_file,
         "params": params
     }
-    with open(STATE_FILE, "w") as sf:
-        json.dump(state, sf)
-
     if ENABLE_MLFLOW:
         # START MLFlow integration - optional for local Ernest demos.
         mlflow.set_tracking_uri(uri=os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:8111"))
 
         mlflow.set_experiment("MLflow Quickstart")
 
-        with mlflow.start_run():
+        with mlflow.start_run() as run:
             mlflow.log_params(params)
 
             mlflow.log_metric("accuracy", accuracy)
 
             signature = infer_signature(X_train, model.predict(X_train))
 
-            model_info = mlflow.sklearn.log_model(
-                sk_model=model,
-                name="iris_model",
-                signature=signature,
-                input_example=X_train,
-                registered_model_name="tracking-quickstart",
-            )
+            try:
+                model_info = mlflow.sklearn.log_model(
+                    sk_model=model,
+                    name="iris_model",
+                    signature=signature,
+                    input_example=X_train,
+                    registered_model_name=IRIS_REGISTERED_MODEL_NAME,
+                )
+            except TypeError:
+                model_info = mlflow.sklearn.log_model(
+                    sk_model=model,
+                    artifact_path="iris_model",
+                    signature=signature,
+                    input_example=X_train,
+                    registered_model_name=IRIS_REGISTERED_MODEL_NAME,
+                )
 
-            mlflow.set_logged_model_tags(
-                model_info.model_id, {"Training Info": "Basic KNC model for iris data"}
-            )
+            try:
+                mlflow.set_logged_model_tags(
+                    model_info.model_id, {"Training Info": "Basic KNC model for iris data"}
+                )
+            except Exception:
+                mlflow.set_tags({"Training Info": "Basic KNC model for iris data"})
+
+            state["mlflow_run_id"] = run.info.run_id
+            state["mlflow_experiment_id"] = run.info.experiment_id
+            state["mlflow_artifact_uri"] = run.info.artifact_uri
+            state["mlflow_model_uri"] = getattr(model_info, "model_uri", None)
         # END MLFlow integration.
+
+    with open(STATE_FILE, "w") as sf:
+        json.dump(state, sf)
 
     return model, X_test, y_test, hash_main, accuracy
 
@@ -108,7 +130,13 @@ def register_model(hash_main, accuracy):
         "metadata": {
             "dataset": "iris",
             "framework": "scikit-learn",
-            "source": "ai-sandbox/domains/iris"
+            "source": "ai-sandbox/domains/iris",
+            "mlflowEnabled": ENABLE_MLFLOW,
+            "mlflowRegisteredModelName": IRIS_REGISTERED_MODEL_NAME if ENABLE_MLFLOW else None,
+            "mlflowRunId": state.get("mlflow_run_id"),
+            "mlflowExperimentId": state.get("mlflow_experiment_id"),
+            "mlflowArtifactUri": state.get("mlflow_artifact_uri"),
+            "mlflowModelUri": state.get("mlflow_model_uri"),
         }
     }
 

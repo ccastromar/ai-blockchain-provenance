@@ -16,6 +16,7 @@ yarn-error.log*
 .env.*
 !.env.example
 !.env.local-chain.example
+!.env.mlflow.example
 
 # Dist/build/output
 dist/

@@ -11,6 +11,7 @@ flowchart TD
   User["User or demo operator"]
   UI["SvelteKit frontend"]
   API["NestJS backend API"]
+  MLflow["MLflow demo server"]
   Mongo["MongoDB<br/>provenanceblocks + anchors + aimodels"]
   Hashchain["Hashchain service<br/>canonical JSON + SHA-256"]
   Merkle["Merkle root<br/>keccak pair tree"]
@@ -20,6 +21,7 @@ flowchart TD
   Auditor["Optional auditor agent"]
 
   User --> UI
+  Sandbox --> MLflow
   UI --> API
   Sandbox --> API
   Auditor --> API
@@ -52,6 +54,7 @@ The repository supports two deployment modes:
 - Local build mode: `docker compose up --build` builds backend and frontend images on the target host.
 - Prebuilt image mode: `docker-compose.prod.yml` pulls backend and frontend images from GHCR and starts the stack with Docker Compose.
 - Local anchoring mode: `docker-compose.local-chain.yml` adds a Hardhat RPC service and one-shot contract deployment for self-contained demos.
+- MLflow demo mode: `docker-compose.mlflow.yml` adds an MLflow server and one-shot Iris training job that registers model and inference evidence in Ernest.
 
 Prebuilt image mode is preferred for repeatable demos because the running server does not need to compile JavaScript dependencies.
 

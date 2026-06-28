@@ -18,6 +18,7 @@ Use this checklist before publishing an official Ernest release.
 - [ ] The `Release` workflow has attached downloadable `.tar.gz`, `.zip`, and `SHA256SUMS` assets.
 - [ ] `docker compose up --build` starts MongoDB, backend, and frontend.
 - [ ] `docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build` starts the optional local anchoring stack.
+- [ ] `./scripts/mlflow-e2e.sh` completes when the optional MLflow demo is part of the release story.
 - [ ] `docker compose -f docker-compose.prod.yml pull` works with the selected image tag.
 - [ ] Docker Compose serves the SvelteKit frontend, not the deprecated Next.js frontend.
 - [ ] `docker compose ps` reports healthy MongoDB, backend, and frontend services.

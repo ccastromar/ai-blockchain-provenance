@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  mlflow:
+    build:
+      context: ai-sandbox
+      dockerfile: Dockerfile
+    image: ernest-ai-sandbox:dev
+    container_name: ernest-mlflow
+    command:
+      [
+        "mlflow",
+        "server",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8111",
+        "--backend-store-uri",
+        "sqlite:////mlflow/mlflow.db",
+        "--default-artifact-root",
+        "/mlflow/artifacts"
+      ]
+    ports:
+      - "127.0.0.1:8111:8111"
+    volumes:
+      - mlflow_data:/mlflow
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8111/health', timeout=5)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
+  mlflow-demo:
+    image: ernest-ai-sandbox:dev
+    container_name: ernest-mlflow-demo
+    profiles:
+      - demo
+    environment:
+      - ENABLE_MLFLOW=true
+      - MLFLOW_TRACKING_URI=http://mlflow:8111
+      - ERNEST_API_BASE=http://backend:3001/api
+      - ERNEST_API_KEY=${ERNEST_API_KEY:-}
+      - IRIS_MODEL_ID=${IRIS_MODEL_ID:-iris-classifier-v1}
+      - IRIS_MODEL_NAME=${IRIS_MODEL_NAME:-Iris KNN classifier}
+      - IRIS_MODEL_VERSION=${IRIS_MODEL_VERSION:-0.1.3}
+      - IRIS_REGISTERED_MODEL_NAME=${IRIS_REGISTERED_MODEL_NAME:-ernest-iris-demo}
+    command: ["python", "train_and_register.py", "--step", "all"]
+    depends_on:
+      backend:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    networks:
+      - ernest-network
+    restart: "no"
+
+volumes:
+  mlflow_data:

@@ -29,6 +29,12 @@ docker compose up -d --build
 ./scripts/deploy-check.sh
 ```
 
+MLflow E2E demo:
+
+```bash
+./scripts/mlflow-e2e.sh
+```
+
 Prebuilt images:
 
 ```bash
@@ -45,17 +51,18 @@ docker compose -f docker-compose.prod.yml up -d
 - `docs/threat-model.md`: security gaps and mitigations.
 - `docs/maturity-model.md`: alpha-to-enterprise path.
 - `docs/integrations.md`: AI tooling integrations.
-- `/auditor`: local evidence review and optional browser-side WebLLM memo.
+- `/auditor`: Audit Readiness evidence review, score dimensions, and optional browser-side WebLLM memo.
 
 ## Demo Flow
 
-1. Register a model.
-2. Log an inference with input/output hashes.
-3. View model provenance.
-4. Verify the hashchain.
-5. Open the local auditor and export an evidence packet.
-6. Show API docs.
-7. Optionally anchor a Merkle root.
+1. Optionally run `./scripts/mlflow-e2e.sh` to create a model from MLflow evidence.
+2. Register a model manually if skipping MLflow.
+3. Log an inference with input/output hashes.
+4. View model provenance.
+5. Verify the hashchain.
+6. Open Audit Readiness and export an evidence packet.
+7. Show API docs.
+8. Optionally anchor a Merkle root.
 
 ## Evaluation Questions
 

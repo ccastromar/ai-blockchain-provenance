@@ -37,6 +37,7 @@
   let webLlmError = $state('');
   let runningMemo = $state(false);
   let chainLooksValid = $derived((verification?.isValid ?? stats?.chainValid) === true);
+  let auditRequestId = 0;
 
   onMount(() => {
     loadInitialData();
@@ -71,9 +72,11 @@
   async function runAudit() {
     if (!selectedModelId) return;
 
+    const requestId = ++auditRequestId;
     loading = true;
     error = '';
     webLlmMemo = '';
+    report = null;
 
     try {
       const listedModel = models.find((model) => getModelId(model) === selectedModelId) ?? null;
@@ -84,6 +87,8 @@
         verifyChain()
       ]);
 
+      if (requestId !== auditRequestId) return;
+
       const model = modelResult ?? listedModel ?? { modelId: selectedModelId };
       selectedModel = model;
       provenance = provenanceResult;
@@ -91,10 +96,18 @@
       verification = loadedVerification;
       report = buildLocalAuditReport({ model, provenance: provenanceResult, stats: loadedStats, verification: loadedVerification });
     } catch (e: any) {
-      error = e?.message ?? 'Could not run local audit.';
+      if (requestId === auditRequestId) {
+        error = e?.message ?? 'Could not run local audit.';
+      }
     } finally {
-      loading = false;
+      if (requestId === auditRequestId) {
+        loading = false;
+      }
     }
+  }
+
+  async function handleModelChange() {
+    await runAudit();
   }
 
   async function loadWebLlm() {
@@ -171,6 +184,18 @@
     link.click();
     URL.revokeObjectURL(url);
   }
+
+  function checkClass(status: string) {
+    if (status === 'present') return 'border-emerald-200 bg-emerald-50 text-emerald-800';
+    if (status === 'missing') return 'border-red-200 bg-red-50 text-red-800';
+    return 'border-amber-200 bg-amber-50 text-amber-900';
+  }
+
+  function checkDotClass(status: string) {
+    if (status === 'present') return 'bg-emerald-500';
+    if (status === 'missing') return 'bg-red-500';
+    return 'bg-amber-500';
+  }
 </script>
 
 <div class="min-h-screen bg-slate-50">
@@ -181,8 +206,8 @@
           <a href="/" class="inline-flex items-center gap-3">
             <div class="w-9 h-9 bg-sky-400 rounded-lg flex items-center justify-center font-bold text-blue-900 text-lg">E</div>
             <div>
-              <h1 class="text-xl font-bold text-white tracking-tight">Local Auditor</h1>
-              <p class="text-xs text-blue-200 leading-none mt-0.5">Browser-side evidence review</p>
+              <h1 class="text-xl font-bold text-white tracking-tight">Audit Readiness</h1>
+              <p class="text-xs text-blue-200 leading-none mt-0.5">Evidence pipeline review</p>
             </div>
           </a>
         </div>
@@ -201,9 +226,9 @@
       <div class="card p-6 space-y-5">
         <div>
           <p class="text-sm font-medium text-blue-700">Ernest add-on</p>
-          <h2 class="text-2xl font-bold text-slate-900 mt-1">Local WebLLM audit cockpit</h2>
+          <h2 class="text-2xl font-bold text-slate-900 mt-1">Evidence readiness cockpit</h2>
           <p class="text-sm text-slate-600 mt-2 max-w-3xl">
-            Review a model evidence packet in the browser, export a concise audit note, and optionally use WebLLM locally when WebGPU is available.
+            Trace a model from MLflow-style registration evidence through Ernest provenance, inference hashes, chain verification, and optional anchoring.
           </p>
         </div>
 
@@ -214,7 +239,7 @@
         <div class="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
           <label>
             <span class="field-label">Model</span>
-            <select class="field-input" bind:value={selectedModelId} disabled={loadingModels || models.length === 0}>
+            <select class="field-input" bind:value={selectedModelId} onchange={handleModelChange} disabled={loadingModels || models.length === 0}>
               {#each models as model}
                 <option value={getModelId(model)}>
                   {model.modelName ?? model.name ?? getModelId(model)} · {getModelId(model)}
@@ -257,6 +282,32 @@
     </section>
 
     {#if report}
+      <section class="card p-6">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p class="text-sm font-medium text-blue-700">E2E evidence flow</p>
+            <h3 class="text-lg font-semibold text-slate-900 mt-1">MLflow to Ernest to audit packet</h3>
+          </div>
+          <p class="text-sm text-slate-500">{selectedModel?.name ?? selectedModel?.modelName ?? selectedModelId}</p>
+        </div>
+
+        <div class="mt-5 grid gap-3 md:grid-cols-5">
+          {#each [
+            { label: 'Source registry', detail: 'hash, commit, metrics' },
+            { label: 'Ernest registration', detail: 'model lifecycle block' },
+            { label: 'Serving events', detail: 'input and output hashes' },
+            { label: 'Integrity proof', detail: 'verify and anchor' },
+            { label: 'Reviewer packet', detail: 'findings and export' }
+          ] as step, index}
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <div class="text-xs font-semibold uppercase text-slate-400">Step {index + 1}</div>
+              <div class="mt-2 font-semibold text-slate-900">{step.label}</div>
+              <div class="mt-1 text-xs text-slate-500">{step.detail}</div>
+            </div>
+          {/each}
+        </div>
+      </section>
+
       <section class="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
         <div class="card p-6 space-y-5">
           <div>
@@ -277,12 +328,54 @@
               <div class="text-2xl font-bold text-slate-900">{report.inferenceCount}</div>
               <div class="text-xs text-slate-500">Inferences</div>
             </div>
+            <div class="rounded-lg bg-slate-50 p-3">
+              <div class="text-2xl font-bold text-slate-900">{report.modelRegistrationCount}</div>
+              <div class="text-xs text-slate-500">Registrations</div>
+            </div>
+            <div class="rounded-lg bg-slate-50 p-3">
+              <div class="text-2xl font-bold text-slate-900">{report.missingEvidence.length}</div>
+              <div class="text-xs text-slate-500">Gaps</div>
+            </div>
           </div>
 
           <button class="btn-outline w-full" onclick={downloadEvidence}>Download evidence</button>
         </div>
 
         <div class="space-y-6">
+          <section class="card p-6">
+            <h3 class="text-lg font-semibold text-slate-900">Evidence checks</h3>
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
+              {#each report.evidenceChecks as check}
+                <div class="rounded-lg border p-4 {checkClass(check.status)}">
+                  <div class="flex items-center gap-2">
+                    <span class="h-2.5 w-2.5 rounded-full {checkDotClass(check.status)}"></span>
+                    <h4 class="font-semibold">{check.label}</h4>
+                  </div>
+                  <p class="mt-2 text-xs font-medium opacity-75">{check.source}</p>
+                  <p class="mt-1 text-sm">{check.detail}</p>
+                </div>
+              {/each}
+            </div>
+          </section>
+
+          <section class="card p-6">
+            <h3 class="text-lg font-semibold text-slate-900">Score dimensions</h3>
+            <div class="mt-4 space-y-4">
+              {#each report.scoreBreakdown as item}
+                <div>
+                  <div class="flex items-center justify-between gap-4 text-sm">
+                    <span class="font-medium text-slate-700">{item.label}</span>
+                    <span class="font-semibold text-slate-900">{item.value}/{item.max}</span>
+                  </div>
+                  <div class="mt-2 h-2 rounded-full bg-slate-100">
+                    <div class="h-2 rounded-full bg-blue-700" style={`width: ${Math.max(0, Math.min(100, (item.value / item.max) * 100))}%`}></div>
+                  </div>
+                  <p class="mt-1 text-xs text-slate-500">{item.detail}</p>
+                </div>
+              {/each}
+            </div>
+          </section>
+
           <section class="card p-6">
             <h3 class="text-lg font-semibold text-slate-900">Findings</h3>
             <div class="mt-4 space-y-3">

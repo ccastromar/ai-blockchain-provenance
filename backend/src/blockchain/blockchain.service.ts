@@ -240,11 +240,17 @@ export class BlockchainService implements OnModuleInit {
                 timestamp: new Date(b.timestamp * 1000).toISOString(),
                 timestampUnix: b.timestamp,
                 type: b.data.type,
+                modelId: b.data.modelId,
+                modelName: b.data.modelName,
                 version: b.data.version,
+                modelHash: b.data.modelHash,
+                gitCommit: b.data.gitCommit,
                 inputHash: b.data.inputHash,
                 outputHash: b.data.outputHash,
                 params: b.data.params,
+                metrics: b.data.metrics,
                 metadata: b.data.metadata,
+                organizationId: b.data.organizationId,
                 blockHash: b.hash,
                 previousHash: b.previousHash
             }))
