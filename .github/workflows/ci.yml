@@ -24,10 +24,9 @@ jobs:
           node-version: 24
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-          run_install: false
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -48,10 +47,9 @@ jobs:
           node-version: 24
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-          run_install: false
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -78,10 +76,9 @@ jobs:
           node-version: 24
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 11.7.0
-          run_install: false
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.7.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
