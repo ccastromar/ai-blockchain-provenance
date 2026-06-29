@@ -1,22 +1,23 @@
-# fastapi_app.py
-from fastapi import FastAPI
+from pathlib import Path
+
 from pydantic import BaseModel
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from markdown2 import markdown
+
 from app.agent.run_agent import run_agent
 
 app = FastAPI(
     title="Auditor Agent",
     version="1.0.0",
 )
-templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory=Path(__file__).resolve().parents[1] / "templates")
 
 
 class AuditRequest(BaseModel):
     message: str
 
-from markdown2 import markdown
 
 def markdown_filter(text: str):
     if not text:
