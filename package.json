@@ -10,12 +10,13 @@
     "backend:test": "pnpm --filter ernest-backend test:integrity",
     "frontend:build": "pnpm --filter ernest-frontend-svelte build",
     "frontend:check": "pnpm --filter ernest-frontend-svelte check",
+    "frontend:test": "pnpm --filter ernest-frontend-svelte test",
     "frontend-svelte:build": "pnpm --filter ernest-frontend-svelte build",
     "frontend-svelte:check": "pnpm --filter ernest-frontend-svelte check",
     "frontend-next:build": "pnpm --filter ernest-frontend build",
     "blockchain:compile": "pnpm --filter blockchain exec hardhat compile",
     "audit:prod": "scripts/audit.sh prod",
     "audit:all": "scripts/audit.sh all",
-    "release:check": "pnpm run backend:test && pnpm run frontend:check && pnpm run frontend:build && pnpm run blockchain:compile"
+    "release:check": "pnpm run backend:test && pnpm run frontend:check && pnpm run frontend:test && pnpm run frontend:build && pnpm run blockchain:compile"
   }
 }

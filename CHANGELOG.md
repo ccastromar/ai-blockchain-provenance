@@ -21,6 +21,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - `GET /api/anchors/status` endpoint for anchoring mode and RPC reachability.
 - Unique hashchain indexes and append retry handling for concurrent writes.
 - Backend integrity tests using Node's native test runner.
+- Svelte frontend unit tests for Audit Readiness scoring and evidence normalization.
 - Optional API key protection for write endpoints.
 - Configurable CORS origin.
 - Swagger UI and OpenAPI JSON for the public API contract.

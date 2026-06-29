@@ -253,6 +253,7 @@ Useful local checks:
 ```bash
 pnpm run backend:test
 pnpm run frontend:check
+pnpm run frontend:test
 pnpm run frontend:build
 pnpm run blockchain:compile
 pnpm run audit:prod

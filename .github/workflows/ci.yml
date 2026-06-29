@@ -63,6 +63,9 @@ jobs:
       - name: Check
         run: pnpm run frontend:check
 
+      - name: Unit tests
+        run: pnpm run frontend:test
+
       - name: Build
         run: pnpm run frontend:build
 
