@@ -1,26 +1,57 @@
-# Ernest: AI Provenance and Blockchain Anchoring PoC
+# Ernest: Verifiable AI Provenance
 
 [![CI](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status: Alpha](https://img.shields.io/badge/status-0.1.0--alpha-orange.svg)](CHANGELOG.md)
 
-Ernest is a proof-of-concept platform for tracing AI model lifecycle events and inference records through a local hashchain, then optionally anchoring Merkle roots to an Ethereum-compatible public testnet.
+AI systems are increasingly asked to prove what happened: which model version was used, which artifact hash was approved, which code commit produced it, whether inference evidence was recorded, and whether the audit trail was later changed.
 
-The core idea is simple: store only provenance metadata and hashes, verify that the local event chain has not been tampered with, and publish periodic proofs of existence on-chain.
+Most teams already have model registries, ML platforms, application logs, and observability tools. What is often missing is a small, verifiable evidence layer that can sit beside them and answer a narrower question:
+
+> Can this AI lifecycle evidence be independently checked for integrity later?
+
+Ernest is an alpha proof-of-concept for that layer. It stores hashes and metadata, links AI lifecycle events in a local hashchain, verifies the chain, computes Merkle roots, and can optionally anchor those roots to an EVM chain for external proof of existence.
+
+In short: **Ernest is an evidence layer for AI governance, not a replacement for your ML platform.**
 
 ## Incubator Pitch
 
-Ernest is aimed at organizations evaluating how to make AI systems more auditable without moving raw model artifacts, prompts, inputs, or outputs into a new central platform. It provides a narrow provenance layer that can sit beside existing ML platforms and business applications.
+Ernest is aimed at organizations evaluating how to make AI systems more auditable without moving raw model artifacts, prompts, inputs, or outputs into a new central platform. It provides a narrow provenance layer that can sit beside MLflow, model registries, internal AI platforms, business applications, and governance workflows.
 
 The current alpha demonstrates:
 
 - Tamper-evident registration of model lifecycle events.
 - Hash-only logging of inference events.
 - Local verification through a MongoDB-backed hashchain.
-- Optional public proof of existence through Sepolia anchoring.
+- Optional proof of existence through local Hardhat or Sepolia anchoring.
+- MLflow-to-Ernest demo flow for train-to-audit evidence.
+- Audit Readiness review for score, missing evidence, and exportable evidence packets.
 - A deployable dashboard/API stack suitable for a public PoC or internal pilot.
 
 For an incubation program, the next engineering milestones are enterprise identity, signed client submissions, stronger append serialization, and integrations with real model registries or application event streams.
+
+## Example Use Case
+
+Imagine a bank using a credit-risk model in an internal loan workflow.
+
+Months later, a reviewer asks:
+
+- Which exact model version produced this decision?
+- Was the model linked to a known artifact hash and Git commit?
+- Were quality metrics and source metadata recorded?
+- Were inference input/output hashes logged without storing raw customer data?
+- Has the evidence chain been modified since the decision?
+- Is there an external timestamp proving this evidence existed at a given time?
+
+MLflow can help with experiment tracking and model registry workflows. Application logs can show operational activity. Ernest focuses on the audit evidence between those systems: hash-only lifecycle records, inference evidence, integrity verification, and optional external anchoring.
+
+## Who Is This For?
+
+- AI governance and model-risk teams evaluating traceability controls.
+- Internal AI platform teams building shared auditability infrastructure.
+- Banks, insurers, healthcare, pharma, energy, and other regulated-domain teams.
+- Security or architecture teams reviewing tamper-evident AI evidence patterns.
+- Incubators or research teams exploring verifiable AI lifecycle controls.
 
 ## What It Does
 
@@ -32,6 +63,32 @@ For an incubation program, the next engineering milestones are enterprise identi
 - Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
 - Provides a SvelteKit dashboard with a local audit add-on, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
 
+## What Ernest Is Not
+
+- Not a model registry.
+- Not an experiment tracker.
+- Not an LLM gateway.
+- Not a prompt observability platform.
+- Not a data lake for raw prompts, inputs, outputs, datasets, or model binaries.
+- Not a production compliance system by itself.
+
+Ernest complements those systems by creating a verifiable evidence trail around them.
+
+## Why Not Just MLflow?
+
+| Capability | MLflow | Ernest |
+| --- | --- | --- |
+| Experiment tracking | Yes | No |
+| Model registry | Yes | Integrates |
+| Params and metrics | Yes | Stores evidence copies |
+| Hash-only inference evidence | No | Yes |
+| Tamper-evident event chain | No | Yes |
+| Merkle root proofs | No | Yes |
+| Optional blockchain anchoring | No | Yes |
+| Audit-readiness evidence review | No | Yes |
+
+MLflow is excellent for ML lifecycle tracking. Ernest is narrower: it turns selected lifecycle and inference facts into tamper-evident evidence that can be verified independently of the original tracking system.
+
 ## Status
 
 This project is currently `0.1.0-alpha`.
@@ -42,17 +99,58 @@ It is suitable for demos, technical evaluation, and research prototypes. It is n
 
 ```mermaid
 flowchart LR
-  UI["SvelteKit dashboard"] --> API["NestJS API"]
-  CLI["Go CLI"] --> Mongo["MongoDB hashchain"]
-  API --> Mongo
-  API --> Merkle["Merkle root"]
-  Merkle --> Contract["ErnestMerkleAnchor on Sepolia"]
-  MLflow["MLflow demo"] --> Sandbox["Python AI sandbox"]
-  Auditor["Optional auditor agent"] --> API
-  Sandbox["Python AI sandbox"] --> API
+  MLflow["MLflow / model registry"]
+  Apps["AI applications"]
+  API["Ernest API"]
+  Hashchain["MongoDB hashchain"]
+  Merkle["Merkle root"]
+  Anchor["Optional EVM anchor"]
+  Review["Audit Readiness"]
+
+  MLflow -->|"model hash, commit, metrics"| API
+  Apps -->|"input/output hashes"| API
+  API --> Hashchain
+  Hashchain --> Merkle
+  Merkle --> Anchor
+  Hashchain --> Review
 ```
 
 More detail: [docs/architecture.md](docs/architecture.md).
+
+## Why Blockchain?
+
+MongoDB plus hashes can show whether the local chain is internally consistent. That is useful, but the proof still lives inside the same operational environment as the application and database.
+
+Optional blockchain anchoring adds an external timestamped commitment:
+
+1. Ernest stores hash-only evidence in MongoDB.
+2. Ernest computes a Merkle root over the current chain.
+3. Ernest publishes only that root and non-sensitive organizational metadata to an EVM contract.
+4. Later, a reviewer can compare local evidence against the anchored root.
+
+This does not put AI data on-chain. It provides a public proof that a specific evidence state existed at a specific time.
+
+For private demos, Ernest can anchor to a local Hardhat chain. For external proof of existence, it can anchor to Sepolia or another EVM network.
+
+## Threat Model
+
+Ernest helps with:
+
+- Detecting modification of stored provenance blocks.
+- Detecting broken `previousHash` links in the local hashchain.
+- Preserving hash-only evidence without storing sensitive payloads.
+- Producing external timestamp evidence through optional anchoring.
+- Exporting reviewable evidence packets for audit discussions.
+
+Ernest does not solve by itself:
+
+- Whether the client computed hashes honestly.
+- Whether the submitted metadata is truthful.
+- Enterprise identity, RBAC, tenant isolation, or approvals.
+- Secure custody of production blockchain keys.
+- Regulatory compliance without surrounding process and controls.
+
+Planned enterprise controls include signed client submissions, OIDC/JWT auth, RBAC, tenant-aware authorization, and stronger append serialization.
 
 ## Components
 
@@ -228,6 +326,28 @@ Deployed Sepolia contract:
 ErnestMerkleAnchor: 0xb55F5e61102a6f551BffD015998b02bC0688e41D
 ```
 
+## FAQ
+
+### Can Ernest run without blockchain?
+
+Yes. The local MongoDB hashchain and integrity verification work without Ethereum credentials. Blockchain anchoring is optional and adds external proof of existence.
+
+### Why store hashes instead of raw AI data?
+
+The goal is to prove that evidence existed and has not changed while keeping prompts, inputs, outputs, datasets, and model binaries in their source systems.
+
+### Why not store everything on-chain?
+
+Cost, privacy, and operational complexity. Ernest anchors compact Merkle roots on-chain and keeps detailed evidence off-chain.
+
+### Does Ernest replace MLflow?
+
+No. MLflow remains useful for experiments and model registry workflows. Ernest can consume selected MLflow metadata and turn it into audit evidence.
+
+### Is Ernest compliant with AI Act, HIPAA, GDPR, or banking regulations?
+
+No standalone tool is compliant by itself. Ernest is an alpha PoC that can support evidence collection, integrity checks, and audit discussions inside a broader governance process.
+
 ## Demo Assets
 
 ### Register AI Model
@@ -274,6 +394,8 @@ Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
 - In-product MLflow import UI and signed integration submissions.
 - User authentication and RBAC.
 - Digital signatures for model and inference events.
+- AI Act evidence mapping and policy-control checklists.
+- Standards alignment with W3C PROV, OpenLineage, and OpenTelemetry-style event streams.
 - IPFS or object-store references for large artifacts.
 - Stronger production deployment patterns.
 - Multi-party verification flows.
