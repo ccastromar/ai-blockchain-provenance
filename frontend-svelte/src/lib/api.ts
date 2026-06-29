@@ -1,8 +1,8 @@
 import axios, { type AxiosError } from 'axios';
-import { PUBLIC_API_URL, PUBLIC_ERNEST_API_KEY } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
-const apiUrl = PUBLIC_API_URL || 'http://localhost:3001';
-const apiKey = PUBLIC_ERNEST_API_KEY || undefined;
+const apiUrl = env.PUBLIC_API_URL || 'http://localhost:3001';
+const apiKey = env.PUBLIC_ERNEST_API_KEY || undefined;
 
 const api = axios.create({
   baseURL: `${apiUrl}/api`,
