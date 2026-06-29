@@ -76,6 +76,85 @@ export class ApiService {
     };
   }
 
+  async seedDemoData() {
+    const modelId = 'demo-credit-risk-v1';
+    const existing = await this.modelService.findOne(modelId);
+
+    if (existing) {
+      return {
+        success: true,
+        created: false,
+        modelId,
+        message: 'Demo data already exists.',
+      };
+    }
+
+    const model = await this.registerModel({
+      modelId,
+      modelName: 'Demo Credit Risk Model',
+      version: '1.0.0',
+      modelPath: 'mlflow://experiments/credit-risk/runs/demo-credit-risk-v1/model',
+      mlflow: {
+        modelHash: 'f1345cf835020a390c54aba0bd5173e42d34d414b6161ec75e30577280215912',
+        gitCommit: 'a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2',
+      },
+      params: {
+        model_type: 'LogisticRegression',
+        solver: 'liblinear',
+        threshold: 0.42,
+      },
+      metrics: {
+        roc_auc: 0.86,
+        accuracy: 0.79,
+        precision: 0.74,
+      },
+      metadata: {
+        owner: 'AI Risk Office',
+        organizationId: 'ernest-demo',
+        sourceSystem: 'MLflow demo',
+        useCase: 'Loan pre-screening',
+        dataClassification: 'hash-only evidence',
+      },
+      organizationId: 'ernest-demo',
+    });
+
+    const inferences = await Promise.all([
+      this.logInference({
+        modelId,
+        inferenceId: 'demo-credit-risk-v1-score-001',
+        inputHash: '7b2f1e0d9a6c4b3f2e1d0c9b8a7f6e5d4c3b2a1908172635445362718090a1b2',
+        outputHash: '1f0e2d3c4b5a6978879695a4b3c2d1e0f1029384756aabbccddeeff001122334',
+        params: { threshold: 0.42, return_probs: true },
+        metadata: {
+          source: 'demo-loan-workflow',
+          scoringRequestId: 'score-20260629-001',
+          decisionType: 'pre-screening',
+        },
+      }),
+      this.logInference({
+        modelId,
+        inferenceId: 'demo-credit-risk-v1-score-002',
+        inputHash: '9c8b7a69584736251403f2e1d0c9b8a7f6e5d4c3b2a190817263544536271809',
+        outputHash: '2a3b4c5d6e7f8091a2b3c4d5e6f7081928374655aabbccddeeff001122334455',
+        params: { threshold: 0.42, return_probs: true },
+        metadata: {
+          source: 'demo-loan-workflow',
+          scoringRequestId: 'score-20260629-002',
+          decisionType: 'pre-screening',
+        },
+      }),
+    ]);
+
+    return {
+      success: true,
+      created: true,
+      modelId,
+      model,
+      inferences,
+      message: 'Demo credit-risk evidence was seeded.',
+    };
+  }
+
   async logInference(dto: LogInferenceDto) {
     this.logger.log(`Logging inference for model ID: ${dto.modelId}`);
 

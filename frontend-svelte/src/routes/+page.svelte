@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getChainStats } from '$lib/api';
+  import { getChainStats, seedDemoData } from '$lib/api';
   import ModelRegistration from '$lib/components/ModelRegistration.svelte';
   import InferenceLogger from '$lib/components/InferenceLogger.svelte';
   import ProvenanceViewer from '$lib/components/ProvenanceViewer.svelte';
@@ -10,6 +10,9 @@
   let activeTab = $state<Tab>('register');
   let stats = $state<any>(null);
   let selectedModelId = $state('');
+  let seedLoading = $state(false);
+  let seedMessage = $state('');
+  let seedError = $state('');
 
   onMount(() => { loadStats(); });
 
@@ -18,6 +21,26 @@
       stats = await getChainStats();
     } catch (e) {
       console.error('Error loading stats:', e);
+    }
+  }
+
+  async function seedDemo() {
+    seedLoading = true;
+    seedMessage = '';
+    seedError = '';
+
+    try {
+      const result = await seedDemoData();
+      selectedModelId = result.modelId ?? 'demo-credit-risk-v1';
+      activeTab = 'provenance';
+      seedMessage = result.created
+        ? 'Demo evidence created. Open Audit Readiness for the full review.'
+        : 'Demo evidence already exists. It is selected below.';
+      await loadStats();
+    } catch (e: any) {
+      seedError = e?.message ?? 'Could not seed demo evidence.';
+    } finally {
+      seedLoading = false;
     }
   }
 </script>
@@ -70,6 +93,30 @@
 
   <!-- Main content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <section class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-5">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-sm font-semibold uppercase text-blue-700">Evaluator shortcut</p>
+          <h2 class="mt-1 text-lg font-bold text-slate-900">Seed a ready-to-audit credit-risk demo</h2>
+          <p class="mt-1 text-sm text-slate-600">
+            Creates one model registration and two hash-only inference events so the dashboard and auditor have evidence immediately.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button class="btn-primary" onclick={seedDemo} disabled={seedLoading}>
+            {seedLoading ? 'Seeding...' : 'Seed demo'}
+          </button>
+          <a class="btn-outline" href="/auditor">Open audit</a>
+        </div>
+      </div>
+      {#if seedMessage}
+        <div class="mt-4 alert-success text-sm text-emerald-800">{seedMessage}</div>
+      {/if}
+      {#if seedError}
+        <div class="mt-4 alert-error">{seedError}</div>
+      {/if}
+    </section>
+
     <div class="card overflow-hidden">
       <!-- Tab bar -->
       <div class="border-b border-slate-200 bg-slate-50/50">

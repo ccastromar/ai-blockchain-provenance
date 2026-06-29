@@ -40,6 +40,17 @@ export class ApiController {
     return await this.apiService.logInference(dto);
   }
 
+  @Post('demo/seed')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Seed a ready-to-audit demo evidence packet.' })
+  @ApiCreatedResponse({ description: 'Demo model and inference evidence are available.' })
+  async seedDemoData() {
+    this.logger.log('Received demo seed request');
+    return await this.apiService.seedDemoData();
+  }
+
   @Get('provenances/:modelId')
   @ApiOperation({ summary: 'Return provenance blocks for a model.' })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })

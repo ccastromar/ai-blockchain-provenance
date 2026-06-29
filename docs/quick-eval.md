@@ -55,13 +55,13 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## Demo Flow
 
-1. Optionally run `./scripts/mlflow-e2e.sh` to create a model from MLflow evidence.
-2. Register a model manually if skipping MLflow.
-3. Log an inference with input/output hashes.
+1. Open the dashboard and click **Seed demo** for a ready-to-audit credit-risk packet.
+2. Open Audit Readiness and review the score, checks, and recommended actions.
+3. Export the evidence packet.
 4. View model provenance.
 5. Verify the hashchain.
-6. Open Audit Readiness and export an evidence packet.
-7. Show API docs.
+6. Show API docs.
+7. Optionally run `./scripts/mlflow-e2e.sh` to create a model from MLflow evidence instead.
 8. Optionally anchor a Merkle root.
 
 ## Evaluation Questions

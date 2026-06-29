@@ -117,6 +117,9 @@ export const verifyChain   = async () => (await api.get('/verify')).data;
 export const logInference  = async (data: LogInferenceData) =>
   (await api.post('/inferences', data)).data;
 
+export const seedDemoData = async () =>
+  (await api.post('/demo/seed')).data;
+
 // ── Health ─────────────────────────────────────────────────────────────────
 
 export const getHealth = async (): Promise<HealthStatus> =>

@@ -106,6 +106,32 @@ Response:
 }
 ```
 
+## Seed Demo Evidence
+
+```http
+POST /api/demo/seed
+```
+
+Creates a ready-to-audit credit-risk demo packet: one model registration and two hash-only inference events. The endpoint is idempotent; if the demo model already exists, it returns `created: false`.
+
+Example:
+
+```bash
+curl -X POST http://localhost:3001/api/demo/seed \
+  -H "X-Ernest-Api-Key: <key-if-configured>"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "created": true,
+  "modelId": "demo-credit-risk-v1",
+  "message": "Demo credit-risk evidence was seeded."
+}
+```
+
 ## Log Inference
 
 ```http

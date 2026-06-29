@@ -190,6 +190,8 @@ Then open:
 - Chain stats: `http://localhost:3001/api/stats`
 - Local auditor: `http://localhost:3000/auditor`
 
+For a quick product demo, click **Seed demo** on the dashboard. It creates a credit-risk model registration plus two hash-only inference events, then you can open Audit Readiness immediately.
+
 Run a minimal API smoke test:
 
 ```bash
@@ -259,6 +261,7 @@ Main endpoints:
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | Backend health |
+| `POST` | `/api/demo/seed` | Seed a ready-to-audit demo evidence packet |
 | `POST` | `/api/models` | Register a model and append a hashchain block |
 | `POST` | `/api/inferences` | Log an inference and append a hashchain block |
 | `GET` | `/api/provenances/:modelId` | Get model provenance |
@@ -291,6 +294,7 @@ X-Ernest-Api-Key: <long-random-secret>
 
 Protected endpoints:
 
+- `POST /api/demo/seed`
 - `POST /api/models`
 - `POST /api/inferences`
 - `POST /api/anchors`
