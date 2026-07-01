@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
+  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateDatabricksEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
 
   type ConnectorState = 'enabled' | 'planned';
 
@@ -77,6 +77,15 @@
       endpoint: '/ingestor/events/opentelemetry/logs',
       eventTypes: ['inference.logged', 'drift.detected'],
       note: 'Production inference evidence through observability pipelines.'
+    },
+    {
+      id: 'databricks',
+      name: 'Databricks Unity Catalog',
+      source: 'databricks',
+      status: 'enabled',
+      endpoint: '/ingestor/events/databricks',
+      eventTypes: ['model.version.created', 'model.deployed', 'dataset.linked'],
+      note: 'Unity Catalog model versions, aliases, serving, and lineage evidence.'
     }
   ];
 
@@ -123,6 +132,8 @@
         simulationResult = await simulateAzureMlEvent();
       } else if (connectorId === 'cloudevents') {
         simulationResult = await simulateCloudEventsEvent();
+      } else if (connectorId === 'databricks') {
+        simulationResult = await simulateDatabricksEvent();
       } else if (connectorId === 'openlineage') {
         simulationResult = await simulateOpenLineageEvent();
       } else if (connectorId === 'otel') {
@@ -276,7 +287,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'openlineage' || connector.id === 'otel'}
+              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'openlineage' || connector.id === 'otel'}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>

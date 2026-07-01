@@ -62,6 +62,16 @@ export class IngestorProxyController {
     return await this.ingestorProxyService.simulateCloudEventsEvent();
   }
 
+  @Post('simulate/databricks')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Emit a demo Databricks Unity Catalog event through the server-side ingestor proxy.' })
+  @ApiAcceptedResponse({ description: 'Demo Databricks event accepted by the ingestor.' })
+  async simulateDatabricksEvent() {
+    return await this.ingestorProxyService.simulateDatabricksEvent();
+  }
+
   @Post('simulate/openlineage')
   @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.ACCEPTED)

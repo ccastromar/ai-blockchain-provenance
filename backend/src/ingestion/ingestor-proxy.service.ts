@@ -126,6 +126,35 @@ export class IngestorProxyService {
     });
   }
 
+  async simulateDatabricksEvent() {
+    const runId = Date.now().toString(36);
+    const version = String(Date.now()).slice(-6);
+
+    return await this.postToIngestor('/events/databricks', {
+      id: `dbx-${runId}`,
+      eventType: 'model.version.created',
+      time: new Date().toISOString(),
+      workspaceId: '1234567890',
+      workspaceUrl: 'https://ernest-demo.cloud.databricks.com',
+      data: {
+        full_name: 'prod.ml_team.credit_risk_databricks',
+        version,
+        source: `dbfs:/models/credit_risk_databricks/${version}`,
+        artifactHash: `${runId.padEnd(64, 'a').slice(0, 64)}`,
+        run_id: `run-${runId}`,
+        gitCommit: `${runId.padEnd(16, 'b').slice(0, 16)}`,
+        metrics: {
+          auc: 0.94,
+          f1: 0.89,
+        },
+        inputs: [
+          { fullName: 'prod.features.loan_features' },
+          { fullName: 'prod.features.customer_features' },
+        ],
+      },
+    });
+  }
+
   async simulateOpenLineageEvent() {
     const runId = Date.now().toString(36);
     const version = String(Date.now()).slice(-6);

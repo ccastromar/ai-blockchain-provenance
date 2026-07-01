@@ -9,6 +9,7 @@ HF_MODEL_ID="${HF_MODEL_ID:-openai-community/gpt2-e2e-${RUN_ID}}"
 SM_MODEL_ID="${SM_MODEL_ID:-credit-risk-xgb-e2e-${RUN_ID}}"
 AZ_MODEL_ID="${AZ_MODEL_ID:-credit-risk-azure-e2e-${RUN_ID}}"
 CE_MODEL_ID="${CE_MODEL_ID:-credit-risk-cloudevents-e2e-${RUN_ID}}"
+DBX_MODEL_ID="${DBX_MODEL_ID:-prod.ml_team.credit_risk_databricks_e2e_${RUN_ID}}"
 OL_MODEL_ID="${OL_MODEL_ID:-credit-risk-openlineage-e2e-${RUN_ID}}"
 OTEL_MODEL_ID="${OTEL_MODEL_ID:-credit-risk-otel-e2e-${RUN_ID}}"
 INGEST_KEY="${EVENT_INGESTOR_API_KEY:-}"
@@ -259,6 +260,13 @@ PROXY_CE_RESPONSE="$(curl --fail --silent --show-error \
 PROXY_CE_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_CE_RESPONSE}" | json_field sourceEventId)"
 echo "  proxied ${PROXY_CE_SOURCE_EVENT_ID}"
 
+echo "Checking backend Databricks proxy simulation..."
+PROXY_DBX_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${API_BASE}/ingestor/simulate/databricks" \
+  -H "Content-Type: application/json")"
+PROXY_DBX_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_DBX_RESPONSE}" | json_field sourceEventId)"
+echo "  proxied ${PROXY_DBX_SOURCE_EVENT_ID}"
+
 echo "Checking backend OpenTelemetry proxy simulation..."
 PROXY_OTEL_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${API_BASE}/ingestor/simulate/opentelemetry" \
@@ -411,6 +419,35 @@ CE_RESPONSE="$(curl --fail --silent --show-error \
 CE_SOURCE_EVENT_ID="$(printf '%s' "${CE_RESPONSE}" | json_field sourceEventId)"
 echo "  accepted ${CE_SOURCE_EVENT_ID}"
 
+echo "Emitting Databricks Unity Catalog event..."
+DBX_VERSION="$(date +%s)"
+DBX_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${INGESTOR_BASE}/events/databricks" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]}" \
+  -d "{
+    \"id\": \"dbx-e2e-${RUN_ID}\",
+    \"eventType\": \"model.version.created\",
+    \"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"workspaceId\": \"1234567890\",
+    \"workspaceUrl\": \"https://ernest-demo.cloud.databricks.com\",
+    \"data\": {
+      \"full_name\": \"${DBX_MODEL_ID}\",
+      \"version\": \"${DBX_VERSION}\",
+      \"source\": \"dbfs:/models/${DBX_MODEL_ID}/${DBX_VERSION}\",
+      \"artifactHash\": \"dbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdbdb\",
+      \"run_id\": \"run-e2e-dbx-${RUN_ID}\",
+      \"gitCommit\": \"${RUN_ID}\",
+      \"metrics\": { \"auc\": 0.96 },
+      \"inputs\": [
+        { \"fullName\": \"prod.features.loan_features\" },
+        { \"fullName\": \"prod.features.customer_features\" }
+      ]
+    }
+  }")"
+DBX_SOURCE_EVENT_ID="$(printf '%s' "${DBX_RESPONSE}" | json_field sourceEventId)"
+echo "  accepted ${DBX_SOURCE_EVENT_ID}"
+
 echo "Emitting OpenLineage run event..."
 OL_VERSION="$(date +%s)"
 OL_RESPONSE="$(curl --fail --silent --show-error \
@@ -524,6 +561,12 @@ if [[ -n "${INGEST_KEY}" ]]; then
 else
   wait_for_event_verification "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}" "unverified"
 fi
+wait_for_appended_event "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}" "shared_secret"
+else
+  wait_for_event_verification "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}" "unverified"
+fi
 wait_for_appended_event "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "shared_secret"
@@ -550,6 +593,10 @@ fi
 wait_for_appended_event "cloudevents" "${CE_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "cloudevents" "${CE_SOURCE_EVENT_ID}" "shared_secret"
+fi
+wait_for_appended_event "databricks" "${DBX_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "databricks" "${DBX_SOURCE_EVENT_ID}" "shared_secret"
 fi
 wait_for_appended_event "openlineage" "${OL_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
@@ -586,6 +633,7 @@ assert_provenance_exact "${HF_MODEL_ID}" 1
 assert_provenance "${SM_MODEL_ID}" 1
 assert_provenance "${AZ_MODEL_ID}" 1
 assert_provenance "${CE_MODEL_ID}" 1
+assert_provenance "${DBX_MODEL_ID}" 1
 assert_provenance "${OL_MODEL_ID}" 1
 assert_provenance "${OTEL_MODEL_ID}" 1
 
@@ -606,6 +654,7 @@ echo "Hugging Face model: ${HF_MODEL_ID}"
 echo "SageMaker model: ${SM_MODEL_ID}"
 echo "Azure ML model: ${AZ_MODEL_ID}"
 echo "CloudEvents model: ${CE_MODEL_ID}"
+echo "Databricks model: ${DBX_MODEL_ID}"
 echo "OpenLineage model: ${OL_MODEL_ID}"
 echo "OpenTelemetry model: ${OTEL_MODEL_ID}"
 echo "Events: ${FRONTEND_BASE}/events"

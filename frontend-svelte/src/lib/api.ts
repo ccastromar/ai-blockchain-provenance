@@ -158,6 +158,9 @@ export const simulateAzureMlEvent = async () =>
 export const simulateCloudEventsEvent = async () =>
   (await api.post('/ingestor/simulate/cloudevents')).data;
 
+export const simulateDatabricksEvent = async () =>
+  (await api.post('/ingestor/simulate/databricks')).data;
+
 export const simulateOpenLineageEvent = async () =>
   (await api.post('/ingestor/simulate/openlineage')).data;
 
