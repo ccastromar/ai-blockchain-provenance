@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
+  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
 
   type ConnectorState = 'enabled' | 'planned';
 
@@ -39,8 +39,8 @@
       source: 'cloudevents',
       status: 'enabled',
       endpoint: '/ingestor/events/cloudevents',
-      eventTypes: ['com.ernest.model.deployed', 'model.updated'],
-      note: 'Interoperable envelope path for event buses and gateways.'
+      eventTypes: ['model.registered', 'model.deployed', 'inference.logged'],
+      note: 'Strict vendor-neutral CloudEvents 1.0 intake for event buses and gateways.'
     },
     {
       id: 'sagemaker',
@@ -121,6 +121,8 @@
         simulationResult = await simulateSageMakerEvent();
       } else if (connectorId === 'azureml') {
         simulationResult = await simulateAzureMlEvent();
+      } else if (connectorId === 'cloudevents') {
+        simulationResult = await simulateCloudEventsEvent();
       } else if (connectorId === 'openlineage') {
         simulationResult = await simulateOpenLineageEvent();
       } else if (connectorId === 'otel') {
@@ -274,7 +276,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'openlineage' || connector.id === 'otel'}
+              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'openlineage' || connector.id === 'otel'}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>

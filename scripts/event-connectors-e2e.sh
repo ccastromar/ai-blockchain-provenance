@@ -8,6 +8,7 @@ RUN_ID="$(date +%Y%m%d%H%M%S)"
 HF_MODEL_ID="${HF_MODEL_ID:-openai-community/gpt2-e2e-${RUN_ID}}"
 SM_MODEL_ID="${SM_MODEL_ID:-credit-risk-xgb-e2e-${RUN_ID}}"
 AZ_MODEL_ID="${AZ_MODEL_ID:-credit-risk-azure-e2e-${RUN_ID}}"
+CE_MODEL_ID="${CE_MODEL_ID:-credit-risk-cloudevents-e2e-${RUN_ID}}"
 OL_MODEL_ID="${OL_MODEL_ID:-credit-risk-openlineage-e2e-${RUN_ID}}"
 OTEL_MODEL_ID="${OTEL_MODEL_ID:-credit-risk-otel-e2e-${RUN_ID}}"
 INGEST_KEY="${EVENT_INGESTOR_API_KEY:-}"
@@ -251,6 +252,13 @@ PROXY_AZ_RESPONSE="$(curl --fail --silent --show-error \
 PROXY_AZ_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_AZ_RESPONSE}" | json_field sourceEventId)"
 echo "  proxied ${PROXY_AZ_SOURCE_EVENT_ID}"
 
+echo "Checking backend CloudEvents proxy simulation..."
+PROXY_CE_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${API_BASE}/ingestor/simulate/cloudevents" \
+  -H "Content-Type: application/json")"
+PROXY_CE_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_CE_RESPONSE}" | json_field sourceEventId)"
+echo "  proxied ${PROXY_CE_SOURCE_EVENT_ID}"
+
 echo "Checking backend OpenTelemetry proxy simulation..."
 PROXY_OTEL_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${API_BASE}/ingestor/simulate/opentelemetry" \
@@ -270,6 +278,18 @@ if [[ -n "${INGEST_KEY}" || -n "${HF_SECRET}" ]]; then
   wait_for_failure_kind "auth_rejected" "${EXPECTED_AUTH_REJECTIONS}"
   wait_for_ingestor_health_count "failureStats.byFailureKind.auth_rejected" "${EXPECTED_AUTH_REJECTIONS}"
 fi
+
+echo "Checking strict CloudEvents rejects invalid envelopes..."
+CE_INVALID_STATUS="$(curl --silent --output /dev/null --write-out "%{http_code}" \
+  -X POST "${INGESTOR_BASE}/events/cloudevents" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]}" \
+  -d "{\"specversion\":\"0.3\",\"id\":\"ce-invalid-${RUN_ID}\",\"source\":\"urn:ernest:e2e\",\"type\":\"com.ernest.model.registered\"}")"
+if [[ "${CE_INVALID_STATUS}" != "400" ]]; then
+  echo "Expected invalid CloudEvents envelope to return 400, got ${CE_INVALID_STATUS}" >&2
+  exit 1
+fi
+wait_for_failure_kind "validation_rejected" 1
 
 if [[ -n "${HF_SECRET}" ]]; then
   echo "Checking backend Hugging Face proxy simulation with provider secret..."
@@ -364,6 +384,32 @@ AZ_RESPONSE="$(curl --fail --silent --show-error \
   }")"
 AZ_SOURCE_EVENT_ID="$(printf '%s' "${AZ_RESPONSE}" | json_field sourceEventId)"
 echo "  accepted ${AZ_SOURCE_EVENT_ID}"
+
+echo "Emitting strict CloudEvents event..."
+CE_VERSION="$(date +%s)"
+CE_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${INGESTOR_BASE}/events/cloudevents" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]}" \
+  -d "{
+    \"specversion\": \"1.0\",
+    \"id\": \"ce-e2e-${RUN_ID}\",
+    \"source\": \"urn:ernest:e2e\",
+    \"type\": \"com.ernest.model.registered\",
+    \"subject\": \"models/${CE_MODEL_ID}/versions/${CE_VERSION}\",
+    \"time\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"datacontenttype\": \"application/json\",
+    \"data\": {
+      \"eventType\": \"model.registered\",
+      \"modelId\": \"${CE_MODEL_ID}\",
+      \"modelName\": \"Credit Risk CloudEvents E2E\",
+      \"version\": \"${CE_VERSION}\",
+      \"artifactHash\": \"cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd\",
+      \"gitCommit\": \"${RUN_ID}\"
+    }
+  }")"
+CE_SOURCE_EVENT_ID="$(printf '%s' "${CE_RESPONSE}" | json_field sourceEventId)"
+echo "  accepted ${CE_SOURCE_EVENT_ID}"
 
 echo "Emitting OpenLineage run event..."
 OL_VERSION="$(date +%s)"
@@ -472,6 +518,12 @@ if [[ -n "${INGEST_KEY}" ]]; then
 else
   wait_for_event_verification "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}" "unverified"
 fi
+wait_for_appended_event "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}" "shared_secret"
+else
+  wait_for_event_verification "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}" "unverified"
+fi
 wait_for_appended_event "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "shared_secret"
@@ -494,6 +546,10 @@ fi
 wait_for_appended_event "azureml" "${AZ_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "azureml" "${AZ_SOURCE_EVENT_ID}" "shared_secret"
+fi
+wait_for_appended_event "cloudevents" "${CE_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "cloudevents" "${CE_SOURCE_EVENT_ID}" "shared_secret"
 fi
 wait_for_appended_event "openlineage" "${OL_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
@@ -529,6 +585,7 @@ echo "Checking provenance..."
 assert_provenance_exact "${HF_MODEL_ID}" 1
 assert_provenance "${SM_MODEL_ID}" 1
 assert_provenance "${AZ_MODEL_ID}" 1
+assert_provenance "${CE_MODEL_ID}" 1
 assert_provenance "${OL_MODEL_ID}" 1
 assert_provenance "${OTEL_MODEL_ID}" 1
 
@@ -548,6 +605,7 @@ echo "Connector E2E complete."
 echo "Hugging Face model: ${HF_MODEL_ID}"
 echo "SageMaker model: ${SM_MODEL_ID}"
 echo "Azure ML model: ${AZ_MODEL_ID}"
+echo "CloudEvents model: ${CE_MODEL_ID}"
 echo "OpenLineage model: ${OL_MODEL_ID}"
 echo "OpenTelemetry model: ${OTEL_MODEL_ID}"
 echo "Events: ${FRONTEND_BASE}/events"

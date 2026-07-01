@@ -52,6 +52,16 @@ export class IngestorProxyController {
     return await this.ingestorProxyService.simulateAzureMlEvent();
   }
 
+  @Post('simulate/cloudevents')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Emit a demo strict CloudEvents event through the server-side ingestor proxy.' })
+  @ApiAcceptedResponse({ description: 'Demo CloudEvents event accepted by the ingestor.' })
+  async simulateCloudEventsEvent() {
+    return await this.ingestorProxyService.simulateCloudEventsEvent();
+  }
+
   @Post('simulate/openlineage')
   @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.ACCEPTED)

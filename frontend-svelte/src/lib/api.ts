@@ -155,6 +155,9 @@ export const simulateSageMakerEvent = async () =>
 export const simulateAzureMlEvent = async () =>
   (await api.post('/ingestor/simulate/azureml')).data;
 
+export const simulateCloudEventsEvent = async () =>
+  (await api.post('/ingestor/simulate/cloudevents')).data;
+
 export const simulateOpenLineageEvent = async () =>
   (await api.post('/ingestor/simulate/openlineage')).data;
 

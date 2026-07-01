@@ -120,7 +120,7 @@ These should map to the current hashchain event model without requiring Ernest t
 
 ### CloudEvents
 
-CloudEvents can be used as the event envelope for interoperability across systems.
+CloudEvents can be used as the event envelope for interoperability across systems. Ernest now treats `/events/cloudevents` as a strict CloudEvents 1.0 intake: `specversion`, `id`, `source`, and `type` are required, and invalid envelopes are rejected into the failure log instead of being silently normalized as generic JSON.
 
 Example:
 
@@ -424,7 +424,7 @@ Current behavior:
 
 - `serve` exposes an HTTP event receiver on port `3011`.
 - `POST /events` accepts arbitrary JSON events.
-- `POST /events/cloudevents` accepts the same payload shape for now and preserves CloudEvents-style fields such as `id`, `type`, `source`, and `time`.
+- `POST /events/cloudevents` accepts strict CloudEvents 1.0 JSON, validates required envelope fields, and adapts the event to Ernest canonical evidence.
 - `POST /events/huggingface` accepts Hugging Face Hub webhook payloads and adapts them to Ernest canonical events.
 - `POST /events/sagemaker` accepts AWS SageMaker EventBridge-style payloads and adapts them to Ernest canonical events.
 - `POST /events/azureml` accepts Azure ML Event Grid-style payloads and adapts model, run/job, endpoint, and monitoring events to Ernest canonical events.
@@ -452,6 +452,24 @@ Current canonical mappings:
 | `dataset.linked` | `dataset_linked` |
 | `inference.logged` | `inference` |
 | Any unknown type | `external_event` |
+
+Current CloudEvents mappings:
+
+| CloudEvents payload | Ernest incoming event |
+| --- | --- |
+| `data.eventType` present | The explicit Ernest event type in `data.eventType` |
+| `type` contains `model.registered` | `model.registered` |
+| `type` contains `model.version.created` | `model.version.created` |
+| `type` contains `model.deployed` | `model.deployed` |
+| `type` contains `model.undeployed` | `model.undeployed` |
+| `type` contains `training.started` | `training.started` |
+| `type` contains `training.completed` | `training.completed` |
+| `type` contains `dataset.linked` | `dataset.linked` |
+| `type` contains `inference.logged` | `inference.logged` |
+| `type` contains `drift.detected` | `drift.detected` |
+| Unknown type | `external_event` |
+
+The CloudEvents adapter stores selected envelope fields such as `id`, `source`, `type`, `subject`, `time`, `datacontenttype`, `dataschema`, and the raw event hash in metadata. Invalid envelopes are rejected with `failureKind = "validation_rejected"` and persisted through the rejected-events stream.
 
 Current Hugging Face webhook mappings:
 
@@ -605,9 +623,9 @@ Authenticated connector E2E test:
 EVENT_INGESTOR_API_KEY=<ingestor-key> HF_WEBHOOK_SECRET=<hf-secret> ./scripts/event-connectors-e2e.sh
 ```
 
-This test covers backend-proxied connector simulations, direct provider ingestion, Azure ML Event Grid evidence, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
+This test covers backend-proxied connector simulations, direct provider ingestion, strict CloudEvents validation, Azure ML Event Grid evidence, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
 
-This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, Azure ML Event Grid, OpenLineage, and OpenTelemetry. Next connector candidates are Databricks / Unity Catalog, Vertex AI audit-log-to-Pub/Sub, and a stricter CloudEvents normalizer.
+This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, Azure ML Event Grid, OpenLineage, and OpenTelemetry, plus a strict CloudEvents normalizer. Next connector candidates are Databricks / Unity Catalog and Vertex AI audit-log-to-Pub/Sub.
 
 ## Why This Matters
 

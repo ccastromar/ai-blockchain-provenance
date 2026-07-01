@@ -103,6 +103,29 @@ export class IngestorProxyService {
     });
   }
 
+  async simulateCloudEventsEvent() {
+    const runId = Date.now().toString(36);
+    const version = String(Date.now()).slice(-6);
+
+    return await this.postToIngestor('/events/cloudevents', {
+      specversion: '1.0',
+      id: `ce-${runId}`,
+      source: 'urn:ernest:frontend-demo',
+      type: 'com.ernest.model.registered',
+      subject: `models/credit-risk-cloudevents/versions/${version}`,
+      time: new Date().toISOString(),
+      datacontenttype: 'application/json',
+      data: {
+        eventType: 'model.registered',
+        modelId: 'credit-risk-cloudevents',
+        modelName: 'Credit Risk CloudEvents',
+        version,
+        artifactHash: `${runId.padEnd(64, 'e').slice(0, 64)}`,
+        gitCommit: `${runId.padEnd(16, 'f').slice(0, 16)}`,
+      },
+    });
+  }
+
   async simulateOpenLineageEvent() {
     const runId = Date.now().toString(36);
     const version = String(Date.now()).slice(-6);
