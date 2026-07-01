@@ -188,6 +188,8 @@ Then open:
 - Backend health: `http://localhost:3001/health`
 - API docs: `http://localhost:3001/api/docs`
 - Chain stats: `http://localhost:3001/api/stats`
+- Event connectors: `http://localhost:3000/connectors`
+- Ingested events: `http://localhost:3000/events`
 - Local auditor: `http://localhost:3000/auditor`
 
 For a quick product demo, click **Seed demo** on the dashboard. It creates a credit-risk model registration plus two hash-only inference events, then you can open Audit Readiness immediately.
@@ -208,6 +210,14 @@ Then open:
 
 - MLflow UI: `http://localhost:8111`
 - Audit Readiness: `http://localhost:3000/auditor`
+
+Run the event-ingestion E2E demo:
+
+```bash
+EVENT_INGESTOR_API_KEY=<ingestor-key> HF_WEBHOOK_SECRET=<hf-secret> ./scripts/event-connectors-e2e.sh
+```
+
+The Docker stack includes Redis, the Go event receiver, and the Go event writer. Events are buffered in Redis Streams, appended to MongoDB `provenanceblocks`, indexed in `ingested_events`, and rejected/DLQ payloads are visible through `event_failures` plus the Events UI.
 
 Run the same stack with a local Hardhat blockchain for anchoring demos:
 

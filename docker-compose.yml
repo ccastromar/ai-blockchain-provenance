@@ -25,6 +25,29 @@ services:
       - ernest-network
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    container_name: ernest-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -36,8 +59,11 @@ services:
       - PORT=3001
       - MONGODB_URI=mongodb://mongodb:27017/ernest
       - NODE_ENV=production
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://127.0.0.1:3000}
       - ERNEST_API_KEY=${ERNEST_API_KEY:-}
+      - EVENT_INGESTOR_URL=http://event-ingestor:3011
+      - EVENT_INGESTOR_API_KEY=${EVENT_INGESTOR_API_KEY:-}
+      - HF_WEBHOOK_SECRET=${HF_WEBHOOK_SECRET:-}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -56,12 +82,80 @@ services:
       - ernest-network
     restart: unless-stopped
 
+  event-ingestor:
+    build:
+      context: .
+      dockerfile: event-ingestor/Dockerfile
+    container_name: ernest-event-ingestor
+    command: ["serve"]
+    ports:
+      - "127.0.0.1:3011:3011"
+    environment:
+      - PORT=3011
+      - REDIS_ADDR=redis:6379
+      - REDIS_STREAM=${REDIS_STREAM:-ernest:events:incoming}
+      - REDIS_STREAM_MAXLEN=${REDIS_STREAM_MAXLEN:-10000}
+      - REDIS_REJECTED_STREAM=${REDIS_REJECTED_STREAM:-ernest:events:rejected}
+      - MAX_PAYLOAD_BYTES=${MAX_PAYLOAD_BYTES:-1048576}
+      - HF_WEBHOOK_SECRET=${HF_WEBHOOK_SECRET:-}
+      - EVENT_INGESTOR_API_KEY=${EVENT_INGESTOR_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
+  event-writer:
+    build:
+      context: .
+      dockerfile: event-ingestor/Dockerfile
+    container_name: ernest-event-writer
+    command: ["worker"]
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_STREAM=${REDIS_STREAM:-ernest:events:incoming}
+      - REDIS_GROUP=${REDIS_GROUP:-provenance-writers}
+      - REDIS_CONSUMER=${REDIS_CONSUMER:-event-writer-1}
+      - REDIS_DLQ_STREAM=${REDIS_DLQ_STREAM:-ernest:events:deadletter}
+      - REDIS_REJECTED_STREAM=${REDIS_REJECTED_STREAM:-ernest:events:rejected}
+      - MONGODB_URI=mongodb://mongodb:27017/ernest
+      - MONGO_DB_NAME=ernest
+      - WORKER_BATCH_COUNT=${WORKER_BATCH_COUNT:-10}
+      - WORKER_BLOCK_MS=${WORKER_BLOCK_MS:-5000}
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
   frontend:
     build:
       context: .
       dockerfile: frontend-svelte/Dockerfile
       args:
-        PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3001}
+        PUBLIC_API_URL: ${PUBLIC_API_URL:-}
         PUBLIC_ERNEST_API_KEY: ${PUBLIC_ERNEST_API_KEY:-}
     container_name: ernest-frontend
     ports:
@@ -88,6 +182,7 @@ services:
 
 volumes:
   mongodb_data:
+  redis_data:
 
 networks:
   ernest-network:

@@ -13,6 +13,7 @@ import { AnchorEventsService } from './api/anchor-events.service';
 import { HealthController } from './health/health.controller';
 import { ApiKeyGuard } from './common/api-key.guard';
 import { Anchor, AnchorSchema } from './blockchain/models/anchor.schema';
+import { IngestionModule } from './ingestion/ingestion.module';
 
 @Module({
   imports: [
@@ -26,7 +27,8 @@ import { Anchor, AnchorSchema } from './blockchain/models/anchor.schema';
     MongooseModule.forFeature([{ name: Anchor.name, schema: AnchorSchema }]),
     BlockchainModule,
     MlflowModule,
-    AIModelModule
+    AIModelModule,
+    IngestionModule
   ],
   controllers: [
     ApiController,

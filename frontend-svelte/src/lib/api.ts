@@ -1,7 +1,8 @@
 import axios, { type AxiosError } from 'axios';
 import { env } from '$env/dynamic/public';
 
-const apiUrl = env.PUBLIC_API_URL || 'http://localhost:3001';
+const configuredApiUrl = env.PUBLIC_API_URL ?? '';
+const apiUrl = configuredApiUrl === 'http://localhost:3001' ? '' : configuredApiUrl;
 const apiKey = env.PUBLIC_ERNEST_API_KEY || undefined;
 
 const api = axios.create({
@@ -71,6 +72,13 @@ export interface HealthStatus {
   };
 }
 
+export interface IngestedEventFilters {
+  status?: string;
+  source?: string;
+  eventType?: string;
+  verificationStatus?: string;
+}
+
 // ── Models ─────────────────────────────────────────────────────────────────
 
 export const registerModel = async (data: RegisterModelData) =>
@@ -102,10 +110,52 @@ export const patchModel = async (modelId: string, status: ModelStatus) =>
 export const getModelIntegrity = async (modelId: string) =>
   (await api.get(`/models/${modelId}/integrity`)).data;
 
+// ── Event ingestion ────────────────────────────────────────────────────────
+
+export const getIngestedEvents = async (
+  page = 1,
+  limit = 20,
+  filters: IngestedEventFilters = {}
+): Promise<PaginatedResponse<any>> => {
+  const res = (await api.get('/ingested-events', { params: { page, limit, ...filters } })).data;
+  if (Array.isArray(res)) return { data: res, total: res.length, page: 1, totalPages: 1 };
+  if (res.items) return { data: res.items, total: res.total, page: res.page, totalPages: res.totalPages };
+  return res;
+};
+
+export const getIngestedEventStats = async () =>
+  (await api.get('/ingested-events/stats')).data;
+
+export const getEventFailures = async (
+  page = 1,
+  limit = 20,
+  filters: Pick<IngestedEventFilters, 'source' | 'eventType'> = {}
+): Promise<PaginatedResponse<any>> => {
+  const res = (await api.get('/ingested-events/failures', { params: { page, limit, ...filters } })).data;
+  if (Array.isArray(res)) return { data: res, total: res.length, page: 1, totalPages: 1 };
+  if (res.items) return { data: res.items, total: res.total, page: res.page, totalPages: res.totalPages };
+  return res;
+};
+
+export const getEventFailureStats = async () =>
+  (await api.get('/ingested-events/failures/stats')).data;
+
+export const getIngestorAuthStatus = async () =>
+  (await api.get('/ingestor/auth')).data;
+
+export const getIngestorHealth = async () =>
+  (await api.get('/ingestor/health')).data;
+
+export const simulateHuggingFaceEvent = async () =>
+  (await api.post('/ingestor/simulate/huggingface')).data;
+
+export const simulateSageMakerEvent = async () =>
+  (await api.post('/ingestor/simulate/sagemaker')).data;
+
 // ── Provenances ────────────────────────────────────────────────────────────
 
 export const getProvenance = async (modelId: string, filters?: ProvenanceFilter) =>
-  (await api.get(`/provenances/${modelId}`, { params: filters })).data;
+  (await api.get('/provenances', { params: { modelId, ...filters } })).data;
 
 export const exportProvenance = (modelId: string) =>
   `${apiUrl}/api/provenances/${modelId}/export`;
@@ -114,6 +164,7 @@ export const exportProvenance = (modelId: string) =>
 
 export const getChainStats = async () => (await api.get('/stats')).data;
 export const verifyChain   = async () => (await api.get('/verify')).data;
+export const getBlockByIndex = async (index: number) => (await api.get(`/blocks/${index}`)).data;
 export const logInference  = async (data: LogInferenceData) =>
   (await api.post('/inferences', data)).data;
 

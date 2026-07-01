@@ -51,12 +51,35 @@ export class ApiController {
     return await this.apiService.seedDemoData();
   }
 
+  @Get('provenances')
+  @ApiOperation({ summary: 'Return provenance blocks for a model.' })
+  @ApiQuery({ name: 'modelId', example: 'openai-community/gpt2', description: 'Model identifier. Query form supports IDs containing slashes.' })
+  @ApiQuery({ name: 'type', required: false, enum: ['model_registration', 'inference'], description: 'Filter by block type' })
+  @ApiQuery({ name: 'from', required: false, type: Number, description: 'Unix timestamp (seconds) - start of range' })
+  @ApiQuery({ name: 'to', required: false, type: Number, description: 'Unix timestamp (seconds) - end of range' })
+  @ApiHeader({ name: 'X-Ernest-Org-Id', required: false, description: 'Scope results to an organization' })
+  @ApiOkResponse({ description: 'Model provenance and current chain verification status.' })
+  async getProvenanceByQuery(
+    @Query('modelId') modelId: string,
+    @Query('type') type?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @OrgId() orgId?: string,
+  ) {
+    return await this.apiService.getProvenance(modelId, {
+      type,
+      from: from ? Number(from) : undefined,
+      to: to ? Number(to) : undefined,
+      organizationId: orgId,
+    });
+  }
+
   @Get('provenances/:modelId')
   @ApiOperation({ summary: 'Return provenance blocks for a model.' })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
   @ApiQuery({ name: 'type', required: false, enum: ['model_registration', 'inference'], description: 'Filter by block type' })
-  @ApiQuery({ name: 'from', required: false, type: Number, description: 'Unix timestamp (seconds) — start of range' })
-  @ApiQuery({ name: 'to', required: false, type: Number, description: 'Unix timestamp (seconds) — end of range' })
+  @ApiQuery({ name: 'from', required: false, type: Number, description: 'Unix timestamp (seconds) - start of range' })
+  @ApiQuery({ name: 'to', required: false, type: Number, description: 'Unix timestamp (seconds) - end of range' })
   @ApiHeader({ name: 'X-Ernest-Org-Id', required: false, description: 'Scope results to an organization' })
   @ApiOkResponse({ description: 'Model provenance and current chain verification status.' })
   async getProvenance(
