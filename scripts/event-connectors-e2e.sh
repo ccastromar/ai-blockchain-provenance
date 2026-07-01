@@ -7,6 +7,7 @@ INGESTOR_BASE="${INGESTOR_BASE:-${FRONTEND_BASE}/ingestor}"
 RUN_ID="$(date +%Y%m%d%H%M%S)"
 HF_MODEL_ID="${HF_MODEL_ID:-openai-community/gpt2-e2e-${RUN_ID}}"
 SM_MODEL_ID="${SM_MODEL_ID:-credit-risk-xgb-e2e-${RUN_ID}}"
+AZ_MODEL_ID="${AZ_MODEL_ID:-credit-risk-azure-e2e-${RUN_ID}}"
 OL_MODEL_ID="${OL_MODEL_ID:-credit-risk-openlineage-e2e-${RUN_ID}}"
 OTEL_MODEL_ID="${OTEL_MODEL_ID:-credit-risk-otel-e2e-${RUN_ID}}"
 INGEST_KEY="${EVENT_INGESTOR_API_KEY:-}"
@@ -243,6 +244,13 @@ PROXY_OL_RESPONSE="$(curl --fail --silent --show-error \
 PROXY_OL_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_OL_RESPONSE}" | json_field sourceEventId)"
 echo "  proxied ${PROXY_OL_SOURCE_EVENT_ID}"
 
+echo "Checking backend Azure ML proxy simulation..."
+PROXY_AZ_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${API_BASE}/ingestor/simulate/azureml" \
+  -H "Content-Type: application/json")"
+PROXY_AZ_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_AZ_RESPONSE}" | json_field sourceEventId)"
+echo "  proxied ${PROXY_AZ_SOURCE_EVENT_ID}"
+
 echo "Checking backend OpenTelemetry proxy simulation..."
 PROXY_OTEL_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${API_BASE}/ingestor/simulate/opentelemetry" \
@@ -331,6 +339,31 @@ SM_RESPONSE="$(curl --fail --silent --show-error \
   }")"
 SM_SOURCE_EVENT_ID="$(printf '%s' "${SM_RESPONSE}" | json_field sourceEventId)"
 echo "  accepted ${SM_SOURCE_EVENT_ID}"
+
+echo "Emitting Azure ML Event Grid event..."
+AZ_VERSION="$(date +%s)"
+AZ_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${INGESTOR_BASE}/events/azureml" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]}" \
+  -d "{
+    \"id\": \"evt-e2e-az-${RUN_ID}\",
+    \"eventType\": \"Microsoft.MachineLearningServices.ModelRegistered\",
+    \"subject\": \"/workspaces/ernest-e2e/models/${AZ_MODEL_ID}/versions/${AZ_VERSION}\",
+    \"eventTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"topic\": \"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ernest/providers/Microsoft.MachineLearningServices/workspaces/ernest-e2e\",
+    \"data\": {
+      \"workspaceName\": \"ernest-e2e\",
+      \"modelName\": \"${AZ_MODEL_ID}\",
+      \"modelDisplayName\": \"Credit Risk Azure ML E2E\",
+      \"modelVersion\": \"${AZ_VERSION}\",
+      \"modelUri\": \"azureml://registries/ernest/models/${AZ_MODEL_ID}/versions/${AZ_VERSION}\",
+      \"artifactHash\": \"abababababababababababababababababababababababababababababababab\",
+      \"gitCommit\": \"${RUN_ID}\"
+    }
+  }")"
+AZ_SOURCE_EVENT_ID="$(printf '%s' "${AZ_RESPONSE}" | json_field sourceEventId)"
+echo "  accepted ${AZ_SOURCE_EVENT_ID}"
 
 echo "Emitting OpenLineage run event..."
 OL_VERSION="$(date +%s)"
@@ -433,6 +466,12 @@ if [[ -n "${INGEST_KEY}" ]]; then
 else
   wait_for_event_verification "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}" "unverified"
 fi
+wait_for_appended_event "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}" "shared_secret"
+else
+  wait_for_event_verification "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}" "unverified"
+fi
 wait_for_appended_event "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "shared_secret"
@@ -451,6 +490,10 @@ fi
 wait_for_appended_event "sagemaker" "${SM_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "sagemaker" "${SM_SOURCE_EVENT_ID}" "shared_secret"
+fi
+wait_for_appended_event "azureml" "${AZ_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "azureml" "${AZ_SOURCE_EVENT_ID}" "shared_secret"
 fi
 wait_for_appended_event "openlineage" "${OL_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
@@ -485,6 +528,7 @@ wait_for_duplicate_event "huggingface" "${HF_SOURCE_EVENT_ID}"
 echo "Checking provenance..."
 assert_provenance_exact "${HF_MODEL_ID}" 1
 assert_provenance "${SM_MODEL_ID}" 1
+assert_provenance "${AZ_MODEL_ID}" 1
 assert_provenance "${OL_MODEL_ID}" 1
 assert_provenance "${OTEL_MODEL_ID}" 1
 
@@ -503,6 +547,7 @@ echo
 echo "Connector E2E complete."
 echo "Hugging Face model: ${HF_MODEL_ID}"
 echo "SageMaker model: ${SM_MODEL_ID}"
+echo "Azure ML model: ${AZ_MODEL_ID}"
 echo "OpenLineage model: ${OL_MODEL_ID}"
 echo "OpenTelemetry model: ${OTEL_MODEL_ID}"
 echo "Events: ${FRONTEND_BASE}/events"

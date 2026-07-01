@@ -152,6 +152,9 @@ export const simulateHuggingFaceEvent = async () =>
 export const simulateSageMakerEvent = async () =>
   (await api.post('/ingestor/simulate/sagemaker')).data;
 
+export const simulateAzureMlEvent = async () =>
+  (await api.post('/ingestor/simulate/azureml')).data;
+
 export const simulateOpenLineageEvent = async () =>
   (await api.post('/ingestor/simulate/openlineage')).data;
 

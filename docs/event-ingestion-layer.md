@@ -213,7 +213,7 @@ Suggested implementation order:
 6. Databricks / Unity Catalog connector
 7. Vertex AI audit-log-to-Pub/Sub connector
 
-The first implemented connectors are Hugging Face, SageMaker, OpenLineage, and OpenTelemetry. Hugging Face is useful for public model repository demos, SageMaker is a stronger enterprise cloud proof point, OpenLineage adds training and dataset lineage evidence, and OpenTelemetry lets production applications submit hash-only inference evidence through observability pipelines.
+The first implemented connectors are Hugging Face, SageMaker, OpenLineage, OpenTelemetry, and Azure ML. Hugging Face is useful for public model repository demos, SageMaker and Azure ML are enterprise cloud proof points, OpenLineage adds training and dataset lineage evidence, and OpenTelemetry lets production applications submit hash-only inference evidence through observability pipelines.
 
 ## Trust And Security Controls
 
@@ -427,6 +427,7 @@ Current behavior:
 - `POST /events/cloudevents` accepts the same payload shape for now and preserves CloudEvents-style fields such as `id`, `type`, `source`, and `time`.
 - `POST /events/huggingface` accepts Hugging Face Hub webhook payloads and adapts them to Ernest canonical events.
 - `POST /events/sagemaker` accepts AWS SageMaker EventBridge-style payloads and adapts them to Ernest canonical events.
+- `POST /events/azureml` accepts Azure ML Event Grid-style payloads and adapts model, run/job, endpoint, and monitoring events to Ernest canonical events.
 - `POST /events/openlineage` accepts OpenLineage run events and adapts selected run, job, dataset, model, metric, and source-code facts to Ernest canonical events.
 - `POST /events/opentelemetry/logs` accepts OTLP-style JSON log batches and adapts selected AI inference attributes to Ernest `inference.logged` events.
 - The receiver computes `rawEventHash`.
@@ -479,6 +480,20 @@ Current SageMaker EventBridge mappings:
 | model card state change | `model.card.updated` |
 
 The SageMaker adapter stores selected AWS fields such as event ID, account, region, detail type, SageMaker ARN, status, artifact URI, and the raw event hash in event metadata.
+
+Current Azure ML Event Grid mappings:
+
+| Azure ML payload | Ernest incoming event |
+| --- | --- |
+| model registered / created | `model.registered` |
+| run, job, or pipeline started / status changed | `training.started` |
+| run, job, or pipeline completed / succeeded / failed / canceled | `training.completed` |
+| endpoint or deployment succeeded / active | `model.deployed` |
+| endpoint or deployment deleted / inactive / failed | `model.undeployed` |
+| drift or monitoring event | `drift.detected` |
+| model event without registration semantics | `model.updated` |
+
+The Azure ML adapter stores selected Event Grid fields such as event ID, event type, subject, topic, workspace, resource ID, run/job ID, endpoint/deployment name, metric name, status, artifact URI, and the raw event hash in metadata.
 
 Current OpenLineage mappings:
 
@@ -590,9 +605,9 @@ Authenticated connector E2E test:
 EVENT_INGESTOR_API_KEY=<ingestor-key> HF_WEBHOOK_SECRET=<hf-secret> ./scripts/event-connectors-e2e.sh
 ```
 
-This test covers backend-proxied connector simulations, direct provider ingestion, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
+This test covers backend-proxied connector simulations, direct provider ingestion, Azure ML Event Grid evidence, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
 
-This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, OpenLineage, and OpenTelemetry. Next connector candidates are Azure ML Event Grid, Databricks / Unity Catalog, Vertex AI audit-log-to-Pub/Sub, and a stricter CloudEvents normalizer.
+This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, Azure ML Event Grid, OpenLineage, and OpenTelemetry. Next connector candidates are Databricks / Unity Catalog, Vertex AI audit-log-to-Pub/Sub, and a stricter CloudEvents normalizer.
 
 ## Why This Matters
 

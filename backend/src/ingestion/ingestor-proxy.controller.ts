@@ -42,6 +42,16 @@ export class IngestorProxyController {
     return await this.ingestorProxyService.simulateSageMakerEvent();
   }
 
+  @Post('simulate/azureml')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Emit a demo Azure ML Event Grid event through the server-side ingestor proxy.' })
+  @ApiAcceptedResponse({ description: 'Demo Azure ML event accepted by the ingestor.' })
+  async simulateAzureMlEvent() {
+    return await this.ingestorProxyService.simulateAzureMlEvent();
+  }
+
   @Post('simulate/openlineage')
   @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.ACCEPTED)

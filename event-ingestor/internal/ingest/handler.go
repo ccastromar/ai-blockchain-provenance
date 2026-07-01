@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"event-ingestor/internal/adapters/azureml"
 	"event-ingestor/internal/adapters/huggingface"
 	"event-ingestor/internal/adapters/openlineage"
 	"event-ingestor/internal/adapters/opentelemetry"
@@ -33,6 +34,7 @@ func (h Handler) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", h.health)
 	mux.HandleFunc("/events", h.events)
+	mux.HandleFunc("/events/azureml", h.azureML)
 	mux.HandleFunc("/events/cloudevents", h.events)
 	mux.HandleFunc("/events/huggingface", h.huggingFace)
 	mux.HandleFunc("/events/openlineage", h.openLineage)
@@ -223,6 +225,61 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
 		"provider":           "sagemaker",
+		"eventType":          adapted.EventType,
+		"sourceEventId":      adapted.SourceEventID,
+		"redisStreamId":      id,
+		"rawEventHash":       hash(body),
+		"verificationStatus": verificationStatus,
+	})
+}
+
+func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	verificationStatus, ok := h.verifyIngestAuth(r)
+	if !ok {
+		h.recordRejected(r, "azureml", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, h.cfg.MaxPayloadBytes+1))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "could not read request body"})
+		return
+	}
+	if int64(len(body)) > h.cfg.MaxPayloadBytes {
+		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
+		return
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json payload"})
+		return
+	}
+
+	adapted := azureml.Adapt(payload, body)
+	attachVerification(adapted.Payload, verificationStatus)
+	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+		"source":        adapted.Source,
+		"eventType":     adapted.EventType,
+		"sourceEventId": adapted.SourceEventID,
+		"rawEventHash":  hash(body),
+		"receivedAt":    time.Now().UTC().Format(time.RFC3339Nano),
+		"payload":       mustJSON(adapted.Payload),
+	})
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue Azure ML event"})
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]string{
+		"status":             "accepted",
+		"provider":           "azureml",
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
+  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
 
   type ConnectorState = 'enabled' | 'planned';
 
@@ -55,8 +55,9 @@
       id: 'azureml',
       name: 'Azure ML Event Grid',
       source: 'azureml',
-      status: 'planned',
-      eventTypes: ['model.registered', 'run.completed', 'drift.detected'],
+      status: 'enabled',
+      endpoint: '/ingestor/events/azureml',
+      eventTypes: ['model.registered', 'training.completed', 'model.deployed', 'drift.detected'],
       note: 'Azure-native connector for registry, run, and monitoring events.'
     },
     {
@@ -118,6 +119,8 @@
     try {
       if (connectorId === 'sagemaker') {
         simulationResult = await simulateSageMakerEvent();
+      } else if (connectorId === 'azureml') {
+        simulationResult = await simulateAzureMlEvent();
       } else if (connectorId === 'openlineage') {
         simulationResult = await simulateOpenLineageEvent();
       } else if (connectorId === 'otel') {
@@ -271,7 +274,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'openlineage' || connector.id === 'otel'}
+              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'openlineage' || connector.id === 'otel'}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>

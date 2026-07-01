@@ -81,6 +81,28 @@ export class IngestorProxyService {
     });
   }
 
+  async simulateAzureMlEvent() {
+    const runId = Date.now().toString(36);
+    const version = String(Date.now()).slice(-6);
+
+    return await this.postToIngestor('/events/azureml', {
+      id: `evt-az-${runId}`,
+      eventType: 'Microsoft.MachineLearningServices.ModelRegistered',
+      subject: `/workspaces/ernest-demo/models/credit-risk-azure/versions/${version}`,
+      eventTime: new Date().toISOString(),
+      topic: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ernest/providers/Microsoft.MachineLearningServices/workspaces/ernest-demo',
+      data: {
+        workspaceName: 'ernest-demo',
+        modelName: 'credit-risk-azure',
+        modelDisplayName: 'Credit Risk Azure ML',
+        modelVersion: version,
+        modelUri: `azureml://registries/ernest/models/credit-risk-azure/versions/${version}`,
+        artifactHash: `${runId.padEnd(64, 'c').slice(0, 64)}`,
+        gitCommit: `${runId.padEnd(16, 'd').slice(0, 16)}`,
+      },
+    });
+  }
+
   async simulateOpenLineageEvent() {
     const runId = Date.now().toString(36);
     const version = String(Date.now()).slice(-6);
