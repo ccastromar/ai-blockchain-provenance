@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"event-ingestor/internal/adapters/huggingface"
+	"event-ingestor/internal/adapters/openlineage"
+	"event-ingestor/internal/adapters/opentelemetry"
 	"event-ingestor/internal/adapters/sagemaker"
 	"event-ingestor/internal/config"
 	"event-ingestor/internal/events"
@@ -33,6 +35,8 @@ func (h Handler) Routes() http.Handler {
 	mux.HandleFunc("/events", h.events)
 	mux.HandleFunc("/events/cloudevents", h.events)
 	mux.HandleFunc("/events/huggingface", h.huggingFace)
+	mux.HandleFunc("/events/openlineage", h.openLineage)
+	mux.HandleFunc("/events/opentelemetry/logs", h.openTelemetryLogs)
 	mux.HandleFunc("/events/sagemaker", h.sageMaker)
 	return mux
 }
@@ -222,6 +226,126 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
+		"rawEventHash":       hash(body),
+		"verificationStatus": verificationStatus,
+	})
+}
+
+func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	verificationStatus, ok := h.verifyIngestAuth(r)
+	if !ok {
+		h.recordRejected(r, "openlineage", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, h.cfg.MaxPayloadBytes+1))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "could not read request body"})
+		return
+	}
+	if int64(len(body)) > h.cfg.MaxPayloadBytes {
+		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
+		return
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json payload"})
+		return
+	}
+
+	adapted := openlineage.Adapt(payload, body)
+	attachVerification(adapted.Payload, verificationStatus)
+	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+		"source":        adapted.Source,
+		"eventType":     adapted.EventType,
+		"sourceEventId": adapted.SourceEventID,
+		"rawEventHash":  hash(body),
+		"receivedAt":    time.Now().UTC().Format(time.RFC3339Nano),
+		"payload":       mustJSON(adapted.Payload),
+	})
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue OpenLineage event"})
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]string{
+		"status":             "accepted",
+		"provider":           "openlineage",
+		"eventType":          adapted.EventType,
+		"sourceEventId":      adapted.SourceEventID,
+		"redisStreamId":      id,
+		"rawEventHash":       hash(body),
+		"verificationStatus": verificationStatus,
+	})
+}
+
+func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	verificationStatus, ok := h.verifyIngestAuth(r)
+	if !ok {
+		h.recordRejected(r, "opentelemetry", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, h.cfg.MaxPayloadBytes+1))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "could not read request body"})
+		return
+	}
+	if int64(len(body)) > h.cfg.MaxPayloadBytes {
+		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
+		return
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json payload"})
+		return
+	}
+
+	adaptedEvents := opentelemetry.AdaptAll(payload, body)
+	if len(adaptedEvents) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "no OpenTelemetry log records found"})
+		return
+	}
+
+	streamIDs := make([]string, 0, len(adaptedEvents))
+	for _, adapted := range adaptedEvents {
+		attachVerification(adapted.Payload, verificationStatus)
+		id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+			"source":        adapted.Source,
+			"eventType":     adapted.EventType,
+			"sourceEventId": adapted.SourceEventID,
+			"rawEventHash":  hash(body),
+			"receivedAt":    time.Now().UTC().Format(time.RFC3339Nano),
+			"payload":       mustJSON(adapted.Payload),
+		})
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue OpenTelemetry log event"})
+			return
+		}
+		streamIDs = append(streamIDs, id)
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"status":             "accepted",
+		"provider":           "opentelemetry",
+		"eventType":          "inference.logged",
+		"sourceEventId":      adaptedEvents[0].SourceEventID,
+		"acceptedCount":      len(adaptedEvents),
+		"redisStreamIds":     streamIDs,
 		"rawEventHash":       hash(body),
 		"verificationStatus": verificationStatus,
 	})

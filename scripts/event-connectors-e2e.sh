@@ -7,6 +7,8 @@ INGESTOR_BASE="${INGESTOR_BASE:-${FRONTEND_BASE}/ingestor}"
 RUN_ID="$(date +%Y%m%d%H%M%S)"
 HF_MODEL_ID="${HF_MODEL_ID:-openai-community/gpt2-e2e-${RUN_ID}}"
 SM_MODEL_ID="${SM_MODEL_ID:-credit-risk-xgb-e2e-${RUN_ID}}"
+OL_MODEL_ID="${OL_MODEL_ID:-credit-risk-openlineage-e2e-${RUN_ID}}"
+OTEL_MODEL_ID="${OTEL_MODEL_ID:-credit-risk-otel-e2e-${RUN_ID}}"
 INGEST_KEY="${EVENT_INGESTOR_API_KEY:-}"
 HF_SECRET="${HF_WEBHOOK_SECRET:-}"
 INGEST_HEADERS=()
@@ -234,6 +236,20 @@ PROXY_RESPONSE="$(curl --fail --silent --show-error \
 PROXY_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_RESPONSE}" | json_field sourceEventId)"
 echo "  proxied ${PROXY_SOURCE_EVENT_ID}"
 
+echo "Checking backend OpenLineage proxy simulation..."
+PROXY_OL_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${API_BASE}/ingestor/simulate/openlineage" \
+  -H "Content-Type: application/json")"
+PROXY_OL_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_OL_RESPONSE}" | json_field sourceEventId)"
+echo "  proxied ${PROXY_OL_SOURCE_EVENT_ID}"
+
+echo "Checking backend OpenTelemetry proxy simulation..."
+PROXY_OTEL_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${API_BASE}/ingestor/simulate/opentelemetry" \
+  -H "Content-Type: application/json")"
+PROXY_OTEL_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_OTEL_RESPONSE}" | json_field sourceEventId)"
+echo "  proxied ${PROXY_OTEL_SOURCE_EVENT_ID}"
+
 if [[ -n "${INGEST_KEY}" || -n "${HF_SECRET}" ]]; then
   EXPECTED_AUTH_REJECTIONS=0
   if [[ -n "${INGEST_KEY}" ]]; then
@@ -316,9 +332,113 @@ SM_RESPONSE="$(curl --fail --silent --show-error \
 SM_SOURCE_EVENT_ID="$(printf '%s' "${SM_RESPONSE}" | json_field sourceEventId)"
 echo "  accepted ${SM_SOURCE_EVENT_ID}"
 
+echo "Emitting OpenLineage run event..."
+OL_VERSION="$(date +%s)"
+OL_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${INGESTOR_BASE}/events/openlineage" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]}" \
+  -d "{
+    \"eventType\": \"COMPLETE\",
+    \"eventTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"run\": {
+      \"runId\": \"run-e2e-ol-${RUN_ID}\",
+      \"facets\": {
+        \"ernest\": {
+          \"modelId\": \"${OL_MODEL_ID}\",
+          \"modelName\": \"Credit Risk OpenLineage E2E\",
+          \"version\": \"${OL_VERSION}\",
+          \"artifactHash\": \"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",
+          \"metrics\": { \"auc\": 0.94 }
+        },
+        \"sourceCode\": { \"gitCommit\": \"${RUN_ID}\" }
+      }
+    },
+    \"job\": {
+      \"namespace\": \"ernest-e2e-training\",
+      \"name\": \"credit-risk-openlineage-train\"
+    },
+    \"inputs\": [
+      {
+        \"namespace\": \"warehouse\",
+        \"name\": \"credit-risk/features\",
+        \"facets\": { \"version\": { \"version\": \"$(date -u +%Y-%m-%d)\" } }
+      }
+    ],
+    \"outputs\": [
+      {
+        \"namespace\": \"model-registry\",
+        \"name\": \"${OL_MODEL_ID}/${OL_VERSION}\",
+        \"facets\": { \"ernest\": { \"hash\": \"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\" } }
+      }
+    ]
+  }")"
+OL_SOURCE_EVENT_ID="$(printf '%s' "${OL_RESPONSE}" | json_field sourceEventId)"
+echo "  accepted ${OL_SOURCE_EVENT_ID}"
+
+echo "Emitting OpenTelemetry OTLP log event..."
+OTEL_INFERENCE_ID="inf-e2e-otel-${RUN_ID}"
+OTEL_TRACE_ID="${RUN_ID}aaaaaaaaaaaaaaaaaaaaaaaa"
+OTEL_SPAN_ID="${RUN_ID}bbbbbbbb"
+OTEL_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${INGESTOR_BASE}/events/opentelemetry/logs" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]}" \
+  -d "{
+    \"resourceLogs\": [
+      {
+        \"resource\": {
+          \"attributes\": [
+            { \"key\": \"service.name\", \"value\": { \"stringValue\": \"loan-decision-api\" } },
+            { \"key\": \"ai.provider\", \"value\": { \"stringValue\": \"internal-ai-gateway\" } }
+          ]
+        },
+        \"scopeLogs\": [
+          {
+            \"scope\": { \"name\": \"ernest-e2e-otel\" },
+            \"logRecords\": [
+              {
+                \"timeUnixNano\": \"1782900000000000000\",
+                \"traceId\": \"${OTEL_TRACE_ID}\",
+                \"spanId\": \"${OTEL_SPAN_ID}\",
+                \"body\": { \"stringValue\": \"AI inference completed\" },
+                \"attributes\": [
+                  { \"key\": \"ai.model.id\", \"value\": { \"stringValue\": \"${OTEL_MODEL_ID}\" } },
+                  { \"key\": \"ai.model.version\", \"value\": { \"stringValue\": \"prod\" } },
+                  { \"key\": \"ai.inference.id\", \"value\": { \"stringValue\": \"${OTEL_INFERENCE_ID}\" } },
+                  { \"key\": \"ai.input.hash\", \"value\": { \"stringValue\": \"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\" } },
+                  { \"key\": \"ai.output.hash\", \"value\": { \"stringValue\": \"1111111111111111111111111111111111111111111111111111111111111111\" } },
+                  { \"key\": \"ai.operation\", \"value\": { \"stringValue\": \"loan_decision\" } }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }")"
+OTEL_SOURCE_EVENT_ID="$(printf '%s' "${OTEL_RESPONSE}" | json_field sourceEventId)"
+echo "  accepted ${OTEL_SOURCE_EVENT_ID}"
+
 echo "Waiting for writer to append connector events..."
 wait_for_appended_event "sagemaker" "${PROXY_SOURCE_EVENT_ID}"
-wait_for_event_verification "sagemaker" "${PROXY_SOURCE_EVENT_ID}" "shared_secret"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "sagemaker" "${PROXY_SOURCE_EVENT_ID}" "shared_secret"
+else
+  wait_for_event_verification "sagemaker" "${PROXY_SOURCE_EVENT_ID}" "unverified"
+fi
+wait_for_appended_event "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}" "shared_secret"
+else
+  wait_for_event_verification "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}" "unverified"
+fi
+wait_for_appended_event "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "shared_secret"
+else
+  wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "unverified"
+fi
 if [[ -n "${HF_SECRET}" ]]; then
   wait_for_appended_event "huggingface" "${PROXY_HF_SOURCE_EVENT_ID}"
   wait_for_event_verification "huggingface" "${PROXY_HF_SOURCE_EVENT_ID}" "provider_secret"
@@ -331,6 +451,14 @@ fi
 wait_for_appended_event "sagemaker" "${SM_SOURCE_EVENT_ID}"
 if [[ -n "${INGEST_KEY}" ]]; then
   wait_for_event_verification "sagemaker" "${SM_SOURCE_EVENT_ID}" "shared_secret"
+fi
+wait_for_appended_event "openlineage" "${OL_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "openlineage" "${OL_SOURCE_EVENT_ID}" "shared_secret"
+fi
+wait_for_appended_event "opentelemetry" "${OTEL_SOURCE_EVENT_ID}"
+if [[ -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "opentelemetry" "${OTEL_SOURCE_EVENT_ID}" "shared_secret"
 fi
 
 echo "Re-emitting Hugging Face event to verify idempotency..."
@@ -357,6 +485,8 @@ wait_for_duplicate_event "huggingface" "${HF_SOURCE_EVENT_ID}"
 echo "Checking provenance..."
 assert_provenance_exact "${HF_MODEL_ID}" 1
 assert_provenance "${SM_MODEL_ID}" 1
+assert_provenance "${OL_MODEL_ID}" 1
+assert_provenance "${OTEL_MODEL_ID}" 1
 
 echo "Checking dead-letter visibility endpoint..."
 curl --fail --silent --show-error "${API_BASE}/ingested-events/failures/stats" >/dev/null
@@ -373,5 +503,7 @@ echo
 echo "Connector E2E complete."
 echo "Hugging Face model: ${HF_MODEL_ID}"
 echo "SageMaker model: ${SM_MODEL_ID}"
+echo "OpenLineage model: ${OL_MODEL_ID}"
+echo "OpenTelemetry model: ${OTEL_MODEL_ID}"
 echo "Events: ${FRONTEND_BASE}/events"
 echo "Connectors: ${FRONTEND_BASE}/connectors"

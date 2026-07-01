@@ -81,6 +81,99 @@ export class IngestorProxyService {
     });
   }
 
+  async simulateOpenLineageEvent() {
+    const runId = Date.now().toString(36);
+    const version = String(Date.now()).slice(-6);
+
+    return await this.postToIngestor('/events/openlineage', {
+      eventType: 'COMPLETE',
+      eventTime: new Date().toISOString(),
+      run: {
+        runId: `run-${runId}`,
+        facets: {
+          ernest: {
+            modelId: 'credit-risk-openlineage',
+            modelName: 'Credit Risk OpenLineage',
+            version,
+            artifactHash: `${runId.padEnd(64, 'd').slice(0, 64)}`,
+            metrics: {
+              auc: 0.93,
+              f1: 0.88,
+            },
+          },
+          sourceCode: {
+            gitCommit: `${runId.padEnd(16, 'e').slice(0, 16)}`,
+          },
+        },
+      },
+      job: {
+        namespace: 'ernest-demo-training',
+        name: 'credit-risk-openlineage-train',
+      },
+      inputs: [
+        {
+          namespace: 'warehouse',
+          name: 'credit-risk/features',
+          facets: {
+            version: {
+              version: new Date().toISOString().slice(0, 10),
+            },
+          },
+        },
+      ],
+      outputs: [
+        {
+          namespace: 'model-registry',
+          name: `credit-risk-openlineage/${version}`,
+          facets: {
+            ernest: {
+              hash: `${runId.padEnd(64, 'f').slice(0, 64)}`,
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  async simulateOpenTelemetryLogs() {
+    const runId = Date.now().toString(36);
+    const inferenceId = `inf-${runId}`;
+
+    return await this.postToIngestor('/events/opentelemetry/logs', {
+      resourceLogs: [
+        {
+          resource: {
+            attributes: [
+              { key: 'service.name', value: { stringValue: 'loan-decision-api' } },
+              { key: 'ai.provider', value: { stringValue: 'internal-ai-gateway' } },
+            ],
+          },
+          scopeLogs: [
+            {
+              scope: { name: 'ernest-demo-otel' },
+              logRecords: [
+                {
+                  timeUnixNano: `${Date.now()}000000`,
+                  traceId: `${runId.padEnd(32, 'a').slice(0, 32)}`,
+                  spanId: `${runId.padEnd(16, 'b').slice(0, 16)}`,
+                  body: { stringValue: 'AI inference completed' },
+                  attributes: [
+                    { key: 'ai.model.id', value: { stringValue: 'credit-risk-otel' } },
+                    { key: 'ai.model.version', value: { stringValue: 'prod' } },
+                    { key: 'ai.inference.id', value: { stringValue: inferenceId } },
+                    { key: 'ai.input.hash', value: { stringValue: `${runId.padEnd(64, '1').slice(0, 64)}` } },
+                    { key: 'ai.output.hash', value: { stringValue: `${runId.padEnd(64, '2').slice(0, 64)}` } },
+                    { key: 'ai.operation', value: { stringValue: 'loan_decision' } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+  }
+
   private async postToIngestor(
     path: string,
     payload: Record<string, unknown>,

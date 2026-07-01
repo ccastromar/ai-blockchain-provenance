@@ -207,13 +207,13 @@ Suggested implementation order:
 
 1. Hugging Face webhook connector
 2. SageMaker EventBridge connector
-3. Azure ML Event Grid connector
+3. OpenLineage ingestion
 4. OpenTelemetry / OTLP inference collector
-5. OpenLineage ingestion
+5. Azure ML Event Grid connector
 6. Databricks / Unity Catalog connector
 7. Vertex AI audit-log-to-Pub/Sub connector
 
-The first connector should be easy to demo and should produce visible lifecycle events. Hugging Face is a good candidate for that. SageMaker and Azure ML are stronger enterprise proof points.
+The first implemented connectors are Hugging Face, SageMaker, OpenLineage, and OpenTelemetry. Hugging Face is useful for public model repository demos, SageMaker is a stronger enterprise cloud proof point, OpenLineage adds training and dataset lineage evidence, and OpenTelemetry lets production applications submit hash-only inference evidence through observability pipelines.
 
 ## Trust And Security Controls
 
@@ -427,6 +427,8 @@ Current behavior:
 - `POST /events/cloudevents` accepts the same payload shape for now and preserves CloudEvents-style fields such as `id`, `type`, `source`, and `time`.
 - `POST /events/huggingface` accepts Hugging Face Hub webhook payloads and adapts them to Ernest canonical events.
 - `POST /events/sagemaker` accepts AWS SageMaker EventBridge-style payloads and adapts them to Ernest canonical events.
+- `POST /events/openlineage` accepts OpenLineage run events and adapts selected run, job, dataset, model, metric, and source-code facts to Ernest canonical events.
+- `POST /events/opentelemetry/logs` accepts OTLP-style JSON log batches and adapts selected AI inference attributes to Ernest `inference.logged` events.
 - The receiver computes `rawEventHash`.
 - The receiver writes the event to Redis Stream `ernest:events:incoming`.
 - `worker` reads from Redis using consumer group `provenance-writers`.
@@ -477,6 +479,27 @@ Current SageMaker EventBridge mappings:
 | model card state change | `model.card.updated` |
 
 The SageMaker adapter stores selected AWS fields such as event ID, account, region, detail type, SageMaker ARN, status, artifact URI, and the raw event hash in event metadata.
+
+Current OpenLineage mappings:
+
+| OpenLineage payload | Ernest incoming event |
+| --- | --- |
+| `eventType = START` | `training.started` |
+| `eventType = COMPLETE` | `training.completed` |
+| `eventType = FAIL` or `ABORT` | `training.completed` with terminal OpenLineage status metadata |
+| Unknown event type with inputs/outputs | `dataset.linked` |
+| Unknown event type without datasets | `external_event` |
+
+The OpenLineage adapter stores selected fields such as run ID, job namespace/name, dataset counts, dataset name hashes, selected dataset version/hash/URI facets, Ernest model facets, metrics, source-code commit, and the raw event hash. It deliberately does not persist the full OpenLineage payload in metadata.
+
+Current OpenTelemetry mappings:
+
+| OpenTelemetry payload | Ernest incoming event |
+| --- | --- |
+| OTLP log record with `ai.model.id` or compatible model attribute | `inference.logged` |
+| Simple local `logs[]` record with AI hash attributes | `inference.logged` |
+
+The OpenTelemetry adapter accepts OTLP JSON shaped as `resourceLogs[].scopeLogs[].logRecords[]` and a simplified local `logs[]` shape for tests and demos. It maps attributes such as `ai.model.id`, `ai.inference.id`, `ai.input.hash`, `ai.output.hash`, `ai.provider`, `ai.request.id`, and `ai.operation` into hash-only inference evidence. It stores selected AI/GenAI/LLM attributes, trace ID, span ID, log body, and the raw batch hash in metadata, but it does not store prompts, inputs, outputs, or full log batches.
 
 The default `docker-compose.yml` now includes:
 
@@ -567,9 +590,9 @@ Authenticated connector E2E test:
 EVENT_INGESTOR_API_KEY=<ingestor-key> HF_WEBHOOK_SECRET=<hf-secret> ./scripts/event-connectors-e2e.sh
 ```
 
-This test covers backend-proxied connector simulations, direct provider ingestion, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
+This test covers backend-proxied connector simulations, direct provider ingestion, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
 
-This MVP now has provider-specific adapters for Hugging Face and SageMaker EventBridge. Next connector candidates are Azure ML Event Grid, OpenLineage, OpenTelemetry, and a stricter CloudEvents normalizer.
+This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, OpenLineage, and OpenTelemetry. Next connector candidates are Azure ML Event Grid, Databricks / Unity Catalog, Vertex AI audit-log-to-Pub/Sub, and a stricter CloudEvents normalizer.
 
 ## Why This Matters
 

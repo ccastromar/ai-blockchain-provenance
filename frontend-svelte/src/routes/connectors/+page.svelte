@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateHuggingFaceEvent, simulateSageMakerEvent } from '$lib/api';
+  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
 
   type ConnectorState = 'enabled' | 'planned';
 
@@ -63,7 +63,8 @@
       id: 'openlineage',
       name: 'OpenLineage',
       source: 'openlineage',
-      status: 'planned',
+      status: 'enabled',
+      endpoint: '/ingestor/events/openlineage',
       eventTypes: ['training.started', 'training.completed', 'dataset.linked'],
       note: 'Training and dataset lineage intake for pipeline evidence.'
     },
@@ -71,7 +72,8 @@
       id: 'otel',
       name: 'OpenTelemetry',
       source: 'opentelemetry',
-      status: 'planned',
+      status: 'enabled',
+      endpoint: '/ingestor/events/opentelemetry/logs',
       eventTypes: ['inference.logged', 'drift.detected'],
       note: 'Production inference evidence through observability pipelines.'
     }
@@ -114,9 +116,15 @@
     simulationResult = null;
     error = null;
     try {
-      simulationResult = connectorId === 'sagemaker'
-        ? await simulateSageMakerEvent()
-        : await simulateHuggingFaceEvent();
+      if (connectorId === 'sagemaker') {
+        simulationResult = await simulateSageMakerEvent();
+      } else if (connectorId === 'openlineage') {
+        simulationResult = await simulateOpenLineageEvent();
+      } else if (connectorId === 'otel') {
+        simulationResult = await simulateOpenTelemetryLogs();
+      } else {
+        simulationResult = await simulateHuggingFaceEvent();
+      }
       await loadStats();
     } catch (e: any) {
       error = e.response?.data?.error ?? e.message ?? 'Failed to simulate connector event';
@@ -263,7 +271,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if connector.id === 'huggingface' || connector.id === 'sagemaker'}
+              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'openlineage' || connector.id === 'otel'}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>

@@ -152,6 +152,12 @@ export const simulateHuggingFaceEvent = async () =>
 export const simulateSageMakerEvent = async () =>
   (await api.post('/ingestor/simulate/sagemaker')).data;
 
+export const simulateOpenLineageEvent = async () =>
+  (await api.post('/ingestor/simulate/openlineage')).data;
+
+export const simulateOpenTelemetryLogs = async () =>
+  (await api.post('/ingestor/simulate/opentelemetry')).data;
+
 // ── Provenances ────────────────────────────────────────────────────────────
 
 export const getProvenance = async (modelId: string, filters?: ProvenanceFilter) =>

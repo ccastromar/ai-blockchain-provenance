@@ -41,4 +41,24 @@ export class IngestorProxyController {
   async simulateSageMakerEvent() {
     return await this.ingestorProxyService.simulateSageMakerEvent();
   }
+
+  @Post('simulate/openlineage')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Emit a demo OpenLineage event through the server-side ingestor proxy.' })
+  @ApiAcceptedResponse({ description: 'Demo OpenLineage event accepted by the ingestor.' })
+  async simulateOpenLineageEvent() {
+    return await this.ingestorProxyService.simulateOpenLineageEvent();
+  }
+
+  @Post('simulate/opentelemetry')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Emit a demo OpenTelemetry log batch through the server-side ingestor proxy.' })
+  @ApiAcceptedResponse({ description: 'Demo OpenTelemetry inference event accepted by the ingestor.' })
+  async simulateOpenTelemetryLogs() {
+    return await this.ingestorProxyService.simulateOpenTelemetryLogs();
+  }
 }
