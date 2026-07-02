@@ -45,22 +45,26 @@ func (w MongoWriter) EnsureIndexes(ctx context.Context) error {
 	// AppendEvent's retry loop already knows how to handle (see appendOnce/isDuplicateKey).
 	// Without it, two writers could insert two blocks with the same index and diverging
 	// hashes, silently forking the chain. This must not depend on the NestJS backend
-	// having started first and created it via its Mongoose schema.
-	_, err := w.db.Collection("provenanceblocks").Indexes().CreateMany(opCtx, []mongo.IndexModel{
-		{
-			Keys:    bson.D{{Key: "index", Value: 1}},
-			Options: options.Index().SetUnique(true).SetName("unique_block_index"),
-		},
-		{
-			Keys:    bson.D{{Key: "hash", Value: 1}},
-			Options: options.Index().SetUnique(true).SetName("unique_block_hash"),
-		},
-	})
-	if err != nil {
+	// having started first and created it via its Mongoose schema -- but on a database
+	// that predates this coordination (or was created by an older Mongoose autoIndex
+	// under a different name, e.g. "index_1"), an equivalent unique index may already
+	// exist under a different name, which MongoDB rejects as IndexOptionsConflict rather
+	// than treating as a no-op. ignoreIndexConflict tolerates that case.
+	blocks := w.db.Collection("provenanceblocks")
+	if err := ignoreIndexConflict(blocks.Indexes().CreateOne(opCtx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "index", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("unique_block_index"),
+	})); err != nil {
+		return err
+	}
+	if err := ignoreIndexConflict(blocks.Indexes().CreateOne(opCtx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "hash", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("unique_block_hash"),
+	})); err != nil {
 		return err
 	}
 
-	_, err = w.db.Collection("ingested_events").Indexes().CreateOne(opCtx, mongo.IndexModel{
+	_, err := w.db.Collection("ingested_events").Indexes().CreateOne(opCtx, mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "source", Value: 1},
 			{Key: "sourceEventId", Value: 1},
@@ -352,6 +356,22 @@ func CalculateHash(block Block) (string, error) {
 	blockString := fmt.Sprintf("%d|%d|%s|%s", block.Index, block.Timestamp, canonicalData, block.PreviousHash)
 	sum := sha256.Sum256([]byte(blockString))
 	return hex.EncodeToString(sum[:]), nil
+}
+
+// ignoreIndexConflict treats IndexOptionsConflict (85) and IndexKeySpecsConflict (86) as
+// success: they mean an index covering the same keys already exists under a different
+// name (e.g. Mongoose's autoIndex-generated "index_1" predating this coordination), which
+// enforces the same uniqueness guarantee we need. There is nothing to fix and nothing to
+// retry, so callers should proceed rather than fail startup over a naming mismatch.
+func ignoreIndexConflict(_ string, err error) error {
+	if err == nil {
+		return nil
+	}
+	var cmdErr mongo.CommandError
+	if errors.As(err, &cmdErr) && (cmdErr.Code == 85 || cmdErr.Code == 86) {
+		return nil
+	}
+	return err
 }
 
 func isDuplicateKey(err error) bool {

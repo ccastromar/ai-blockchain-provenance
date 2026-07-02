@@ -41,7 +41,38 @@ export class BlockchainService implements OnModuleInit {
     ) { }
 
     async onModuleInit() {
+        await this.ensureIndexes();
         await this.createGenesisBlock();
+    }
+
+    /**
+     * Creates the same named unique indexes as the Go event-writer's EnsureIndexes
+     * (event-ingestor/internal/hashchain/writer.go). Whichever process starts first wins;
+     * the other's identical create call is a no-op. On a database that predates this
+     * coordination, an equivalent unique index may already exist under a different name
+     * (e.g. Mongoose's autoIndex-generated "index_1") -- MongoDB rejects that as
+     * IndexOptionsConflict/IndexKeySpecsConflict rather than treating it as satisfied, so
+     * those two error codes are tolerated here: the existing index already enforces the
+     * uniqueness we need, regardless of its name.
+     */
+    async ensureIndexes(): Promise<void> {
+        // Created one at a time (not createIndexes([...])) so a conflict on one doesn't
+        // abort the attempt to create the other -- MongoDB's createIndexes command stops
+        // at the first error in the batch.
+        await this.createIndexTolerant({ index: 1 }, 'unique_block_index');
+        await this.createIndexTolerant({ hash: 1 }, 'unique_block_hash');
+    }
+
+    private async createIndexTolerant(key: Record<string, 1 | -1>, name: string): Promise<void> {
+        try {
+            await this.provenanceBlockModel.collection.createIndex(key, { unique: true, name });
+        } catch (err) {
+            if (err?.code === 85 || err?.code === 86) {
+                this.logger.log(`Skipping index "${name}": equivalent index already exists (${err.codeName})`);
+                return;
+            }
+            throw err;
+        }
     }
 
     /**

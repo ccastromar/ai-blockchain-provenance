@@ -5,7 +5,11 @@ export type ProvenanceBlockDocument = ProvenanceBlock & Document;
 
 @Schema({ timestamps: true })
 export class ProvenanceBlock {
-  @Prop({ required: true, unique: true, index: true })
+  // Not "unique: true, index: true" here -- the unique indexes on index/hash are
+  // created explicitly by BlockchainService.onModuleInit (Nest) and MongoWriter.EnsureIndexes
+  // (Go event-writer), both using the same names/options, so either process can start
+  // first without the other's Mongoose autoIndex colliding with it (IndexOptionsConflict).
+  @Prop({ required: true })
   index: number;
 
   @Prop({ required: true, type: Number })
@@ -39,7 +43,7 @@ export class ProvenanceBlock {
   @Prop({ required: true })
   previousHash: string;
 
-  @Prop({ required: true, unique: true, index: true })
+  @Prop({ required: true })
   hash: string;
 
  // @Prop({ default: 0 })

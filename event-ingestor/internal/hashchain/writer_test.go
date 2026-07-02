@@ -7,6 +7,7 @@ import (
 	"event-ingestor/internal/events"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestIngestedEventDocumentIncludesVerificationFields(t *testing.T) {
@@ -102,5 +103,32 @@ func assertField(t *testing.T, doc bson.M, key string, want any) {
 	t.Helper()
 	if got := doc[key]; got != want {
 		t.Fatalf("%s mismatch\nwant: %#v\n got: %#v", key, want, got)
+	}
+}
+
+func TestIgnoreIndexConflictToleratesIndexOptionsConflict(t *testing.T) {
+	err := ignoreIndexConflict("", mongo.CommandError{Code: 85, Name: "IndexOptionsConflict"})
+	if err != nil {
+		t.Fatalf("expected IndexOptionsConflict (85) to be tolerated, got: %v", err)
+	}
+}
+
+func TestIgnoreIndexConflictToleratesIndexKeySpecsConflict(t *testing.T) {
+	err := ignoreIndexConflict("", mongo.CommandError{Code: 86, Name: "IndexKeySpecsConflict"})
+	if err != nil {
+		t.Fatalf("expected IndexKeySpecsConflict (86) to be tolerated, got: %v", err)
+	}
+}
+
+func TestIgnoreIndexConflictPropagatesOtherErrors(t *testing.T) {
+	err := ignoreIndexConflict("", mongo.CommandError{Code: 13, Name: "Unauthorized"})
+	if err == nil {
+		t.Fatal("expected a non-index-conflict error to be propagated")
+	}
+}
+
+func TestIgnoreIndexConflictPassesThroughSuccess(t *testing.T) {
+	if err := ignoreIndexConflict("some-index-name", nil); err != nil {
+		t.Fatalf("expected nil error to pass through as nil, got: %v", err)
 	}
 }
