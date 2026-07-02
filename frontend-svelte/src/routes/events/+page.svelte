@@ -203,7 +203,7 @@
           <div class="text-sm font-medium text-slate-700">Total events</div>
         </div>
         <div class="card p-4">
-          <div class="text-2xl font-bold text-emerald-700">{stats.byVerificationStatus?.provider_secret ?? 0}</div>
+          <div class="text-2xl font-bold text-emerald-700">{(stats.byVerificationStatus?.provider_secret ?? 0) + (stats.byVerificationStatus?.provider_hmac ?? 0)}</div>
           <div class="text-sm font-medium text-slate-700">Provider verified</div>
         </div>
         <div class="card p-4">
@@ -249,6 +249,7 @@
           <option value="unverified">unverified</option>
           <option value="shared_secret">shared_secret</option>
           <option value="provider_secret">provider_secret</option>
+          <option value="provider_hmac">provider_hmac</option>
         </select>
         <div class="flex gap-2">
           <button class="btn-primary flex-1" onclick={applyFilters}>Apply</button>

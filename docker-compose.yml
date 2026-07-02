@@ -64,6 +64,7 @@ services:
       - EVENT_INGESTOR_URL=http://event-ingestor:3011
       - EVENT_INGESTOR_API_KEY=${EVENT_INGESTOR_API_KEY:-}
       - HF_WEBHOOK_SECRET=${HF_WEBHOOK_SECRET:-}
+      - EVENT_PROVIDER_HMAC_SECRET=${EVENT_PROVIDER_HMAC_SECRET:-}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -90,6 +91,7 @@ services:
     command: ["serve"]
     ports:
       - "127.0.0.1:3011:3011"
+      - "127.0.0.1:9102:9102"
     environment:
       - PORT=3011
       - REDIS_ADDR=redis:6379
@@ -99,6 +101,11 @@ services:
       - MAX_PAYLOAD_BYTES=${MAX_PAYLOAD_BYTES:-1048576}
       - HF_WEBHOOK_SECRET=${HF_WEBHOOK_SECRET:-}
       - EVENT_INGESTOR_API_KEY=${EVENT_INGESTOR_API_KEY:-}
+      - EVENT_PROVIDER_HMAC_SECRET=${EVENT_PROVIDER_HMAC_SECRET:-}
+      - PROVIDER_HMAC_TOLERANCE_SECONDS=${PROVIDER_HMAC_TOLERANCE_SECONDS:-300}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-20}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-40}
+      - METRICS_PORT=9102
     depends_on:
       redis:
         condition: service_healthy
@@ -123,6 +130,8 @@ services:
       dockerfile: event-ingestor/Dockerfile
     container_name: ernest-event-writer
     command: ["worker"]
+    ports:
+      - "127.0.0.1:9103:9102"
     environment:
       - REDIS_ADDR=redis:6379
       - REDIS_STREAM=${REDIS_STREAM:-ernest:events:incoming}
@@ -134,6 +143,7 @@ services:
       - MONGO_DB_NAME=ernest
       - WORKER_BATCH_COUNT=${WORKER_BATCH_COUNT:-10}
       - WORKER_BLOCK_MS=${WORKER_BLOCK_MS:-5000}
+      - METRICS_PORT=9102
     depends_on:
       redis:
         condition: service_healthy

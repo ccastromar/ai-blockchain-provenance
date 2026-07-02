@@ -183,11 +183,12 @@ Reference: https://learn.microsoft.com/en-us/azure/machine-learning/how-to-use-e
 
 ### Google Vertex AI
 
-Vertex AI exposes audit logs through Google Cloud logging. Those logs can be routed to Pub/Sub and transformed into Ernest events.
+Vertex AI exposes audit logs through Google Cloud Logging. Those logs can be routed to Pub/Sub as JSON and ingested by Ernest as model lifecycle evidence.
 
-Relevant operations include model upload, endpoint deployment, dataset creation, and custom job execution.
+Relevant operations include model upload/import, model version activity, endpoint deployment, endpoint undeployment, batch prediction, and custom job execution.
 
 Reference: https://cloud.google.com/vertex-ai/docs/general/audit-logging
+Reference: https://cloud.google.com/logging/docs/export/configure_export_v2
 
 ### Hugging Face Hub
 
@@ -213,7 +214,7 @@ Suggested implementation order:
 6. Databricks / Unity Catalog connector
 7. Vertex AI audit-log-to-Pub/Sub connector
 
-The first implemented connectors are Hugging Face, SageMaker, OpenLineage, OpenTelemetry, Azure ML, Databricks / Unity Catalog, and strict CloudEvents. Hugging Face is useful for public model repository demos, SageMaker and Azure ML are enterprise cloud proof points, OpenLineage and Databricks add training/model lineage evidence, and OpenTelemetry lets production applications submit hash-only inference evidence through observability pipelines.
+The first implemented connectors are Hugging Face, SageMaker, OpenLineage, OpenTelemetry, Azure ML, Databricks / Unity Catalog, Vertex AI, and strict CloudEvents. Hugging Face is useful for public model repository demos, SageMaker, Azure ML, and Vertex AI are enterprise cloud proof points, OpenLineage and Databricks add training/model lineage evidence, and OpenTelemetry lets production applications submit hash-only inference evidence through observability pipelines.
 
 ## Trust And Security Controls
 
@@ -231,18 +232,23 @@ Recommended controls:
 - Canonical payload hashing after normalization.
 - Signature verification status stored as metadata.
 - Rejected event log for auditability.
+- Per-source-IP rate limiting on the ingestor's HTTP receiver.
+- Prometheus metrics for ingestion throughput and rejections.
 
 This aligns with the existing Ernest roadmap item for signed client submissions.
 
 Current implementation note:
 
 - If `EVENT_INGESTOR_API_KEY` is empty, local/dev ingestion remains open and emitted evidence is tagged with `metadata.verificationStatus = "unverified"`.
-- If `EVENT_INGESTOR_API_KEY` is set, `/events`, `/events/cloudevents`, `/events/huggingface`, and `/events/sagemaker` require `X-Ernest-Ingest-Key`.
-- Authenticated generic/SageMaker evidence is tagged with `metadata.verificationStatus = "shared_secret"` and `metadata.verificationMethod = "X-Ernest-Ingest-Key"`.
+- If `EVENT_INGESTOR_API_KEY` is set, ingestor write endpoints require `X-Ernest-Ingest-Key`.
+- Authenticated evidence is tagged with `metadata.verificationStatus = "shared_secret"` and `metadata.verificationMethod = "X-Ernest-Ingest-Key"`.
 - If `HF_WEBHOOK_SECRET` is set and a Hugging Face event includes a valid `X-Webhook-Secret`, evidence is upgraded to `metadata.verificationStatus = "provider_secret"` and `metadata.verificationMethod = "X-Webhook-Secret"`.
-- Frontend simulations call the backend ingestor proxy; the backend injects `X-Ernest-Ingest-Key` server-side so the shared secret is not compiled into browser assets.
-- Auth and provider verification rejections are written to `ernest:events:rejected`; the writer persists them in `event_failures` with `failureKind = "auth_rejected"` and `authFailureType` such as `ingestor_api_key` or `provider_secret`.
+- If `EVENT_PROVIDER_HMAC_SECRET` is set, provider connector requests must include `X-Ernest-Provider-Timestamp: <unix-seconds>` and `X-Ernest-Provider-Signature: sha256=<hex-hmac>`, where the HMAC is computed over `"<timestamp>.<raw-request-body>"` (the timestamp value concatenated with a literal `.` and the exact request body bytes). The timestamp must be within `PROVIDER_HMAC_TOLERANCE_SECONDS` (default `300`) of the ingestor's clock, in either direction, or the request is rejected even with a correct signature. Binding the timestamp into the signed material (rather than trusting it as a separate, unsigned value) is what makes this a replay defense: a captured `(timestamp, signature, body)` triple stops working once it falls outside the tolerance window, and a request signed the old way (over the body alone, no timestamp) is rejected outright. Accepted evidence is tagged with `metadata.verificationStatus = "provider_hmac"` and `metadata.verificationMethod = "X-Ernest-Provider-Signature"`.
+- Frontend simulations call the backend ingestor proxy; the backend injects `X-Ernest-Ingest-Key` and provider HMAC signatures server-side so secrets are not compiled into browser assets.
+- Auth and provider verification rejections are written to `ernest:events:rejected`; the writer persists them in `event_failures` with `failureKind = "auth_rejected"` and `authFailureType` such as `ingestor_api_key`, `provider_secret`, or `provider_hmac`.
 - Successful ingested events persist `verificationStatus`, `verificationMethod`, and `transportAuth` as top-level fields in `ingested_events`, so the backend and UI can filter and group by verification state without reading the linked hashchain block.
+- The ingestor enforces a per-source-IP token-bucket rate limit (`RATE_LIMIT_RPS`, `RATE_LIMIT_BURST`) on every route except `/health`, so orchestrator liveness probes are never throttled. `RATE_LIMIT_RPS <= 0` disables it. The limiter keys on the TCP peer address only; it deliberately ignores `X-Forwarded-For` and similar client-supplied headers, since trusting them without a fronting proxy that overwrites them would let a caller pick its own rate-limit bucket.
+- Both `event-ingestor serve` and `event-ingestor worker` expose Prometheus metrics on a dedicated port (`METRICS_PORT`, default `9102`) at `GET /metrics`, separate from the public ingest listener so scraping never shares a port, a rate-limit bucket, or an auth boundary with untrusted event traffic. Ingestor-side metrics (`ernest_ingestor_events_accepted_total`, `ernest_ingestor_events_rejected_total`) are labeled by a fixed, route-derived `provider` value and, for rejections, a fixed `reason` (`ingestor_api_key`, `provider_secret`, `provider_hmac`, `validation`, `rate_limited`). Writer-side metrics (`ernest_writer_blocks_appended_total`, `ernest_writer_events_duplicate_total`, `ernest_writer_events_processing_failed_total`, `ernest_writer_events_reclaimed_total`) are labeled by `source`, collapsed to `other` for anything outside the built-in connector list — the generic `/events` endpoint lets callers self-report an arbitrary source, and labeling metrics with unsanitized input would let a caller mint unbounded Prometheus time series.
 
 Implemented environment variables:
 
@@ -251,6 +257,8 @@ Implemented environment variables:
 | `EVENT_INGESTOR_URL` | Backend | `http://localhost:3011` locally, `http://event-ingestor:3011` in Docker | Backend proxy target for ingestor simulations and health. |
 | `EVENT_INGESTOR_API_KEY` | Backend, ingestor | empty | Optional shared secret required as `X-Ernest-Ingest-Key` when configured. |
 | `HF_WEBHOOK_SECRET` | Backend, ingestor | empty | Optional Hugging Face webhook secret required as `X-Webhook-Secret` when configured. |
+| `EVENT_PROVIDER_HMAC_SECRET` | Backend, ingestor | empty | Optional shared HMAC secret for provider connector requests using `X-Ernest-Provider-Signature`. |
+| `PROVIDER_HMAC_TOLERANCE_SECONDS` | Ingestor | `300` | Max allowed clock skew between `X-Ernest-Provider-Timestamp` and the ingestor's clock before a signed request is rejected as stale. |
 | `REDIS_ADDR` | Ingestor, writer | `redis:6379` | Redis connection address. |
 | `REDIS_STREAM` | Ingestor, writer | `ernest:events:incoming` | Incoming accepted event stream. |
 | `REDIS_STREAM_MAXLEN` | Ingestor | `10000` | Approximate max length for accepted events. |
@@ -260,9 +268,14 @@ Implemented environment variables:
 | `REDIS_REJECTED_STREAM` | Ingestor, writer | `ernest:events:rejected` | Auth/provider verification rejection stream. |
 | `WORKER_BATCH_COUNT` | Writer | `10` | Max Redis messages read per worker cycle. |
 | `WORKER_BLOCK_MS` | Writer | `5000` | Redis blocking read timeout. |
+| `WORKER_RECLAIM_INTERVAL_MS` | Writer | `30000` | How often the worker checks for stale pending entries via `XAUTOCLAIM`. |
+| `WORKER_RECLAIM_MIN_IDLE_MS` | Writer | `60000` | Minimum idle time before a pending entry is reclaimed from a crashed/stalled consumer. |
 | `MAX_PAYLOAD_BYTES` | Ingestor | `1048576` | Max accepted HTTP payload size. |
+| `RATE_LIMIT_RPS` | Ingestor | `20` | Per-source-IP requests/sec allowed by the token-bucket limiter. `<= 0` disables rate limiting. |
+| `RATE_LIMIT_BURST` | Ingestor | `40` | Per-source-IP token-bucket burst size. |
+| `METRICS_PORT` | Ingestor, writer | `9102` | Port for the dedicated Prometheus `/metrics` HTTP server. |
 
-The frontend must not receive `EVENT_INGESTOR_API_KEY` or `HF_WEBHOOK_SECRET`. Browser actions call the NestJS backend proxy, and the backend injects secrets server-side.
+The frontend must not receive `EVENT_INGESTOR_API_KEY`, `HF_WEBHOOK_SECRET`, or `EVENT_PROVIDER_HMAC_SECRET`. Browser actions call the NestJS backend proxy, and the backend injects secrets server-side.
 
 ## Storage Additions
 
@@ -429,6 +442,7 @@ Current behavior:
 - `POST /events/sagemaker` accepts AWS SageMaker EventBridge-style payloads and adapts them to Ernest canonical events.
 - `POST /events/azureml` accepts Azure ML Event Grid-style payloads and adapts model, run/job, endpoint, and monitoring events to Ernest canonical events.
 - `POST /events/databricks` accepts Databricks Unity Catalog / MLflow-style model lifecycle events and adapts model version, alias, serving, and lineage events to Ernest canonical events.
+- `POST /events/vertexai` accepts Google Cloud Audit Log entries, including Pub/Sub push envelopes containing base64-encoded log entries, and adapts Vertex AI model, endpoint, training, and prediction events to Ernest canonical events.
 - `POST /events/openlineage` accepts OpenLineage run events and adapts selected run, job, dataset, model, metric, and source-code facts to Ernest canonical events.
 - `POST /events/opentelemetry/logs` accepts OTLP-style JSON log batches and adapts selected AI inference attributes to Ernest `inference.logged` events.
 - The receiver computes `rawEventHash`.
@@ -528,6 +542,21 @@ Current Databricks / Unity Catalog mappings:
 | delete / archive / deprecate activity | `model.deprecated` |
 
 The Databricks adapter stores selected fields such as workspace ID/URL, Unity Catalog three-level model name, catalog, schema, model name, version, alias, run ID, artifact URI, dataset lineage table hashes, metrics, and the raw event hash in metadata. It is designed for events generated by webhook glue, scheduled polling, or audit-log transformation around Unity Catalog and MLflow APIs.
+
+Current Vertex AI audit-log mappings:
+
+| Vertex AI audit log payload | Ernest incoming event |
+| --- | --- |
+| `ModelService.UploadModel`, import, or create model | `model.registered` |
+| model version activity | `model.version.created` |
+| `EndpointService.DeployModel` | `model.deployed` |
+| `EndpointService.UndeployModel` or endpoint deletion | `model.undeployed` |
+| custom job, pipeline, or training activity | `training.started` / `training.completed` |
+| batch prediction or prediction activity | `inference.logged` |
+| delete / archive activity | `model.deprecated` |
+| other model audit activity | `model.updated` |
+
+The Vertex AI adapter stores selected audit-log fields such as insert ID, service/method name, resource name, project, location, endpoint, deployed model ID, principal email, Pub/Sub message ID, artifact URI, and the raw audit-log hash. It accepts both direct Cloud Logging `LogEntry` JSON and Pub/Sub push envelopes whose `message.data` contains a base64-encoded `LogEntry`.
 
 Current OpenLineage mappings:
 
@@ -636,12 +665,12 @@ EVENT_COUNT=20 MODEL_ID=random-e2e-demo ./scripts/event-ingestor-e2e.sh
 Authenticated connector E2E test:
 
 ```bash
-EVENT_INGESTOR_API_KEY=<ingestor-key> HF_WEBHOOK_SECRET=<hf-secret> ./scripts/event-connectors-e2e.sh
+EVENT_INGESTOR_API_KEY=<ingestor-key> HF_WEBHOOK_SECRET=<hf-secret> EVENT_PROVIDER_HMAC_SECRET=<provider-hmac-secret> ./scripts/event-connectors-e2e.sh
 ```
 
-This test covers backend-proxied connector simulations, direct provider ingestion, strict CloudEvents validation, Azure ML Event Grid evidence, Databricks Unity Catalog evidence, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
+This test covers backend-proxied connector simulations, direct provider ingestion, strict CloudEvents validation, Azure ML Event Grid evidence, Databricks Unity Catalog evidence, Vertex AI audit-log evidence, OpenTelemetry inference evidence, duplicate/idempotency handling, auth/provider-secret/HMAC rejections, DLQ visibility, `/api/ingestor/health`, and frontend build health for the connector and events pages.
 
-This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, Azure ML Event Grid, Databricks / Unity Catalog, OpenLineage, and OpenTelemetry, plus a strict CloudEvents normalizer. The next connector candidate is Vertex AI audit-log-to-Pub/Sub.
+This MVP now has provider-specific adapters for Hugging Face, SageMaker EventBridge, Azure ML Event Grid, Databricks / Unity Catalog, Vertex AI audit logs, OpenLineage, and OpenTelemetry, plus a strict CloudEvents normalizer, per-source-IP rate limiting, Prometheus metrics for ingestion throughput and rejections, and a replay/freshness window on HMAC-signed provider requests.
 
 ## Why This Matters
 

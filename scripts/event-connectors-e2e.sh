@@ -10,10 +10,12 @@ SM_MODEL_ID="${SM_MODEL_ID:-credit-risk-xgb-e2e-${RUN_ID}}"
 AZ_MODEL_ID="${AZ_MODEL_ID:-credit-risk-azure-e2e-${RUN_ID}}"
 CE_MODEL_ID="${CE_MODEL_ID:-credit-risk-cloudevents-e2e-${RUN_ID}}"
 DBX_MODEL_ID="${DBX_MODEL_ID:-prod.ml_team.credit_risk_databricks_e2e_${RUN_ID}}"
+VERTEX_MODEL_ID="${VERTEX_MODEL_ID:-credit-risk-vertex-e2e-${RUN_ID}}"
 OL_MODEL_ID="${OL_MODEL_ID:-credit-risk-openlineage-e2e-${RUN_ID}}"
 OTEL_MODEL_ID="${OTEL_MODEL_ID:-credit-risk-otel-e2e-${RUN_ID}}"
 INGEST_KEY="${EVENT_INGESTOR_API_KEY:-}"
 HF_SECRET="${HF_WEBHOOK_SECRET:-}"
+PROVIDER_HMAC_SECRET="${EVENT_PROVIDER_HMAC_SECRET:-}"
 INGEST_HEADERS=()
 if [[ -n "${INGEST_KEY}" ]]; then
   INGEST_HEADERS=(-H "X-Ernest-Ingest-Key: ${INGEST_KEY}")
@@ -22,6 +24,60 @@ HF_HEADERS=()
 if [[ -n "${HF_SECRET}" ]]; then
   HF_HEADERS=(-H "X-Webhook-Secret: ${HF_SECRET}")
 fi
+
+curl() {
+  if [[ -z "${PROVIDER_HMAC_SECRET}" ]]; then
+    command curl "$@"
+    return
+  fi
+
+  local args=("$@")
+  local target=""
+  local payload=""
+  local has_signature=0
+  local i=0
+  while [[ "${i}" -lt "${#args[@]}" ]]; do
+    case "${args[$i]}" in
+      -H|--header)
+        if [[ "${i}" -lt $((${#args[@]} - 1)) && "${args[$((i + 1))]}" == X-Ernest-Provider-Signature:* ]]; then
+          has_signature=1
+        fi
+        i=$((i + 2))
+        ;;
+      -d|--data|--data-raw|--data-binary)
+        if [[ "${i}" -lt $((${#args[@]} - 1)) ]]; then
+          payload="${args[$((i + 1))]}"
+        fi
+        i=$((i + 2))
+        ;;
+      http://*|https://*)
+        target="${args[$i]}"
+        i=$((i + 1))
+        ;;
+      *)
+        i=$((i + 1))
+        ;;
+    esac
+  done
+
+  if [[ "${has_signature}" -eq 0 && -n "${payload}" && "${target}" == "${INGESTOR_BASE}/events"* ]]; then
+    local timestamp
+    timestamp="$(date +%s)"
+    local signature
+    # Signs over "<timestamp>.<body>" to match the ingestor's replay-protected scheme
+    # (see PROVIDER_HMAC_TOLERANCE_SECONDS): the timestamp travels alongside the
+    # signature as its own header and is bound into the signed material itself.
+    signature="$(printf '%s' "${payload}" | python3 -c 'import hashlib,hmac,os,sys
+ts = sys.argv[1]
+body = sys.stdin.buffer.read()
+msg = ts.encode() + b"." + body
+print("sha256=" + hmac.new(os.environ["EVENT_PROVIDER_HMAC_SECRET"].encode(), msg, hashlib.sha256).hexdigest())' "${timestamp}")"
+    command curl "$@" -H "X-Ernest-Provider-Timestamp: ${timestamp}" -H "X-Ernest-Provider-Signature: ${signature}"
+    return
+  fi
+
+  command curl "$@"
+}
 
 compose() {
   if [[ -f .env ]]; then
@@ -112,6 +168,28 @@ wait_for_event_verification() {
 
   echo "Timed out waiting for ${source_event_id} verification ${expected_verification}" >&2
   return 1
+}
+
+expected_connector_verification() {
+  if [[ -n "${PROVIDER_HMAC_SECRET}" ]]; then
+    printf 'provider_hmac'
+  elif [[ -n "${INGEST_KEY}" ]]; then
+    printf 'shared_secret'
+  else
+    printf 'unverified'
+  fi
+}
+
+expected_hf_verification() {
+  if [[ -n "${PROVIDER_HMAC_SECRET}" ]]; then
+    printf 'provider_hmac'
+  elif [[ -n "${HF_SECRET}" ]]; then
+    printf 'provider_secret'
+  elif [[ -n "${INGEST_KEY}" ]]; then
+    printf 'shared_secret'
+  else
+    printf 'unverified'
+  fi
 }
 
 wait_for_failure_kind() {
@@ -224,7 +302,7 @@ if [[ -n "${HF_SECRET}" ]]; then
   HF_AUTH_STATUS="$(curl --silent --output /dev/null --write-out "%{http_code}" \
     -X POST "${INGESTOR_BASE}/events/huggingface" \
     -H "Content-Type: application/json" \
-    "${INGEST_HEADERS[@]}" \
+    "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
     -d "{\"event\":{\"action\":\"update\",\"scope\":\"repo.content\"},\"repo\":{\"type\":\"model\",\"name\":\"${HF_MODEL_ID}\",\"headSha\":\"${RUN_ID}\"},\"webhook\":{\"id\":\"e2e-hf-webhook\"}}")"
   if [[ "${HF_AUTH_STATUS}" != "401" ]]; then
     echo "Expected Hugging Face event without provider secret to return 401, got ${HF_AUTH_STATUS}" >&2
@@ -267,6 +345,13 @@ PROXY_DBX_RESPONSE="$(curl --fail --silent --show-error \
 PROXY_DBX_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_DBX_RESPONSE}" | json_field sourceEventId)"
 echo "  proxied ${PROXY_DBX_SOURCE_EVENT_ID}"
 
+echo "Checking backend Vertex AI proxy simulation..."
+PROXY_VERTEX_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${API_BASE}/ingestor/simulate/vertexai" \
+  -H "Content-Type: application/json")"
+PROXY_VERTEX_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_VERTEX_RESPONSE}" | json_field sourceEventId)"
+echo "  proxied ${PROXY_VERTEX_SOURCE_EVENT_ID}"
+
 echo "Checking backend OpenTelemetry proxy simulation..."
 PROXY_OTEL_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${API_BASE}/ingestor/simulate/opentelemetry" \
@@ -274,12 +359,48 @@ PROXY_OTEL_RESPONSE="$(curl --fail --silent --show-error \
 PROXY_OTEL_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_OTEL_RESPONSE}" | json_field sourceEventId)"
 echo "  proxied ${PROXY_OTEL_SOURCE_EVENT_ID}"
 
-if [[ -n "${INGEST_KEY}" || -n "${HF_SECRET}" ]]; then
+if [[ -n "${PROVIDER_HMAC_SECRET}" ]]; then
+  echo "Checking provider HMAC rejects unsigned provider events..."
+  HMAC_STATUS="$(command curl --silent --output /dev/null --write-out "%{http_code}" \
+    -X POST "${INGESTOR_BASE}/events/vertexai" \
+    -H "Content-Type: application/json" \
+    "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
+    -d "{\"insertId\":\"vertex-hmac-negative-${RUN_ID}\",\"protoPayload\":{\"serviceName\":\"aiplatform.googleapis.com\",\"methodName\":\"google.cloud.aiplatform.v1.ModelService.UploadModel\",\"resourceName\":\"projects/ernest/locations/europe-west1/models/${VERTEX_MODEL_ID}\"}}")"
+  if [[ "${HMAC_STATUS}" != "401" ]]; then
+    echo "Expected unsigned provider HMAC request to return 401, got ${HMAC_STATUS}" >&2
+    exit 1
+  fi
+
+  echo "Checking provider HMAC rejects a stale timestamp (replay protection)..."
+  STALE_TIMESTAMP="$(( $(date +%s) - 3600 ))"
+  STALE_BODY="{\"insertId\":\"vertex-hmac-stale-${RUN_ID}\",\"protoPayload\":{\"serviceName\":\"aiplatform.googleapis.com\",\"methodName\":\"google.cloud.aiplatform.v1.ModelService.UploadModel\",\"resourceName\":\"projects/ernest/locations/europe-west1/models/${VERTEX_MODEL_ID}-stale\"}}"
+  STALE_SIGNATURE="$(printf '%s' "${STALE_BODY}" | python3 -c 'import hashlib,hmac,os,sys
+ts = sys.argv[1]
+body = sys.stdin.buffer.read()
+msg = ts.encode() + b"." + body
+print("sha256=" + hmac.new(os.environ["EVENT_PROVIDER_HMAC_SECRET"].encode(), msg, hashlib.sha256).hexdigest())' "${STALE_TIMESTAMP}")"
+  STALE_STATUS="$(command curl --silent --output /dev/null --write-out "%{http_code}" \
+    -X POST "${INGESTOR_BASE}/events/vertexai" \
+    -H "Content-Type: application/json" \
+    -H "X-Ernest-Provider-Timestamp: ${STALE_TIMESTAMP}" \
+    -H "X-Ernest-Provider-Signature: ${STALE_SIGNATURE}" \
+    "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
+    -d "${STALE_BODY}")"
+  if [[ "${STALE_STATUS}" != "401" ]]; then
+    echo "Expected a correctly-signed but 1-hour-stale provider HMAC request to return 401, got ${STALE_STATUS}" >&2
+    exit 1
+  fi
+fi
+
+if [[ -n "${INGEST_KEY}" || -n "${HF_SECRET}" || -n "${PROVIDER_HMAC_SECRET}" ]]; then
   EXPECTED_AUTH_REJECTIONS=0
   if [[ -n "${INGEST_KEY}" ]]; then
     EXPECTED_AUTH_REJECTIONS=$((EXPECTED_AUTH_REJECTIONS + 1))
   fi
   if [[ -n "${HF_SECRET}" ]]; then
+    EXPECTED_AUTH_REJECTIONS=$((EXPECTED_AUTH_REJECTIONS + 1))
+  fi
+  if [[ -n "${PROVIDER_HMAC_SECRET}" ]]; then
     EXPECTED_AUTH_REJECTIONS=$((EXPECTED_AUTH_REJECTIONS + 1))
   fi
   echo "Checking auth rejections are visible in failure stats..."
@@ -291,7 +412,7 @@ echo "Checking strict CloudEvents rejects invalid envelopes..."
 CE_INVALID_STATUS="$(curl --silent --output /dev/null --write-out "%{http_code}" \
   -X POST "${INGESTOR_BASE}/events/cloudevents" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{\"specversion\":\"0.3\",\"id\":\"ce-invalid-${RUN_ID}\",\"source\":\"urn:ernest:e2e\",\"type\":\"com.ernest.model.registered\"}")"
 if [[ "${CE_INVALID_STATUS}" != "400" ]]; then
   echo "Expected invalid CloudEvents envelope to return 400, got ${CE_INVALID_STATUS}" >&2
@@ -306,8 +427,8 @@ if [[ -n "${HF_SECRET}" ]]; then
     -H "Content-Type: application/json")"
   PROXY_HF_SOURCE_EVENT_ID="$(printf '%s' "${PROXY_HF_RESPONSE}" | json_field sourceEventId)"
   PROXY_HF_VERIFICATION="$(printf '%s' "${PROXY_HF_RESPONSE}" | json_field verificationStatus)"
-  if [[ "${PROXY_HF_VERIFICATION}" != "provider_secret" ]]; then
-    echo "Expected proxied Hugging Face verification provider_secret, got ${PROXY_HF_VERIFICATION}" >&2
+  if [[ "${PROXY_HF_VERIFICATION}" != "$(expected_hf_verification)" ]]; then
+    echo "Expected proxied Hugging Face verification $(expected_hf_verification), got ${PROXY_HF_VERIFICATION}" >&2
     echo "${PROXY_HF_RESPONSE}" >&2
     exit 1
   fi
@@ -319,8 +440,8 @@ HF_SHA="${RUN_ID}abcdefabcdefabcdefabcdefabcdefabcdef"
 HF_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/huggingface" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
-  "${HF_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
+  "${HF_HEADERS[@]+"${HF_HEADERS[@]}"}" \
   -d "{
     \"event\": { \"action\": \"update\", \"scope\": \"repo.content\" },
     \"repo\": {
@@ -336,8 +457,8 @@ HF_RESPONSE="$(curl --fail --silent --show-error \
   }")"
 HF_SOURCE_EVENT_ID="$(printf '%s' "${HF_RESPONSE}" | json_field sourceEventId)"
 HF_VERIFICATION="$(printf '%s' "${HF_RESPONSE}" | json_field verificationStatus)"
-if [[ -n "${HF_SECRET}" && "${HF_VERIFICATION}" != "provider_secret" ]]; then
-  echo "Expected Hugging Face verification provider_secret, got ${HF_VERIFICATION}" >&2
+if [[ -n "${HF_SECRET}" && "${HF_VERIFICATION}" != "$(expected_hf_verification)" ]]; then
+  echo "Expected Hugging Face verification $(expected_hf_verification), got ${HF_VERIFICATION}" >&2
   echo "${HF_RESPONSE}" >&2
   exit 1
 fi
@@ -348,7 +469,7 @@ SM_VERSION="$(date +%s)"
 SM_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/sagemaker" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{
     \"id\": \"evt-e2e-sm-${RUN_ID}\",
     \"source\": \"aws.sagemaker\",
@@ -373,7 +494,7 @@ AZ_VERSION="$(date +%s)"
 AZ_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/azureml" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{
     \"id\": \"evt-e2e-az-${RUN_ID}\",
     \"eventType\": \"Microsoft.MachineLearningServices.ModelRegistered\",
@@ -398,7 +519,7 @@ CE_VERSION="$(date +%s)"
 CE_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/cloudevents" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{
     \"specversion\": \"1.0\",
     \"id\": \"ce-e2e-${RUN_ID}\",
@@ -424,7 +545,7 @@ DBX_VERSION="$(date +%s)"
 DBX_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/databricks" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{
     \"id\": \"dbx-e2e-${RUN_ID}\",
     \"eventType\": \"model.version.created\",
@@ -448,12 +569,52 @@ DBX_RESPONSE="$(curl --fail --silent --show-error \
 DBX_SOURCE_EVENT_ID="$(printf '%s' "${DBX_RESPONSE}" | json_field sourceEventId)"
 echo "  accepted ${DBX_SOURCE_EVENT_ID}"
 
+echo "Emitting Vertex AI audit log event..."
+VERTEX_VERSION="$(date +%s)"
+VERTEX_RESPONSE="$(curl --fail --silent --show-error \
+  -X POST "${INGESTOR_BASE}/events/vertexai" \
+  -H "Content-Type: application/json" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
+  -d "{
+    \"insertId\": \"vertex-e2e-${RUN_ID}\",
+    \"logName\": \"projects/ernest-e2e/logs/cloudaudit.googleapis.com%2Factivity\",
+    \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"resource\": {
+      \"type\": \"aiplatform.googleapis.com/Model\",
+      \"labels\": {
+        \"project_id\": \"ernest-e2e\",
+        \"location\": \"europe-west1\"
+      }
+    },
+    \"protoPayload\": {
+      \"@type\": \"type.googleapis.com/google.cloud.audit.AuditLog\",
+      \"serviceName\": \"aiplatform.googleapis.com\",
+      \"methodName\": \"google.cloud.aiplatform.v1.ModelService.UploadModel\",
+      \"resourceName\": \"projects/ernest-e2e/locations/europe-west1/models/${VERTEX_MODEL_ID}/versions/${VERTEX_VERSION}\",
+      \"authenticationInfo\": {
+        \"principalEmail\": \"mlops@example.com\"
+      },
+      \"request\": {
+        \"displayName\": \"Credit Risk Vertex AI E2E\",
+        \"artifactUri\": \"gs://ernest-models/${VERTEX_MODEL_ID}/${VERTEX_VERSION}\",
+        \"artifactHash\": \"5151515151515151515151515151515151515151515151515151515151515151\",
+        \"gitCommit\": \"${RUN_ID}\"
+      },
+      \"response\": {
+        \"name\": \"projects/ernest-e2e/locations/europe-west1/models/${VERTEX_MODEL_ID}\",
+        \"versionId\": \"${VERTEX_VERSION}\"
+      }
+    }
+  }")"
+VERTEX_SOURCE_EVENT_ID="$(printf '%s' "${VERTEX_RESPONSE}" | json_field sourceEventId)"
+echo "  accepted ${VERTEX_SOURCE_EVENT_ID}"
+
 echo "Emitting OpenLineage run event..."
 OL_VERSION="$(date +%s)"
 OL_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/openlineage" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{
     \"eventType\": \"COMPLETE\",
     \"eventTime\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
@@ -499,7 +660,7 @@ OTEL_SPAN_ID="${RUN_ID}bbbbbbbb"
 OTEL_RESPONSE="$(curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/opentelemetry/logs" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
   -d "{
     \"resourceLogs\": [
       {
@@ -538,81 +699,51 @@ echo "  accepted ${OTEL_SOURCE_EVENT_ID}"
 
 echo "Waiting for writer to append connector events..."
 wait_for_appended_event "sagemaker" "${PROXY_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "sagemaker" "${PROXY_SOURCE_EVENT_ID}" "shared_secret"
-else
-  wait_for_event_verification "sagemaker" "${PROXY_SOURCE_EVENT_ID}" "unverified"
-fi
+wait_for_event_verification "sagemaker" "${PROXY_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}" "shared_secret"
-else
-  wait_for_event_verification "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}" "unverified"
-fi
+wait_for_event_verification "openlineage" "${PROXY_OL_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}" "shared_secret"
-else
-  wait_for_event_verification "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}" "unverified"
-fi
+wait_for_event_verification "azureml" "${PROXY_AZ_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}" "shared_secret"
-else
-  wait_for_event_verification "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}" "unverified"
-fi
+wait_for_event_verification "cloudevents" "${PROXY_CE_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}" "shared_secret"
-else
-  wait_for_event_verification "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}" "unverified"
-fi
+wait_for_event_verification "databricks" "${PROXY_DBX_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
+wait_for_appended_event "vertexai" "${PROXY_VERTEX_SOURCE_EVENT_ID}"
+wait_for_event_verification "vertexai" "${PROXY_VERTEX_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "shared_secret"
-else
-  wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "unverified"
-fi
+wait_for_event_verification "opentelemetry" "${PROXY_OTEL_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 if [[ -n "${HF_SECRET}" ]]; then
   wait_for_appended_event "huggingface" "${PROXY_HF_SOURCE_EVENT_ID}"
-  wait_for_event_verification "huggingface" "${PROXY_HF_SOURCE_EVENT_ID}" "provider_secret"
+  wait_for_event_verification "huggingface" "${PROXY_HF_SOURCE_EVENT_ID}" "$(expected_hf_verification)"
 fi
 wait_for_appended_event "huggingface" "${HF_SOURCE_EVENT_ID}"
-if [[ -n "${HF_SECRET}" ]]; then
-  wait_for_event_verification "huggingface" "${HF_SOURCE_EVENT_ID}" "provider_secret"
+if [[ -n "${HF_SECRET}" || -n "${PROVIDER_HMAC_SECRET}" || -n "${INGEST_KEY}" ]]; then
+  wait_for_event_verification "huggingface" "${HF_SOURCE_EVENT_ID}" "$(expected_hf_verification)"
+fi
+if [[ -n "${HF_SECRET}" && -z "${PROVIDER_HMAC_SECRET}" ]]; then
   wait_for_ingestor_health_count "stats.byVerificationStatus.provider_secret" 1
 fi
 wait_for_appended_event "sagemaker" "${SM_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "sagemaker" "${SM_SOURCE_EVENT_ID}" "shared_secret"
-fi
+wait_for_event_verification "sagemaker" "${SM_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "azureml" "${AZ_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "azureml" "${AZ_SOURCE_EVENT_ID}" "shared_secret"
-fi
+wait_for_event_verification "azureml" "${AZ_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "cloudevents" "${CE_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "cloudevents" "${CE_SOURCE_EVENT_ID}" "shared_secret"
-fi
+wait_for_event_verification "cloudevents" "${CE_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "databricks" "${DBX_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "databricks" "${DBX_SOURCE_EVENT_ID}" "shared_secret"
-fi
+wait_for_event_verification "databricks" "${DBX_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
+wait_for_appended_event "vertexai" "${VERTEX_SOURCE_EVENT_ID}"
+wait_for_event_verification "vertexai" "${VERTEX_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "openlineage" "${OL_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "openlineage" "${OL_SOURCE_EVENT_ID}" "shared_secret"
-fi
+wait_for_event_verification "openlineage" "${OL_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 wait_for_appended_event "opentelemetry" "${OTEL_SOURCE_EVENT_ID}"
-if [[ -n "${INGEST_KEY}" ]]; then
-  wait_for_event_verification "opentelemetry" "${OTEL_SOURCE_EVENT_ID}" "shared_secret"
-fi
+wait_for_event_verification "opentelemetry" "${OTEL_SOURCE_EVENT_ID}" "$(expected_connector_verification)"
 
 echo "Re-emitting Hugging Face event to verify idempotency..."
 curl --fail --silent --show-error \
   -X POST "${INGESTOR_BASE}/events/huggingface" \
   -H "Content-Type: application/json" \
-  "${INGEST_HEADERS[@]}" \
-  "${HF_HEADERS[@]}" \
+  "${INGEST_HEADERS[@]+"${INGEST_HEADERS[@]}"}" \
+  "${HF_HEADERS[@]+"${HF_HEADERS[@]}"}" \
   -d "{
     \"event\": { \"action\": \"update\", \"scope\": \"repo.content\" },
     \"repo\": {
@@ -634,6 +765,7 @@ assert_provenance "${SM_MODEL_ID}" 1
 assert_provenance "${AZ_MODEL_ID}" 1
 assert_provenance "${CE_MODEL_ID}" 1
 assert_provenance "${DBX_MODEL_ID}" 1
+assert_provenance "${VERTEX_MODEL_ID}" 1
 assert_provenance "${OL_MODEL_ID}" 1
 assert_provenance "${OTEL_MODEL_ID}" 1
 
@@ -655,6 +787,7 @@ echo "SageMaker model: ${SM_MODEL_ID}"
 echo "Azure ML model: ${AZ_MODEL_ID}"
 echo "CloudEvents model: ${CE_MODEL_ID}"
 echo "Databricks model: ${DBX_MODEL_ID}"
+echo "Vertex AI model: ${VERTEX_MODEL_ID}"
 echo "OpenLineage model: ${OL_MODEL_ID}"
 echo "OpenTelemetry model: ${OTEL_MODEL_ID}"
 echo "Events: ${FRONTEND_BASE}/events"
