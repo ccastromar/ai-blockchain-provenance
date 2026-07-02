@@ -64,6 +64,7 @@
         <!-- Nav links -->
         <nav class="flex items-center gap-2">
           <a href="/models" class="btn-ghost text-sm py-2 px-4">Models</a>
+          <a href="/blocks" class="btn-ghost text-sm py-2 px-4">Blocks</a>
           <a href="/connectors" class="btn-ghost text-sm py-2 px-4">Connectors</a>
           <a href="/events" class="btn-ghost text-sm py-2 px-4">Events</a>
           <a href="/stats" class="btn-ghost text-sm py-2 px-4">Statistics</a>

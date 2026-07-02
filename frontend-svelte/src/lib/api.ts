@@ -186,6 +186,13 @@ export const exportProvenanceCycloneDx = (modelId: string) =>
 export const getChainStats = async () => (await api.get('/stats')).data;
 export const verifyChain   = async () => (await api.get('/verify')).data;
 export const getBlockByIndex = async (index: number) => (await api.get(`/blocks/${index}`)).data;
+
+export const getAllBlocks = async (page = 1, limit = 20): Promise<PaginatedResponse<any>> => {
+  const res = (await api.get('/blocks', { params: { page, limit } })).data;
+  if (Array.isArray(res)) return { data: res, total: res.length, page: 1, totalPages: 1 };
+  if (res.items)          return { data: res.items, total: res.total, page: res.page, totalPages: res.totalPages };
+  return res;
+};
 export const logInference  = async (data: LogInferenceData) =>
   (await api.post('/inferences', data)).data;
 

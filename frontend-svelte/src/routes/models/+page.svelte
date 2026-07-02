@@ -7,7 +7,7 @@
   let total       = $state(0);
   let totalPages  = $state(1);
   let page        = $state(1);
-  const PAGE_SIZE = 20;
+  const PAGE_SIZE = 10;
 
   // ── Detail state ────────────────────────────────────────────────────────────
   let selectedModelId = $state('');
