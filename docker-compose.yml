@@ -65,6 +65,7 @@ services:
       - EVENT_INGESTOR_API_KEY=${EVENT_INGESTOR_API_KEY:-}
       - HF_WEBHOOK_SECRET=${HF_WEBHOOK_SECRET:-}
       - EVENT_PROVIDER_HMAC_SECRET=${EVENT_PROVIDER_HMAC_SECRET:-}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
     depends_on:
       mongodb:
         condition: service_healthy

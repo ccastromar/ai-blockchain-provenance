@@ -59,6 +59,7 @@ MLflow can help with experiment tracking and model registry workflows. Applicati
 - Logs inference events using input/output hashes instead of raw sensitive data.
 - Stores events in a MongoDB-backed hashchain.
 - Verifies block hashes and `previousHash` links.
+- Runs an hourly integrity check of the full chain automatically (plus once at startup), records the result, surfaces it in `/health`, and posts to `WEBHOOK_URL` if the chain is found broken — so tampering doesn't require someone to remember to check `/api/verify` manually.
 - Computes a Merkle root over hashchain block hashes.
 - Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
 - Provides a SvelteKit dashboard with a local audit add-on, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
@@ -416,6 +417,7 @@ bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
 
 Release checklist: [docs/release-checklist.md](docs/release-checklist.md).
 Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
+Backup and recovery: [docs/backup-recovery.md](docs/backup-recovery.md).
 
 ## Roadmap
 

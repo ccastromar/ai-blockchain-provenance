@@ -50,6 +50,7 @@ Thumbs.db
 
 # Mongo/DB dumps/backups
 dump/
+backups/
 *.bak
 *.tgz
 *.gz

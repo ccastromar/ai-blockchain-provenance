@@ -43,6 +43,7 @@ services:
       - ANCHOR_ORGANIZATION_NAME=${ANCHOR_ORGANIZATION_NAME:-Ernest Demo}
       - ANCHOR_DOMAIN=${ANCHOR_DOMAIN:-ai-provenance}
       - ANCHOR_EVERY_N_BLOCKS=${ANCHOR_EVERY_N_BLOCKS:-50}
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
     depends_on:
       mongodb:
         condition: service_healthy
