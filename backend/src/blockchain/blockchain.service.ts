@@ -59,7 +59,7 @@ export class BlockchainService implements OnModuleInit {
                 data: {
                     type: 'model_registration' as const,
                     modelId: 'genesis',
-                    metadata: { description: 'Genesis block for Ernest PoC' }
+                    metadata: { description: 'Genesis block for the Ernest hashchain' }
                 },
                 previousHash: '0',
                 hash: '',
