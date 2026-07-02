@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateDatabricksEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent, simulateVertexAiEvent } from '$lib/api';
+  import { authState } from '$lib/auth';
+  import AccessBadge from '$lib/components/AccessBadge.svelte';
+
+  let canWrite = $derived($authState.role === 'read-write');
 
   type ConnectorState = 'enabled' | 'planned';
 
@@ -201,12 +205,15 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button class="btn-ghost text-sm py-1.5 px-3" onclick={() => simulateConnector('huggingface')} disabled={simulating || loading}>
-          {simulating ? 'Simulating...' : 'Simulate HF'}
-        </button>
+        {#if canWrite}
+          <button class="btn-ghost text-sm py-1.5 px-3" onclick={() => simulateConnector('huggingface')} disabled={simulating || loading}>
+            {simulating ? 'Simulating...' : 'Simulate HF'}
+          </button>
+        {/if}
         <button class="btn-ghost text-sm py-1.5 px-3" onclick={loadStats} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
+        <AccessBadge />
       </div>
     </div>
   </div>
@@ -298,7 +305,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'vertexai' || connector.id === 'openlineage' || connector.id === 'otel'}
+              {#if canWrite && (connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'vertexai' || connector.id === 'openlineage' || connector.id === 'otel')}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>

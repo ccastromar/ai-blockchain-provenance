@@ -1,6 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getModels, getModelById, getProvenance, patchModel, getModelIntegrity, type ModelStatus } from '$lib/api';
+  import { authState } from '$lib/auth';
+  import AccessBadge from '$lib/components/AccessBadge.svelte';
+
+  let canWrite = $derived($authState.role === 'read-write');
 
   // ── List state ─────────────────────────────────────────────────────────────
   let models      = $state<any[]>([]);
@@ -110,6 +114,7 @@
           <span class="text-blue-300 text-sm">{total} total</span>
         {/if}
       </div>
+      <AccessBadge />
     </div>
   </div>
 
@@ -188,11 +193,12 @@
                 <span class="text-xs px-2.5 py-1 rounded-full font-medium {STATUS_STYLES[selectedModel.status ?? 'active'] ?? STATUS_STYLES.active}">
                   {selectedModel.status ?? 'active'}
                 </span>
-                <div class="relative group">
-                  <button disabled={patchingStatus}
+                <div class="relative group" title={canWrite ? '' : 'Read-only access — changing model status requires a read-write key'}>
+                  <button disabled={patchingStatus || !canWrite}
                     class="btn-outline text-xs py-1.5 px-3 disabled:opacity-50">
                     {patchingStatus ? '…' : 'Change ▾'}
                   </button>
+                  {#if canWrite}
                   <div class="absolute right-0 top-full mt-1 w-36 card py-1 shadow-lg z-10 hidden group-focus-within:block group-hover:block">
                     {#each ['active', 'deprecated', 'archived'] as s}
                       <button
@@ -203,6 +209,7 @@
                       </button>
                     {/each}
                   </div>
+                  {/if}
                 </div>
               </div>
             </div>

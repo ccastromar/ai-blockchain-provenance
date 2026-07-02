@@ -1,13 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getChainStats, seedDemoData } from '$lib/api';
+  import { authState } from '$lib/auth';
   import ModelRegistration from '$lib/components/ModelRegistration.svelte';
   import InferenceLogger from '$lib/components/InferenceLogger.svelte';
   import ProvenanceViewer from '$lib/components/ProvenanceViewer.svelte';
+  import AccessBadge from '$lib/components/AccessBadge.svelte';
 
   type Tab = 'register' | 'inference' | 'provenance';
 
   let activeTab = $state<Tab>('register');
+  let canWrite = $derived($authState.role === 'read-write');
   let stats = $state<any>(null);
   let selectedModelId = $state('');
   let seedLoading = $state(false);
@@ -71,6 +74,8 @@
           <a href="/auditor" class="btn-ghost text-sm py-2 px-4">Audit</a>
         </nav>
 
+        <AccessBadge />
+
         <!-- Live stats chips -->
         {#if stats}
           <div class="hidden sm:flex items-center gap-4 pl-4 border-l border-blue-700">
@@ -106,7 +111,7 @@
           </p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button class="btn-primary" onclick={seedDemo} disabled={seedLoading}>
+          <button class="btn-primary" onclick={seedDemo} disabled={seedLoading || !canWrite} title={canWrite ? '' : 'Read-only access — seeding demo data requires a read-write key'}>
             {seedLoading ? 'Seeding...' : 'Seed demo'}
           </button>
           <a class="btn-outline" href="/auditor">Open audit</a>

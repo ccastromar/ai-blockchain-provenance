@@ -8,6 +8,10 @@
     getIngestedEventStats,
     simulateHuggingFaceEvent
   } from '$lib/api';
+  import { authState } from '$lib/auth';
+  import AccessBadge from '$lib/components/AccessBadge.svelte';
+
+  let canWrite = $derived($authState.role === 'read-write');
 
   let events = $state<any[]>([]);
   let failures = $state<any[]>([]);
@@ -178,12 +182,15 @@
         {/if}
       </div>
       <div class="flex items-center gap-2">
-        <button class="btn-ghost text-sm py-1.5 px-3" onclick={simulateHF} disabled={simulating || loading}>
-          {simulating ? 'Simulating...' : 'Simulate HF'}
-        </button>
+        {#if canWrite}
+          <button class="btn-ghost text-sm py-1.5 px-3" onclick={simulateHF} disabled={simulating || loading}>
+            {simulating ? 'Simulating...' : 'Simulate HF'}
+          </button>
+        {/if}
         <button class="btn-ghost text-sm py-1.5 px-3" onclick={load} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
+        <AccessBadge />
       </div>
     </div>
   </div>

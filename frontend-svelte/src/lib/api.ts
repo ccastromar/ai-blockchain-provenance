@@ -1,16 +1,26 @@
 import axios, { type AxiosError } from 'axios';
 import { env } from '$env/dynamic/public';
+import { authState, getActiveKey } from './auth';
 
 const configuredApiUrl = env.PUBLIC_API_URL ?? '';
 const apiUrl = configuredApiUrl === 'http://localhost:3001' ? '' : configuredApiUrl;
-const apiKey = env.PUBLIC_ERNEST_API_KEY || undefined;
 
 const api = axios.create({
   baseURL: `${apiUrl}/api`,
   headers: {
-    'Content-Type': 'application/json',
-    ...(apiKey ? { 'X-Ernest-Api-Key': apiKey } : {})
+    'Content-Type': 'application/json'
   }
+});
+
+// Attach the current key per-request (not once at module load) so switching keys at
+// runtime -- e.g. an auditor pasting their own read-only key -- takes effect
+// immediately, without needing a full page reload.
+api.interceptors.request.use((config) => {
+  const key = getActiveKey();
+  if (key) {
+    config.headers['X-Ernest-Api-Key'] = key;
+  }
+  return config;
 });
 
 // Surface rate-limit errors clearly
@@ -25,6 +35,46 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+
+export const getWhoAmI = async (): Promise<{ role: 'read-write' | 'read-only' | 'anonymous'; openAccess: boolean; label?: string }> =>
+  (await api.get('/auth/whoami')).data;
+
+export async function refreshAuthRole() {
+  try {
+    const res = await getWhoAmI();
+    authState.set(res);
+  } catch {
+    authState.set({ role: 'anonymous', openAccess: false });
+  }
+}
+
+export type AccessTokenRole = 'read-write' | 'read-only';
+
+export interface AccessTokenSummary {
+  id: string;
+  label: string;
+  role: AccessTokenRole;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreatedAccessToken extends Omit<AccessTokenSummary, 'revokedAt' | 'lastUsedAt'> {
+  /** Only ever returned here, at creation time. Not recoverable afterwards. */
+  token: string;
+}
+
+export const listAccessTokens = async (): Promise<AccessTokenSummary[]> =>
+  (await api.get('/auth/tokens')).data;
+
+export const createAccessToken = async (label: string, role: AccessTokenRole, expiresInDays?: number): Promise<CreatedAccessToken> =>
+  (await api.post('/auth/tokens', { label, role, ...(expiresInDays ? { expiresInDays } : {}) })).data;
+
+export const revokeAccessToken = async (id: string): Promise<{ revoked: boolean }> =>
+  (await api.delete(`/auth/tokens/${id}`)).data;
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

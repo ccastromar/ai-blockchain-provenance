@@ -1,9 +1,10 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Logger, Query } from '@nestjs/common';
-import { ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Logger, Query, UseGuards } from '@nestjs/common';
+import { ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AIModelService } from './aimodel.service';
 import { UpdateModelStatusDto } from './dto/update-model-status.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { OrgId } from '../common/org-id.decorator';
+import { ApiKeyGuard } from '../common/api-key.guard';
 
 @ApiTags('Models')
 @Controller('api/models')
@@ -30,6 +31,8 @@ export class AIModelController {
   }
 
   @Patch(':modelId/status')
+  @UseGuards(ApiKeyGuard)
+  @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Update model status (active | deprecated | archived).' })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
   @ApiOkResponse({ description: 'Updated model record.' })

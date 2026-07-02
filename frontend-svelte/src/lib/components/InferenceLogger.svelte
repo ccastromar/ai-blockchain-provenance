@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { logInference, getAllModelIds } from '$lib/api';
+  import { authState } from '$lib/auth';
 
   let { initialModelId = '', onSuccess }: {
     initialModelId?: string;
     onSuccess?: (modelId: string) => void;
   } = $props();
+  let canWrite = $derived($authState.role === 'read-write');
 
   function randomHash() {
     const buf = new Uint8Array(32);
@@ -105,7 +107,12 @@
       </div>
     </div>
 
-    <button type="submit" disabled={loading} class="btn-primary w-full">
+    {#if !canWrite}
+      <p class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+        Read-only access — logging an inference requires a read-write key.
+      </p>
+    {/if}
+    <button type="submit" disabled={loading || !canWrite} class="btn-primary w-full">
       {loading ? 'Logging…' : 'Execute & Log Inference'}
     </button>
   </form>

@@ -61,6 +61,7 @@ services:
       - NODE_ENV=production
       - CORS_ORIGIN=${CORS_ORIGIN:-http://127.0.0.1:3000}
       - ERNEST_API_KEY=${ERNEST_API_KEY:-}
+      - ERNEST_READ_API_KEY=${ERNEST_READ_API_KEY:-}
       - EVENT_INGESTOR_URL=http://event-ingestor:3011
       - EVENT_INGESTOR_API_KEY=${EVENT_INGESTOR_API_KEY:-}
       - HF_WEBHOOK_SECRET=${HF_WEBHOOK_SECRET:-}

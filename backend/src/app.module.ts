@@ -11,8 +11,11 @@ import { AIModelModule } from './aimodels/aimodel.module';
 import { AIModelController } from './aimodels/aimodel.controller';
 import { AnchorEventsService } from './api/anchor-events.service';
 import { HealthController } from './health/health.controller';
+import { AuthModule } from './auth/auth.module';
 import { ApiKeyGuard } from './common/api-key.guard';
+import { ReadAccessGuard } from './common/read-access.guard';
 import { Anchor, AnchorSchema } from './blockchain/models/anchor.schema';
+import { IntegrityCheck, IntegrityCheckSchema } from './blockchain/models/integrity-check.schema';
 import { IngestionModule } from './ingestion/ingestion.module';
 
 @Module({
@@ -24,11 +27,15 @@ import { IngestionModule } from './ingestion/ingestion.module';
     MongooseModule.forRoot(
       process.env.MONGODB_URI || 'mongodb://localhost:27017/healthtrace'
     ),
-    MongooseModule.forFeature([{ name: Anchor.name, schema: AnchorSchema }]),
+    MongooseModule.forFeature([
+      { name: Anchor.name, schema: AnchorSchema },
+      { name: IntegrityCheck.name, schema: IntegrityCheckSchema },
+    ]),
     BlockchainModule,
     MlflowModule,
     AIModelModule,
-    IngestionModule
+    IngestionModule,
+    AuthModule
   ],
   controllers: [
     ApiController,
@@ -39,7 +46,9 @@ import { IngestionModule } from './ingestion/ingestion.module';
     ApiService,
     AnchorEventsService,
     ApiKeyGuard,
+    ReadAccessGuard,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: ReadAccessGuard },
   ],
 })
 export class AppModule {}
