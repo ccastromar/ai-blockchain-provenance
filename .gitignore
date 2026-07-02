@@ -11,6 +11,10 @@ yarn-error.log*
 *.sublime-workspace
 *.sublime-project
 
+# Claude Code local tooling/context - never goes into the repo
+.claude/
+CLAUDE.md
+
 # Environment variables
 .env
 .env.*
