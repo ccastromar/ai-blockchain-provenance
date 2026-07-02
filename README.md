@@ -368,19 +368,33 @@ No standalone tool is compliant by itself. Ernest is an alpha PoC that can suppo
 
 ### Register AI Model
 
+Register a model with its version, artifact hash, Git commit, params, metrics, and metadata. Quick-fill lets you pre-populate the form from an already-registered model.
+
 ![Register AI Model](docs/img/register-model-form.jpg)
 
 ### Log Inference
+
+Log an inference using input/output hashes only — never the raw prompt, input, or output.
 
 ![Log Inference](docs/img/log-inference-form.jpg)
 
 ### View Provenance
 
+Query the full tamper-evident history for a model, verify the chain, and export it — as a signed JSON bundle or as a CycloneDX 1.6 AI/ML-BOM document that other supply-chain tooling can read directly.
+
 ![View Provenance](docs/img/view-provenance.jpg)
 
 ### Hashchain Stats
 
+Live chain health: block count, model count, last block hash, and service status.
+
 ![Show hashchain stats](docs/img/hashchain-stats.jpg)
+
+### Connectors
+
+The built-in event ingestion connectors, each mapping a provider's native events to Ernest's canonical lifecycle types. See [Market Event Sources](docs/event-ingestion-layer.md#market-event-sources) for the full list and mappings.
+
+![Connectors](docs/img/connectors.jpg)
 
 ## Verification
 
