@@ -15,6 +15,7 @@ import { ethers } from 'ethers';
 import { Anchor, AnchorDocument } from './models/anchor.schema';
 import { canonicalizeEx } from 'json-canonicalize';
 import abiJson from '../abis/ErnestMerkleAnchor.json';
+import { buildCycloneDxMlBom } from './cyclonedx';
 
 const anchorAbi = abiJson.abi;
 const MAX_APPEND_RETRIES = 5;
@@ -378,6 +379,17 @@ export class BlockchainService implements OnModuleInit {
             .digest('hex');
 
         return { bundle, signature, algorithm: 'hmac-sha256' };
+    }
+
+    /**
+     * Export provenance for a model as a CycloneDX 1.6 BOM with an AI/ML-BOM
+     * `machine-learning-model` component, so the evidence can be read by tools that
+     * already speak CycloneDX (dependency-track, GUAC, etc.) without any Ernest-specific
+     * integration.
+     */
+    async exportProvenanceCycloneDx(modelId: string, verificationUrl?: string): Promise<Record<string, any>> {
+        const provenance = await this.getProvenance(modelId);
+        return buildCycloneDxMlBom(provenance, { verificationUrl });
     }
 
     /**

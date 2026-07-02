@@ -275,6 +275,8 @@ Main endpoints:
 | `POST` | `/api/models` | Register a model and append a hashchain block |
 | `POST` | `/api/inferences` | Log an inference and append a hashchain block |
 | `GET` | `/api/provenances/:modelId` | Get model provenance |
+| `GET` | `/api/provenances/:modelId/export` | Export provenance as a signed JSON bundle |
+| `GET` | `/api/provenances/:modelId/export/cyclonedx` | Export provenance as a CycloneDX 1.6 AI/ML-BOM document |
 | `GET` | `/api/stats` | Get chain stats and latest anchor |
 | `GET` | `/api/verify` | Verify hashchain integrity |
 | `GET` | `/api/anchors/status` | Inspect anchoring mode and RPC reachability |
@@ -410,6 +412,7 @@ Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
 - Digital signatures for model and inference events.
 - AI Act evidence mapping and policy-control checklists.
 - Standards alignment with W3C PROV, OpenLineage, and OpenTelemetry-style event streams.
+- ✅ CycloneDX 1.6 AI/ML-BOM export (`/api/provenances/:modelId/export/cyclonedx`), so provenance evidence can be read by tools that already speak CycloneDX (dependency-track, GUAC, etc.) without a custom integration. In-toto/SLSA provenance attestations are a natural next export format on the same data.
 - IPFS or object-store references for large artifacts.
 - Stronger production deployment patterns.
 - Multi-party verification flows.

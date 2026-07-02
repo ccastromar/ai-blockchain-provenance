@@ -237,5 +237,9 @@ export class ApiService {
 
   async exportProvenance(modelId: string) {
     return await this.blockchainService.exportProvenance(modelId);
-  }  
+  }
+
+  async exportProvenanceCycloneDx(modelId: string) {
+    return await this.blockchainService.exportProvenanceCycloneDx(modelId);
+  }
 }

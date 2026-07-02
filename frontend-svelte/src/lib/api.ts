@@ -178,6 +178,9 @@ export const getProvenance = async (modelId: string, filters?: ProvenanceFilter)
 export const exportProvenance = (modelId: string) =>
   `${apiUrl}/api/provenances/${modelId}/export`;
 
+export const exportProvenanceCycloneDx = (modelId: string) =>
+  `${apiUrl}/api/provenances/${modelId}/export/cyclonedx`;
+
 // ── Chain ──────────────────────────────────────────────────────────────────
 
 export const getChainStats = async () => (await api.get('/stats')).data;

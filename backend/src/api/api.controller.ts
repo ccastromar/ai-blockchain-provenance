@@ -173,6 +173,14 @@ export class ApiController {
     return await this.apiService.exportProvenance(modelId);
   }
 
+  @Get('provenances/:modelId/export/cyclonedx')
+  @ApiOperation({ summary: 'Export provenance for a model as a CycloneDX 1.6 AI/ML-BOM document.' })
+  @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
+  @ApiOkResponse({ description: 'CycloneDX BOM with a machine-learning-model component describing this model.' })
+  async exportProvenanceCycloneDx(@Param('modelId') modelId: string) {
+    return await this.apiService.exportProvenanceCycloneDx(modelId);
+  }
+
   @Get('models/:modelId/integrity')
   @ApiOperation({ summary: 'Verify hashchain integrity for a specific model.' })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })

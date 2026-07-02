@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { format } from 'date-fns';
-  import { getProvenance, verifyChain, getAllModelIds, exportProvenance, type ProvenanceFilter } from '$lib/api';
+  import { getProvenance, verifyChain, getAllModelIds, exportProvenance, exportProvenanceCycloneDx, type ProvenanceFilter } from '$lib/api';
 
   let { initialModelId = '' }: { initialModelId?: string } = $props();
 
@@ -56,6 +56,10 @@
   function handleExport() {
     window.open(exportProvenance(modelId), '_blank');
   }
+
+  function handleExportCycloneDx() {
+    window.open(exportProvenanceCycloneDx(modelId), '_blank');
+  }
 </script>
 
 <div class="max-w-3xl space-y-6">
@@ -87,6 +91,9 @@
     {#if provenance}
       <button onclick={handleExport} class="btn-outline" title="Download as JSON">
         ⬇ Export
+      </button>
+      <button onclick={handleExportCycloneDx} class="btn-outline" title="Download as CycloneDX 1.6 AI/ML-BOM">
+        ⬇ Export ML-BOM
       </button>
     {/if}
   </div>
