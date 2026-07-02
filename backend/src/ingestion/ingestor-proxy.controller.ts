@@ -72,6 +72,16 @@ export class IngestorProxyController {
     return await this.ingestorProxyService.simulateDatabricksEvent();
   }
 
+  @Post('simulate/vertexai')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({ summary: 'Emit a demo Vertex AI audit log event through the server-side ingestor proxy.' })
+  @ApiAcceptedResponse({ description: 'Demo Vertex AI event accepted by the ingestor.' })
+  async simulateVertexAiEvent() {
+    return await this.ingestorProxyService.simulateVertexAiEvent();
+  }
+
   @Post('simulate/openlineage')
   @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.ACCEPTED)

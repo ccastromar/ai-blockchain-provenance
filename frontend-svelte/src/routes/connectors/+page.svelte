@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateDatabricksEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent } from '$lib/api';
+  import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateDatabricksEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent, simulateVertexAiEvent } from '$lib/api';
 
   type ConnectorState = 'enabled' | 'planned';
 
@@ -86,6 +86,15 @@
       endpoint: '/ingestor/events/databricks',
       eventTypes: ['model.version.created', 'model.deployed', 'dataset.linked'],
       note: 'Unity Catalog model versions, aliases, serving, and lineage evidence.'
+    },
+    {
+      id: 'vertexai',
+      name: 'Vertex AI Audit Logs',
+      source: 'vertexai',
+      status: 'enabled',
+      endpoint: '/ingestor/events/vertexai',
+      eventTypes: ['model.registered', 'model.deployed', 'training.started'],
+      note: 'Google Cloud audit logs routed through Pub/Sub into model lifecycle evidence.'
     }
   ];
 
@@ -134,6 +143,8 @@
         simulationResult = await simulateCloudEventsEvent();
       } else if (connectorId === 'databricks') {
         simulationResult = await simulateDatabricksEvent();
+      } else if (connectorId === 'vertexai') {
+        simulationResult = await simulateVertexAiEvent();
       } else if (connectorId === 'openlineage') {
         simulationResult = await simulateOpenLineageEvent();
       } else if (connectorId === 'otel') {
@@ -287,7 +298,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'openlineage' || connector.id === 'otel'}
+              {#if connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'vertexai' || connector.id === 'openlineage' || connector.id === 'otel'}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>
@@ -326,9 +337,15 @@
               </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
-              <a class="rounded border border-slate-200 p-3 hover:bg-blue-50" href="/events?verificationStatus=provider_secret">
+              <div>
+                <dt class="text-xs font-semibold text-slate-400 uppercase">Provider HMAC</dt>
+                <dd class="text-slate-800">{health?.auth?.providerSecrets?.providerHmac ?? '-'}</dd>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <a class="rounded border border-slate-200 p-3 hover:bg-blue-50" href="/events">
                 <dt class="text-xs font-semibold text-slate-400 uppercase">Provider verified</dt>
-                <dd class="text-lg font-bold text-emerald-700">{health?.stats?.byVerificationStatus?.provider_secret ?? 0}</dd>
+                <dd class="text-lg font-bold text-emerald-700">{(health?.stats?.byVerificationStatus?.provider_secret ?? 0) + (health?.stats?.byVerificationStatus?.provider_hmac ?? 0)}</dd>
               </a>
               <a class="rounded border border-slate-200 p-3 hover:bg-red-50" href="/events">
                 <dt class="text-xs font-semibold text-slate-400 uppercase">Auth rejected</dt>

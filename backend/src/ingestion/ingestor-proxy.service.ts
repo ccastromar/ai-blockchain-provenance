@@ -1,5 +1,6 @@
 import { BadGatewayException, Injectable } from '@nestjs/common';
 import axios, { AxiosError } from 'axios';
+import { createHmac } from 'crypto';
 import { IngestedEventService } from './ingested-event.service';
 
 @Injectable()
@@ -7,6 +8,7 @@ export class IngestorProxyService {
   private readonly ingestorUrl = (process.env.EVENT_INGESTOR_URL || 'http://localhost:3011').replace(/\/$/, '');
   private readonly ingestorApiKey = process.env.EVENT_INGESTOR_API_KEY || '';
   private readonly hfWebhookSecret = process.env.HF_WEBHOOK_SECRET || '';
+  private readonly providerHmacSecret = process.env.EVENT_PROVIDER_HMAC_SECRET || '';
 
   constructor(private readonly ingestedEventService: IngestedEventService) {}
 
@@ -16,6 +18,7 @@ export class IngestorProxyService {
       proxiedSimulation: true,
       providerSecrets: {
         huggingface: this.hfWebhookSecret ? 'configured' : 'not_configured',
+        providerHmac: this.providerHmacSecret ? 'configured' : 'not_configured',
       },
     };
   }
@@ -155,6 +158,44 @@ export class IngestorProxyService {
     });
   }
 
+  async simulateVertexAiEvent() {
+    const runId = Date.now().toString(36);
+    const version = String(Date.now()).slice(-6);
+    const modelId = 'credit-risk-vertex';
+
+    return await this.postToIngestor('/events/vertexai', {
+      insertId: `vertex-${runId}`,
+      logName: 'projects/ernest-demo/logs/cloudaudit.googleapis.com%2Factivity',
+      timestamp: new Date().toISOString(),
+      resource: {
+        type: 'aiplatform.googleapis.com/Model',
+        labels: {
+          project_id: 'ernest-demo',
+          location: 'europe-west1',
+        },
+      },
+      protoPayload: {
+        '@type': 'type.googleapis.com/google.cloud.audit.AuditLog',
+        serviceName: 'aiplatform.googleapis.com',
+        methodName: 'google.cloud.aiplatform.v1.ModelService.UploadModel',
+        resourceName: `projects/ernest-demo/locations/europe-west1/models/${modelId}/versions/${version}`,
+        authenticationInfo: {
+          principalEmail: 'mlops@ernest-demo.example',
+        },
+        request: {
+          displayName: 'Credit Risk Vertex AI',
+          artifactUri: `gs://ernest-models/${modelId}/${version}`,
+          artifactHash: `${runId.padEnd(64, 'v').slice(0, 64)}`,
+          gitCommit: `${runId.padEnd(16, 'g').slice(0, 16)}`,
+        },
+        response: {
+          name: `projects/ernest-demo/locations/europe-west1/models/${modelId}`,
+          versionId: version,
+        },
+      },
+    });
+  }
+
   async simulateOpenLineageEvent() {
     const runId = Date.now().toString(36);
     const version = String(Date.now()).slice(-6);
@@ -254,10 +295,12 @@ export class IngestorProxyService {
     extraHeaders: Record<string, string> = {},
   ) {
     try {
-      const response = await axios.post(`${this.ingestorUrl}${path}`, payload, {
+      const body = JSON.stringify(payload);
+      const response = await axios.post(`${this.ingestorUrl}${path}`, body, {
         headers: {
           'Content-Type': 'application/json',
           ...(this.ingestorApiKey ? { 'X-Ernest-Ingest-Key': this.ingestorApiKey } : {}),
+          ...this.providerSignatureHeaders(body),
           ...extraHeaders,
         },
         timeout: 5000,
@@ -269,6 +312,23 @@ export class IngestorProxyService {
       const detail = axiosError.response?.data?.error || axiosError.message;
       throw new BadGatewayException(`Could not proxy event to ingestor: ${detail}`);
     }
+  }
+
+  // Signs over "<timestamp>.<body>", matching the ingestor's replay-protected scheme: a
+  // captured (body, signature) pair alone is no longer enough to pass verification once
+  // it falls outside the ingestor's PROVIDER_HMAC_TOLERANCE_SECONDS window.
+  private providerSignatureHeaders(body: string): Record<string, string> {
+    if (!this.providerHmacSecret) {
+      return {};
+    }
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const signature = createHmac('sha256', this.providerHmacSecret)
+      .update(`${timestamp}.${body}`)
+      .digest('hex');
+    return {
+      'X-Ernest-Provider-Timestamp': timestamp,
+      'X-Ernest-Provider-Signature': `sha256=${signature}`,
+    };
   }
 
   private async getIngestorReachability() {

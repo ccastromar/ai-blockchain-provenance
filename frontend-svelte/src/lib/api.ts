@@ -161,6 +161,9 @@ export const simulateCloudEventsEvent = async () =>
 export const simulateDatabricksEvent = async () =>
   (await api.post('/ingestor/simulate/databricks')).data;
 
+export const simulateVertexAiEvent = async () =>
+  (await api.post('/ingestor/simulate/vertexai')).data;
+
 export const simulateOpenLineageEvent = async () =>
   (await api.post('/ingestor/simulate/openlineage')).data;
 
