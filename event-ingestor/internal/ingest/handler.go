@@ -2,12 +2,14 @@ package ingest
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,18 +20,32 @@ import (
 	"event-ingestor/internal/adapters/openlineage"
 	"event-ingestor/internal/adapters/opentelemetry"
 	"event-ingestor/internal/adapters/sagemaker"
+	"event-ingestor/internal/adapters/vertexai"
 	"event-ingestor/internal/config"
 	"event-ingestor/internal/events"
+	"event-ingestor/internal/metrics"
+	"event-ingestor/internal/ratelimit"
 	"event-ingestor/internal/redisstream"
 )
 
 type Handler struct {
-	stream *redisstream.Client
-	cfg    config.Config
+	stream  *redisstream.Client
+	cfg     config.Config
+	limiter *ratelimit.Limiter
 }
 
 func NewHandler(stream *redisstream.Client, cfg config.Config) Handler {
-	return Handler{stream: stream, cfg: cfg}
+	return Handler{
+		stream:  stream,
+		cfg:     cfg,
+		limiter: ratelimit.New(cfg.RateLimitRPS, cfg.RateLimitBurst),
+	}
+}
+
+// RunRateLimitCleanup periodically evicts idle per-IP rate-limit buckets. Call it in a
+// goroutine alongside the server; it returns when ctx is canceled.
+func (h Handler) RunRateLimitCleanup(ctx context.Context) {
+	h.limiter.Run(ctx, 5*time.Minute, 10*time.Minute)
 }
 
 func (h Handler) Routes() http.Handler {
@@ -43,7 +59,52 @@ func (h Handler) Routes() http.Handler {
 	mux.HandleFunc("/events/openlineage", h.openLineage)
 	mux.HandleFunc("/events/opentelemetry/logs", h.openTelemetryLogs)
 	mux.HandleFunc("/events/sagemaker", h.sageMaker)
-	return mux
+	mux.HandleFunc("/events/vertexai", h.vertexAI)
+	return h.rateLimited(mux)
+}
+
+// rateLimited enforces a per-client-IP request budget on every route. /health is exempt
+// so container/orchestrator liveness probes are never throttled.
+func (h Handler) rateLimited(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/health" || !h.limiter.Enabled() {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if !h.limiter.Allow(ratelimit.ClientKey(r)) {
+			metrics.EventsRejected.WithLabelValues(providerFromPath(r.URL.Path), "rate_limited").Inc()
+			writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// providerFromPath maps a route to a fixed, bounded provider label for metrics. It must
+// not derive labels from request content, only from the route itself.
+func providerFromPath(path string) string {
+	switch path {
+	case "/events":
+		return "events"
+	case "/events/cloudevents":
+		return "cloudevents"
+	case "/events/huggingface":
+		return "huggingface"
+	case "/events/sagemaker":
+		return "sagemaker"
+	case "/events/azureml":
+		return "azureml"
+	case "/events/databricks":
+		return "databricks"
+	case "/events/vertexai":
+		return "vertexai"
+	case "/events/openlineage":
+		return "openlineage"
+	case "/events/opentelemetry/logs":
+		return "opentelemetry"
+	default:
+		return "unknown"
+	}
 }
 
 func (h Handler) health(w http.ResponseWriter, _ *http.Request) {
@@ -72,6 +133,14 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, "unknown", "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -105,6 +174,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues("events").Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
 		"redisStreamId":      id,
@@ -114,6 +184,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
+	const provider = "cloudevents"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -121,7 +192,7 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 
 	verificationStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "cloudevents", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -135,17 +206,25 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
 	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
+	}
 
 	var payload map[string]any
 	if err := json.Unmarshal(body, &payload); err != nil {
-		h.recordValidationRejected(r, "cloudevents", "unknown", "invalid json payload", body)
+		h.recordValidationRejected(r, provider, "unknown", "invalid json payload", body)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json payload"})
 		return
 	}
 
 	adapted, err := cloudevents.Adapt(payload, body)
 	if err != nil {
-		h.recordValidationRejected(r, "cloudevents", stringFrom(payload, "type"), err.Error(), body)
+		h.recordValidationRejected(r, provider, stringFrom(payload, "type"), err.Error(), body)
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 		return
 	}
@@ -164,9 +243,10 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
-		"provider":           "cloudevents",
+		"provider":           provider,
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
@@ -176,6 +256,7 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
+	const provider = "huggingface"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -183,7 +264,7 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 
 	transportStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "huggingface", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -191,7 +272,7 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 
 	if h.cfg.HFWebhookSecret != "" {
 		if !validHFSecret(r, h.cfg.HFWebhookSecret) {
-			h.recordRejected(r, "huggingface", "unknown", "invalid Hugging Face webhook secret", "provider_secret")
+			h.recordRejected(r, provider, "unknown", "invalid Hugging Face webhook secret", "provider_secret")
 			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid Hugging Face webhook secret"})
 			return
 		}
@@ -206,6 +287,14 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -232,9 +321,10 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
-		"provider":           "huggingface",
+		"provider":           provider,
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
@@ -244,6 +334,7 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
+	const provider = "sagemaker"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -251,7 +342,7 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 
 	verificationStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "sagemaker", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -264,6 +355,14 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -287,9 +386,10 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
-		"provider":           "sagemaker",
+		"provider":           provider,
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
@@ -299,6 +399,7 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
+	const provider = "azureml"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -306,7 +407,7 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 
 	verificationStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "azureml", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -319,6 +420,14 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -342,9 +451,10 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
-		"provider":           "azureml",
+		"provider":           provider,
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
@@ -354,6 +464,7 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
+	const provider = "databricks"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -361,7 +472,7 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 
 	verificationStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "databricks", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -374,6 +485,14 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -397,9 +516,10 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
-		"provider":           "databricks",
+		"provider":           provider,
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
@@ -408,7 +528,8 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
+func (h Handler) vertexAI(w http.ResponseWriter, r *http.Request) {
+	const provider = "vertexai"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -416,7 +537,7 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 
 	verificationStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "openlineage", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -429,6 +550,79 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(body, &payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json payload"})
+		return
+	}
+
+	adapted := vertexai.Adapt(payload, body)
+	attachVerification(adapted.Payload, verificationStatus)
+	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+		"source":        adapted.Source,
+		"eventType":     adapted.EventType,
+		"sourceEventId": adapted.SourceEventID,
+		"rawEventHash":  hash(body),
+		"receivedAt":    time.Now().UTC().Format(time.RFC3339Nano),
+		"payload":       mustJSON(adapted.Payload),
+	})
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue Vertex AI event"})
+		return
+	}
+
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
+	writeJSON(w, http.StatusAccepted, map[string]string{
+		"status":             "accepted",
+		"provider":           provider,
+		"eventType":          adapted.EventType,
+		"sourceEventId":      adapted.SourceEventID,
+		"redisStreamId":      id,
+		"rawEventHash":       hash(body),
+		"verificationStatus": verificationStatus,
+	})
+}
+
+func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
+	const provider = "openlineage"
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	verificationStatus, ok := h.verifyIngestAuth(r)
+	if !ok {
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, h.cfg.MaxPayloadBytes+1))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "could not read request body"})
+		return
+	}
+	if int64(len(body)) > h.cfg.MaxPayloadBytes {
+		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
+		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -452,9 +646,10 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	writeJSON(w, http.StatusAccepted, map[string]string{
 		"status":             "accepted",
-		"provider":           "openlineage",
+		"provider":           provider,
 		"eventType":          adapted.EventType,
 		"sourceEventId":      adapted.SourceEventID,
 		"redisStreamId":      id,
@@ -464,6 +659,7 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
+	const provider = "opentelemetry"
 	if r.Method != http.MethodPost {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
@@ -471,7 +667,7 @@ func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
 
 	verificationStatus, ok := h.verifyIngestAuth(r)
 	if !ok {
-		h.recordRejected(r, "opentelemetry", "unknown", "invalid ingestor API key", "ingestor_api_key")
+		h.recordRejected(r, provider, "unknown", "invalid ingestor API key", "ingestor_api_key")
 		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid ingestor API key"})
 		return
 	}
@@ -484,6 +680,14 @@ func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
 	if int64(len(body)) > h.cfg.MaxPayloadBytes {
 		writeJSON(w, http.StatusRequestEntityTooLarge, map[string]string{"error": "payload too large"})
 		return
+	}
+	if h.cfg.ProviderHMACSecret != "" {
+		if !h.validProviderHMAC(r, body) {
+			h.recordRejected(r, provider, "unknown", "invalid provider HMAC signature", "provider_hmac")
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid provider HMAC signature"})
+			return
+		}
+		verificationStatus = "provider_hmac"
 	}
 
 	var payload map[string]any
@@ -514,11 +718,12 @@ func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		streamIDs = append(streamIDs, id)
+		metrics.EventsAccepted.WithLabelValues(provider).Inc()
 	}
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"status":             "accepted",
-		"provider":           "opentelemetry",
+		"provider":           provider,
 		"eventType":          "inference.logged",
 		"sourceEventId":      adaptedEvents[0].SourceEventID,
 		"acceptedCount":      len(adaptedEvents),
@@ -567,6 +772,44 @@ func validHFSecret(r *http.Request, expected string) bool {
 	return subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
 }
 
+// validProviderHMAC checks the provider signature and a bound timestamp. Signing over
+// "<timestamp>.<body>" (rather than the body alone) means a captured (body, signature)
+// pair can't be replayed indefinitely: once the timestamp falls outside
+// cfg.ProviderHMACTolerance, the same signature is rejected even though the secret and
+// the math haven't changed. The timestamp itself is untrusted input, so it must be part
+// of the signed material — otherwise anyone could swap in a fresh timestamp on a
+// captured request without knowing the secret.
+func (h Handler) validProviderHMAC(r *http.Request, body []byte) bool {
+	provided := strings.TrimSpace(r.Header.Get("X-Ernest-Provider-Signature"))
+	if provided == "" {
+		return false
+	}
+	provided = strings.TrimPrefix(provided, "sha256=")
+
+	timestampHeader := strings.TrimSpace(r.Header.Get("X-Ernest-Provider-Timestamp"))
+	if timestampHeader == "" {
+		return false
+	}
+	timestampUnix, err := strconv.ParseInt(timestampHeader, 10, 64)
+	if err != nil {
+		return false
+	}
+	skew := time.Since(time.Unix(timestampUnix, 0))
+	if skew < 0 {
+		skew = -skew
+	}
+	if skew > h.cfg.ProviderHMACTolerance {
+		return false
+	}
+
+	expectedMAC := hmac.New(sha256.New, []byte(h.cfg.ProviderHMACSecret))
+	expectedMAC.Write([]byte(timestampHeader))
+	expectedMAC.Write([]byte("."))
+	expectedMAC.Write(body)
+	expected := hex.EncodeToString(expectedMAC.Sum(nil))
+	return subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1
+}
+
 func (h Handler) verifyIngestAuth(r *http.Request) (string, bool) {
 	if h.cfg.IngestorAPIKey == "" {
 		return "unverified", true
@@ -589,6 +832,8 @@ func attachVerification(payload map[string]any, status string) {
 	}
 	metadata["verificationStatus"] = status
 	switch status {
+	case "provider_hmac":
+		metadata["verificationMethod"] = "X-Ernest-Provider-Signature"
 	case "provider_secret":
 		metadata["verificationMethod"] = "X-Webhook-Secret"
 	case "shared_secret":
@@ -612,6 +857,7 @@ func attachTransportAuth(payload map[string]any, transportStatus string) {
 }
 
 func (h Handler) recordRejected(r *http.Request, source string, eventType string, reason string, authFailureType string) {
+	metrics.EventsRejected.WithLabelValues(source, authFailureType).Inc()
 	if h.cfg.RedisRejectedStream == "" || h.stream == nil {
 		return
 	}
@@ -628,6 +874,10 @@ func (h Handler) recordRejected(r *http.Request, source string, eventType string
 }
 
 func (h Handler) recordValidationRejected(r *http.Request, source string, eventType string, reason string, body []byte) {
+	// reason is a free-form error string (e.g. an adapter validation message), so it must
+	// never be used as a metric label value directly — that would let arbitrary input
+	// mint unbounded Prometheus time series. Use a fixed "validation" label instead.
+	metrics.EventsRejected.WithLabelValues(source, "validation").Inc()
 	if h.cfg.RedisRejectedStream == "" || h.stream == nil {
 		return
 	}

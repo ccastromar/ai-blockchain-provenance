@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -75,6 +76,21 @@ func (c *Client) XReadGroup(ctx context.Context, group string, consumer string, 
 func (c *Client) XAck(ctx context.Context, stream string, group string, id string) error {
 	_, err := c.command(ctx, "XACK", stream, group, id)
 	return err
+}
+
+// XAutoClaim reassigns pending entries idle longer than minIdleMS to consumer, so a
+// crashed consumer's unacknowledged messages get reprocessed instead of sitting in the
+// group's PEL forever. It returns the cursor to pass back in for the next page.
+func (c *Client) XAutoClaim(ctx context.Context, stream string, group string, consumer string, minIdleMS int64, start string, count int64) (string, []Message, error) {
+	args := []string{"XAUTOCLAIM", stream, group, consumer, strconv.FormatInt(minIdleMS, 10), start}
+	if count > 0 {
+		args = append(args, "COUNT", strconv.FormatInt(count, 10))
+	}
+	reply, err := c.command(ctx, args...)
+	if err != nil {
+		return "", nil, err
+	}
+	return parseAutoClaimReply(reply)
 }
 
 func (c *Client) command(ctx context.Context, args ...string) (any, error) {
@@ -151,7 +167,7 @@ func readRESP(reader *bufio.Reader) (any, error) {
 			return nil, nil
 		}
 		buf := make([]byte, length+2)
-		if _, err := reader.Read(buf); err != nil {
+		if _, err := io.ReadFull(reader, buf); err != nil {
 			return nil, err
 		}
 		return string(buf[:length]), nil
@@ -175,6 +191,36 @@ func readRESP(reader *bufio.Reader) (any, error) {
 	default:
 		return nil, fmt.Errorf("unknown RESP prefix %q", prefix)
 	}
+}
+
+func parseAutoClaimReply(reply any) (string, []Message, error) {
+	top, ok := reply.([]any)
+	if !ok || len(top) < 2 {
+		return "", nil, fmt.Errorf("unexpected XAUTOCLAIM reply: %T", reply)
+	}
+	cursor, _ := top[0].(string)
+	entries, ok := top[1].([]any)
+	if !ok {
+		return cursor, nil, nil
+	}
+
+	messages := make([]Message, 0, len(entries))
+	for _, entry := range entries {
+		entryItems, ok := entry.([]any)
+		if !ok || len(entryItems) < 2 {
+			continue
+		}
+		id, _ := entryItems[0].(string)
+		fieldPairs, _ := entryItems[1].([]any)
+		fields := map[string]string{}
+		for i := 0; i+1 < len(fieldPairs); i += 2 {
+			key, _ := fieldPairs[i].(string)
+			value, _ := fieldPairs[i+1].(string)
+			fields[key] = value
+		}
+		messages = append(messages, Message{ID: id, Fields: fields})
+	}
+	return cursor, messages, nil
 }
 
 func parseStreamMessages(reply any) ([]Message, error) {

@@ -13,6 +13,7 @@ import (
 	"event-ingestor/internal/config"
 	"event-ingestor/internal/hashchain"
 	"event-ingestor/internal/ingest"
+	"event-ingestor/internal/metrics"
 	"event-ingestor/internal/mongo"
 	"event-ingestor/internal/redisstream"
 	"event-ingestor/internal/worker"
@@ -40,6 +41,13 @@ func main() {
 func runServer(ctx context.Context, cfg config.Config) {
 	stream := redisstream.NewClient(cfg.RedisAddr, cfg.RedisPassword)
 	handler := ingest.NewHandler(stream, cfg)
+
+	go handler.RunRateLimitCleanup(ctx)
+	go func() {
+		if err := metrics.Serve(ctx, ":"+cfg.MetricsPort); err != nil {
+			log.Printf("metrics server failed: %v", err)
+		}
+	}()
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
@@ -71,6 +79,12 @@ func runWorker(ctx context.Context, cfg config.Config) {
 		disconnectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		_ = client.Disconnect(disconnectCtx)
+	}()
+
+	go func() {
+		if err := metrics.Serve(ctx, ":"+cfg.MetricsPort); err != nil {
+			log.Printf("metrics server failed: %v", err)
+		}
 	}()
 
 	stream := redisstream.NewClient(cfg.RedisAddr, cfg.RedisPassword)

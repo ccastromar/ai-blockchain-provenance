@@ -41,7 +41,26 @@ func (w MongoWriter) EnsureIndexes(ctx context.Context) error {
 	opCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	_, err := w.db.Collection("ingested_events").Indexes().CreateOne(opCtx, mongo.IndexModel{
+	// Unique on "index" is what turns a concurrent append race into an E11000 that
+	// AppendEvent's retry loop already knows how to handle (see appendOnce/isDuplicateKey).
+	// Without it, two writers could insert two blocks with the same index and diverging
+	// hashes, silently forking the chain. This must not depend on the NestJS backend
+	// having started first and created it via its Mongoose schema.
+	_, err := w.db.Collection("provenanceblocks").Indexes().CreateMany(opCtx, []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "index", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("unique_block_index"),
+		},
+		{
+			Keys:    bson.D{{Key: "hash", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("unique_block_hash"),
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = w.db.Collection("ingested_events").Indexes().CreateOne(opCtx, mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "source", Value: 1},
 			{Key: "sourceEventId", Value: 1},
