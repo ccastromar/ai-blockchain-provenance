@@ -116,7 +116,7 @@ jobs:
           cache-dependency-path: cli-ernest/go.sum
 
       - name: Test non-Docker packages
-        run: go test ./cmd/... ./internal/db/repositories/... ./internal/hashcanon/...
+        run: go test ./cmd/... ./internal/db/repositories/... ./internal/hashcanon/... ./internal/merkleproof/...
 
       - name: Build CLI
         run: go build -o ernest .

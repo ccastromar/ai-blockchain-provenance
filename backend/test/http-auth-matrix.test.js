@@ -91,6 +91,7 @@ test('HTTP auth matrix against the real application', async (t) => {
         ['GET', '/api/models'],
         ['GET', '/api/blocks'],
         ['GET', '/api/blocks/export'],
+        ['GET', '/api/blocks/0/proof'],
         ['GET', '/api/verify'],
         ['GET', '/api/stats'],
         ['GET', '/api/ingested-events'],

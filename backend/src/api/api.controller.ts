@@ -143,6 +143,19 @@ export class ApiController {
     return await this.apiService.exportAllBlocks();
   }
 
+  @Get('blocks/:index/proof')
+  @ApiOperation({ summary: 'SPV-style inclusion receipt: Merkle proof connecting a block to its covering confirmed anchor. Verifiable offline (ernest proof verify).' })
+  @ApiParam({ name: 'index', example: 42, type: Number })
+  @ApiOkResponse({ description: 'Self-contained evidence receipt: block, proof path, anchored Merkle root and anchor transaction metadata.' })
+  @ApiNotFoundResponse({ description: 'Block not found.' })
+  async getBlockProof(@Param('index', ParseIntPipe) index: number) {
+    const receipt = await this.apiService.getBlockProof(index);
+    if (!receipt) {
+      throw new NotFoundException('Block not found');
+    }
+    return receipt;
+  }
+
   @Get('blocks/:index')
   @ApiOperation({ summary: 'Return a raw hashchain block by index.' })
   @ApiParam({ name: 'index', example: 1, type: Number })

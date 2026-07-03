@@ -28,6 +28,21 @@ MONGO_URI=mongodb://127.0.0.1:27017 BLUEPRINT_DB_DATABASE=ernest ./ernest hashch
 A tampered block or broken `previousHash` link reports the exact block index and the
 mismatching hashes, and the command exits non-zero.
 
+## Verify an inclusion receipt
+
+An evidence receipt (`GET /api/blocks/:index/proof`) proves one block belongs to an
+anchored Merkle root — ~log₂(N) hashes instead of the whole chain:
+
+```bash
+curl -H "X-Ernest-Api-Key: $READ_ONLY_KEY" https://ernest.example.com/api/blocks/42/proof -o receipt.json
+./ernest proof verify receipt.json
+```
+
+Verification is fully offline: the block data must reproduce its hash (shared
+canonicalization) and the hash must climb the proof path to the anchored root
+(keccak256, sorted pairs, pinned by `../testdata/merkle-proof-golden.json`). The
+printed anchor transaction lets anyone confirm the root on the public chain.
+
 ## Other commands
 
 Direct-MongoDB query helpers (`MONGO_URI` + `BLUEPRINT_DB_DATABASE`):

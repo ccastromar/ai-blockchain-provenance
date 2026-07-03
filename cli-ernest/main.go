@@ -9,6 +9,7 @@ import (
 	_ "cli-ernest/cmd/aimodels"
 	_ "cli-ernest/cmd/anchors"
 	_ "cli-ernest/cmd/hashchain"
+	_ "cli-ernest/cmd/proof"
 	_ "cli-ernest/cmd/provenance"
 )
 

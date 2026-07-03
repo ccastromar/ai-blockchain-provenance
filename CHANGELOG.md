@@ -18,6 +18,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Cross-language hash consensus suite: `testdata/hash-golden-vectors.json` pins the canonicalization (RFC 8785 plus excluded keys) byte-for-byte across the NestJS backend, the Go event-writer and the Go CLI; golden tests run in all three CI jobs.
 - CLI chain verification without database credentials: `ernest hashchain verify --api` (a read-only key suffices) and `--file` for offline verification of the new `GET /api/blocks/export` bundle; direct-Mongo mode remains for forensic use.
 - Event-writer number normalization: all event numbers are pinned to doubles before hashing and storage, and integers beyond 2^53 are rejected to the DLQ instead of silently forking consensus between JS and Go verifiers.
+- SPV-style inclusion receipts: `GET /api/blocks/:index/proof` emits a self-contained evidence bundle (block, Merkle proof path, anchored root, anchor transaction) connecting one block to its covering confirmed anchor; `ernest proof verify receipt.json` verifies it fully offline — data-to-hash, hash-to-root — pinned cross-language by `testdata/merkle-proof-golden.json`. The endpoint also refuses to emit receipts when the local chain no longer reproduces the anchored root, which is itself tamper evidence.
 
 ### Changed
 

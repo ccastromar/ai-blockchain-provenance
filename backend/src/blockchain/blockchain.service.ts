@@ -502,17 +502,94 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-   * Calcule Merkle root for the hashchain
-   */
-    async getMerkleRoot(): Promise<string> {
-        const blocks = await this.provenanceBlockModel.find().sort({ index: 1 }).lean();
-        const blockHashes = blocks.map(b => b.hash);
-        if (blockHashes.length === 0) {
+     * Merkle tree over block hashes 0..upToIndex (inclusive), in index order.
+     * This exact construction (keccak256, sortPairs) is the anchoring contract:
+     * proofs handed to auditors are only verifiable if the tree can be rebuilt
+     * deterministically for the range an anchor recorded.
+     */
+    private async buildMerkleTree(upToIndex?: number): Promise<MerkleTree> {
+        const filter = upToIndex !== undefined ? { index: { $lte: upToIndex } } : {};
+        const blocks = await this.provenanceBlockModel.find(filter).sort({ index: 1 }).lean();
+        if (blocks.length === 0) {
             throw new Error('No blocks found');
         }
-        const leaves = blockHashes.map(h => Buffer.from(h.replace(/^0x/, ''), 'hex'));
-        const tree = new MerkleTree(leaves, keccak256, { sortPairs: true });
+        if (upToIndex !== undefined && blocks.length !== upToIndex + 1) {
+            throw new Error(`Chain is not contiguous up to index ${upToIndex}: found ${blocks.length} blocks`);
+        }
+        const leaves = blocks.map(b => Buffer.from(b.hash.replace(/^0x/, ''), 'hex'));
+        return new MerkleTree(leaves, keccak256, { sortPairs: true });
+    }
+
+    /**
+     * Calcule Merkle root for the hashchain. Bounded to upToIndex when given, so an
+     * anchor's stored root always matches the lastBlockIndex it records even if new
+     * blocks land while the anchor transaction is in flight.
+     */
+    async getMerkleRoot(upToIndex?: number): Promise<string> {
+        const tree = await this.buildMerkleTree(upToIndex);
         return '0x' + tree.getRoot().toString('hex');
+    }
+
+    /**
+     * SPV-style inclusion proof: connects one block to the Merkle root recorded by the
+     * earliest confirmed anchor covering it. The receipt is self-contained evidence --
+     * with the anchor transaction on the public chain, anyone can verify the block
+     * existed before the anchor time without access to Ernest or its database.
+     */
+    async getBlockProof(index: number): Promise<any> {
+        const block = await this.provenanceBlockModel.findOne({ index }).lean();
+        if (!block) {
+            return null;
+        }
+
+        const anchor = await this.anchorModel
+            .findOne({ lastBlockIndex: { $gte: index }, status: 'confirmed' })
+            .sort({ lastBlockIndex: 1 })
+            .lean();
+        if (!anchor) {
+            throw new ConflictException(
+                `Block ${index} is not covered by a confirmed anchor yet; inclusion receipts exist only for anchored history.`,
+            );
+        }
+
+        const tree = await this.buildMerkleTree(anchor.lastBlockIndex);
+        const computedRoot = '0x' + tree.getRoot().toString('hex');
+        if (computedRoot !== anchor.merkleRoot) {
+            // The local chain can no longer reproduce the anchored root: either the
+            // pre-anchor history was rewritten, or the anchor record is corrupt.
+            // Refusing to emit a receipt IS the tamper evidence here.
+            throw new ConflictException(
+                `Local chain does not reproduce anchored Merkle root ${anchor.merkleRoot} (computed ${computedRoot}). ` +
+                'History covered by this anchor appears to have been modified.',
+            );
+        }
+
+        const leaf = Buffer.from(block.hash.replace(/^0x/, ''), 'hex');
+        const proof = tree.getProof(leaf).map(p => '0x' + p.data.toString('hex'));
+
+        return {
+            block: {
+                index: block.index,
+                timestamp: block.timestamp,
+                data: block.data,
+                previousHash: block.previousHash,
+                hash: block.hash,
+            },
+            proof,
+            merkleRoot: anchor.merkleRoot,
+            hashAlgorithm: 'keccak256',
+            pairSorting: 'sorted',
+            anchor: {
+                txHash: anchor.txHash,
+                blockNumber: anchor.blockNumber,
+                chainId: anchor.chainId,
+                contractAddress: anchor.contractAddress,
+                organizationId: anchor.organizationId,
+                lastBlockIndex: anchor.lastBlockIndex,
+                anchoredAt: anchor.anchoredAt,
+            },
+            generatedAt: new Date().toISOString(),
+        };
     }
 
 
@@ -567,7 +644,10 @@ export class BlockchainService implements OnModuleInit {
             throw new Error('No blocks found to anchor');
         }
 
-        const merkleRoot = await this.getMerkleRoot();
+        // Bounded to lastBlock.index: without it, a block appended while the anchor
+        // transaction is in flight would make the stored root cover more blocks than
+        // lastBlockIndex records, and no inclusion proof could ever reproduce it.
+        const merkleRoot = await this.getMerkleRoot(lastBlock.index);
         const provider = new ethers.JsonRpcProvider(config.rpcUrl);
         const wallet = new ethers.Wallet(config.privateKey, provider);
         const contract = new ethers.Contract(config.contractAddress, anchorAbi, wallet);

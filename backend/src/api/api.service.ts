@@ -260,6 +260,10 @@ export class ApiService {
     return await this.blockchainService.exportAllBlocks();
   }
 
+  async getBlockProof(index: number) {
+    return await this.blockchainService.getBlockProof(index);
+  }
+
   async getBlockByIndex(index: number) {
     return await this.blockchainService.getBlockByIndex(index);
   }
