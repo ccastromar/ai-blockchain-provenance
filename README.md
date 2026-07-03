@@ -415,6 +415,7 @@ bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
 Release checklist: [docs/release-checklist.md](docs/release-checklist.md).
 Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
 Backup and recovery: [docs/backup-recovery.md](docs/backup-recovery.md).
+Threat model — what Ernest detects vs. cannot prevent: [docs/threat-model.md](docs/threat-model.md).
 
 ## Roadmap
 
