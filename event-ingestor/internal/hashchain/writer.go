@@ -115,6 +115,15 @@ func (w MongoWriter) AppendEvent(ctx context.Context, event events.CanonicalEven
 		return Block{}, err
 	}
 
+	// Pin all numbers to float64 before hashing AND storing, rejecting integers beyond
+	// 2^53 (see NormalizeNumbers): what gets hashed must be exactly what every verifier
+	// reads back from BSON later.
+	normalized, err := NormalizeNumbers(data)
+	if err != nil {
+		return Block{}, fmt.Errorf("event contains a non-portable number: %w", err)
+	}
+	data = normalized.(map[string]any)
+
 	for attempt := 1; attempt <= maxAppendRetries; attempt++ {
 		block, err := w.appendOnce(ctx, data)
 		if err == nil {
