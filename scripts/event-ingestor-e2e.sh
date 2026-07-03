@@ -6,6 +6,13 @@ ERNEST_API_BASE="${ERNEST_API_BASE:-http://localhost:3001/api}"
 EVENT_COUNT="${EVENT_COUNT:-5}"
 RUN_ID="$(date +%Y%m%d%H%M%S)"
 MODEL_ID="${MODEL_ID:-random-event-model-${RUN_ID}}"
+# Ernest API reads are key-gated when ERNEST_API_KEY/ERNEST_READ_API_KEY are configured
+# on the backend; a read-only key is enough for everything this script queries.
+ERNEST_API_KEY="${ERNEST_API_KEY:-}"
+AUTH_HEADERS=()
+if [[ -n "${ERNEST_API_KEY}" ]]; then
+  AUTH_HEADERS=(-H "X-Ernest-Api-Key: ${ERNEST_API_KEY}")
+fi
 
 compose() {
   if [[ -f .env ]]; then
@@ -82,7 +89,7 @@ done
 
 echo "Waiting for event-writer to append blocks..."
 for _ in $(seq 1 30); do
-  PROVENANCE="$(curl --fail --silent --show-error "${ERNEST_API_BASE}/provenances/${MODEL_ID}" || true)"
+  PROVENANCE="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${ERNEST_API_BASE}/provenances/${MODEL_ID}" || true)"
   TOTAL_BLOCKS="$(printf '%s' "${PROVENANCE}" | json_get_total_blocks 2>/dev/null || printf '0')"
   if [[ "${TOTAL_BLOCKS}" -ge "${EVENT_COUNT}" ]]; then
     break
@@ -90,7 +97,7 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
-PROVENANCE="$(curl --fail --silent --show-error "${ERNEST_API_BASE}/provenances/${MODEL_ID}")"
+PROVENANCE="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${ERNEST_API_BASE}/provenances/${MODEL_ID}")"
 TOTAL_BLOCKS="$(printf '%s' "${PROVENANCE}" | json_get_total_blocks)"
 
 if [[ "${TOTAL_BLOCKS}" -lt "${EVENT_COUNT}" ]]; then
@@ -100,7 +107,7 @@ if [[ "${TOTAL_BLOCKS}" -lt "${EVENT_COUNT}" ]]; then
 fi
 
 echo "Verifying hashchain..."
-VERIFY="$(curl --fail --silent --show-error "${ERNEST_API_BASE}/verify")"
+VERIFY="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${ERNEST_API_BASE}/verify")"
 echo "${VERIFY}"
 
 echo

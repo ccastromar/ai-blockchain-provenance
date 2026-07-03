@@ -24,6 +24,13 @@ HF_HEADERS=()
 if [[ -n "${HF_SECRET}" ]]; then
   HF_HEADERS=(-H "X-Webhook-Secret: ${HF_SECRET}")
 fi
+# Ernest API reads are key-gated when ERNEST_API_KEY/ERNEST_READ_API_KEY are configured
+# on the backend; a read-only key is enough for everything this script queries.
+ERNEST_API_KEY="${ERNEST_API_KEY:-}"
+AUTH_HEADERS=()
+if [[ -n "${ERNEST_API_KEY}" ]]; then
+  AUTH_HEADERS=(-H "X-Ernest-Api-Key: ${ERNEST_API_KEY}")
+fi
 
 curl() {
   if [[ -z "${PROVIDER_HMAC_SECRET}" ]]; then
@@ -93,7 +100,7 @@ wait_for_url() {
   local attempts="${3:-60}"
 
   for _ in $(seq 1 "${attempts}"); do
-    if curl --fail --silent --show-error "${url}" >/dev/null 2>&1; then
+    if curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${url}" >/dev/null 2>&1; then
       return 0
     fi
     sleep 1
@@ -119,7 +126,7 @@ wait_for_appended_event() {
 
   for _ in $(seq 1 "${attempts}"); do
     local response
-    response="$(curl --fail --silent --show-error "${API_BASE}/ingested-events?source=${source}&limit=20")"
+    response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingested-events?source=${source}&limit=20")"
     if printf '%s' "${response}" | python3 -c 'import json,sys; needle=sys.argv[1]; data=json.load(sys.stdin); items=data.get("items", []); sys.exit(0 if any(item.get("sourceEventId") == needle and item.get("status") == "appended" for item in items) else 1)' "${source_event_id}"
     then
       return 0
@@ -138,7 +145,7 @@ wait_for_duplicate_event() {
 
   for _ in $(seq 1 "${attempts}"); do
     local response
-    response="$(curl --fail --silent --show-error "${API_BASE}/ingested-events?source=${source}&status=duplicate&limit=20")"
+    response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingested-events?source=${source}&status=duplicate&limit=20")"
     if printf '%s' "${response}" | python3 -c 'import json,sys; needle=sys.argv[1]; data=json.load(sys.stdin); items=data.get("items", []); sys.exit(0 if any(item.get("sourceEventId") == needle and int(item.get("duplicateCount") or 0) >= 1 for item in items) else 1)' "${source_event_id}"
     then
       return 0
@@ -158,7 +165,7 @@ wait_for_event_verification() {
 
   for _ in $(seq 1 "${attempts}"); do
     local response
-    response="$(curl --fail --silent --show-error "${API_BASE}/ingested-events?source=${source}&verificationStatus=${expected_verification}&limit=20")"
+    response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingested-events?source=${source}&verificationStatus=${expected_verification}&limit=20")"
     if printf '%s' "${response}" | python3 -c 'import json,sys; needle=sys.argv[1]; expected=sys.argv[2]; data=json.load(sys.stdin); items=data.get("items", []); sys.exit(0 if any(item.get("sourceEventId") == needle and item.get("verificationStatus") == expected for item in items) else 1)' "${source_event_id}" "${expected_verification}"
     then
       return 0
@@ -199,7 +206,7 @@ wait_for_failure_kind() {
 
   for _ in $(seq 1 "${attempts}"); do
     local response
-    response="$(curl --fail --silent --show-error "${API_BASE}/ingested-events/failures/stats")"
+    response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingested-events/failures/stats")"
     if printf '%s' "${response}" | python3 -c 'import json,sys; kind=sys.argv[1]; expected=int(sys.argv[2]); data=json.load(sys.stdin); count=int((data.get("byFailureKind") or {}).get(kind) or 0); sys.exit(0 if count >= expected else 1)' "${failure_kind}" "${expected_min}"
     then
       return 0
@@ -218,7 +225,7 @@ wait_for_ingestor_health_count() {
 
   for _ in $(seq 1 "${attempts}"); do
     local response
-    response="$(curl --fail --silent --show-error "${API_BASE}/ingestor/health")"
+    response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingestor/health")"
     if printf '%s' "${response}" | python3 -c 'import json,sys; path=sys.argv[1].split("."); expected=int(sys.argv[2]); data=json.load(sys.stdin); value=data;
 for key in path:
     value = (value or {}).get(key)
@@ -239,7 +246,7 @@ assert_provenance() {
   local expected_min_blocks="$2"
 
   local response
-  response="$(curl --fail --silent --show-error "${API_BASE}/provenances?modelId=${model_id}")"
+  response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/provenances?modelId=${model_id}")"
   local total
   total="$(printf '%s' "${response}" | json_field totalBlocks)"
   if [[ "${total}" -lt "${expected_min_blocks}" ]]; then
@@ -254,7 +261,7 @@ assert_provenance_exact() {
   local expected_blocks="$2"
 
   local response
-  response="$(curl --fail --silent --show-error "${API_BASE}/provenances?modelId=${model_id}")"
+  response="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/provenances?modelId=${model_id}")"
   local total
   total="$(printf '%s' "${response}" | json_field totalBlocks)"
   if [[ "${total}" -ne "${expected_blocks}" ]]; then
@@ -272,7 +279,7 @@ wait_for_url "${API_BASE}/verify" "backend API"
 wait_for_url "${INGESTOR_BASE}/health" "event-ingestor proxy"
 
 echo "Checking ingestor health endpoint..."
-HEALTH_STATUS="$(curl --fail --silent --show-error "${API_BASE}/ingestor/health" | json_field status)"
+HEALTH_STATUS="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingestor/health" | json_field status)"
 if [[ "${HEALTH_STATUS}" != "healthy" ]]; then
   echo "Expected ingestor health status healthy, got ${HEALTH_STATUS}" >&2
   exit 1
@@ -280,7 +287,7 @@ fi
 
 if [[ -n "${INGEST_KEY}" ]]; then
   echo "Checking backend reports shared-secret ingestor auth..."
-  AUTH_MODE="$(curl --fail --silent --show-error "${API_BASE}/ingestor/auth" | json_field mode)"
+  AUTH_MODE="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingestor/auth" | json_field mode)"
   if [[ "${AUTH_MODE}" != "shared_secret" ]]; then
     echo "Expected backend ingestor auth mode shared_secret, got ${AUTH_MODE}" >&2
     exit 1
@@ -770,10 +777,10 @@ assert_provenance "${OL_MODEL_ID}" 1
 assert_provenance "${OTEL_MODEL_ID}" 1
 
 echo "Checking dead-letter visibility endpoint..."
-curl --fail --silent --show-error "${API_BASE}/ingested-events/failures/stats" >/dev/null
+curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/ingested-events/failures/stats" >/dev/null
 
 echo "Verifying hashchain..."
-VERIFY="$(curl --fail --silent --show-error "${API_BASE}/verify")"
+VERIFY="$(curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/verify")"
 if [[ "$(printf '%s' "${VERIFY}" | json_is_valid_chain)" != "true" ]]; then
   echo "Hashchain verification failed:" >&2
   echo "${VERIFY}" >&2
