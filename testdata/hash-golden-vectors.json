@@ -1,0 +1,257 @@
+{
+  "$comment": "Cross-language golden vectors for Ernest block hashing. Reference: backend canonicalizeEx (RFC 8785) with excluded keys [\"__v\",\"_id\",\"createdAt\",\"updatedAt\",\"hash\"]. Block string: index|timestamp|canonicalData|previousHash, hashed with SHA-256 (hex). Consumed by backend/test/hash-golden-vectors.test.js, event-ingestor/internal/hashchain/golden_test.go and cli-ernest/internal/hashcanon/golden_test.go. Regenerate ONLY via scripts/generate-hash-golden-vectors.cjs and never change existing expected values: that is a consensus break.",
+  "excludedKeys": [
+    "__v",
+    "_id",
+    "createdAt",
+    "updatedAt",
+    "hash"
+  ],
+  "vectors": [
+    {
+      "name": "flat-strings",
+      "comment": "Baseline: flat object, keys arrive unsorted.",
+      "block": {
+        "index": 1,
+        "timestamp": 1700000000,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "type": "model_registration",
+          "modelId": "credit-risk-v1",
+          "version": "1.0.0",
+          "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2"
+        }
+      },
+      "expectedCanonicalData": "{\"gitCommit\":\"a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2\",\"modelId\":\"credit-risk-v1\",\"type\":\"model_registration\",\"version\":\"1.0.0\"}",
+      "expectedHash": "944e9e7f2499bf4de2820420083593ff210956180ebd011d421e2bb64bcae359"
+    },
+    {
+      "name": "key-sort-case",
+      "comment": "Uppercase sorts before lowercase (code unit order, not locale).",
+      "block": {
+        "index": 2,
+        "timestamp": 1700000001,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "zebra": 1,
+          "Alpha": 2,
+          "alpha": 3,
+          "B": 4,
+          "b": 5
+        }
+      },
+      "expectedCanonicalData": "{\"Alpha\":2,\"B\":4,\"alpha\":3,\"b\":5,\"zebra\":1}",
+      "expectedHash": "8bfa41a45edaafdee6aecf195c819b7eca611691def7b6c694abcd203b3a4d1f"
+    },
+    {
+      "name": "key-sort-utf16",
+      "comment": "Keys sorted by UTF-16 code units: an emoji (surrogate pair, first unit 0xD83D) sorts BEFORE U+FFFD, the opposite of UTF-8 byte order.",
+      "block": {
+        "index": 3,
+        "timestamp": 1700000002,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "�": "replacement",
+          "😀": "emoji",
+          "ñ": "enye",
+          "z": "ascii"
+        }
+      },
+      "expectedCanonicalData": "{\"z\":\"ascii\",\"ñ\":\"enye\",\"😀\":\"emoji\",\"�\":\"replacement\"}",
+      "expectedHash": "2e7056626c3b5da9582f6c2755a6b52bfec5f8c1c3c0390ae25776111620c400"
+    },
+    {
+      "name": "string-escapes",
+      "comment": "JSON.stringify escaping: short escapes for control chars, no HTML escaping, U+2028/U+2029 kept literal.",
+      "block": {
+        "index": 4,
+        "timestamp": 1700000003,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "quotesAndBackslash": "a\"b\\c",
+          "controls": "tab\there\nnewline\rcr\bbs\fff",
+          "lowControl": "x\u0001y\u001fz",
+          "htmlChars": "a<b>&c",
+          "lineSeps": "u v w",
+          "unicode": "ñandú 模型 😀"
+        }
+      },
+      "expectedCanonicalData": "{\"controls\":\"tab\\there\\nnewline\\rcr\\bbs\\fff\",\"htmlChars\":\"a<b>&c\",\"lineSeps\":\"u v w\",\"lowControl\":\"x\\u0001y\\u001fz\",\"quotesAndBackslash\":\"a\\\"b\\\\c\",\"unicode\":\"ñandú 模型 😀\"}",
+      "expectedHash": "5ed4520938e526a76c06ceacbe6bfcc571febddb63eb245037973d692793d4a3"
+    },
+    {
+      "name": "numbers-common",
+      "comment": "ES number-to-string: trailing zeros dropped, integer-valued doubles print as integers.",
+      "block": {
+        "index": 5,
+        "timestamp": 1700000004,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "zero": 0,
+          "one": 1,
+          "negative": -1,
+          "int": 42,
+          "tenPointZero": 10,
+          "half": 0.5,
+          "tenth": 0.1,
+          "metric": 0.8642,
+          "big": 1000,
+          "decimal": 123.456
+        }
+      },
+      "expectedCanonicalData": "{\"big\":1000,\"decimal\":123.456,\"half\":0.5,\"int\":42,\"metric\":0.8642,\"negative\":-1,\"one\":1,\"tenPointZero\":10,\"tenth\":0.1,\"zero\":0}",
+      "expectedHash": "7fb79f55892b59e9cd65a369abcf6494d6c5e6eef352bde56cd2d510ea809b68"
+    },
+    {
+      "name": "numbers-extreme",
+      "comment": "ES exponent-notation boundaries: >= 1e21 and < 1e-6 switch to exponent form; MAX_SAFE_INTEGER stays exact.",
+      "block": {
+        "index": 6,
+        "timestamp": 1700000005,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "hugeExp": 1e+21,
+          "justBelowHuge": 100000000000000000000,
+          "tinyExp": 1.5e-9,
+          "boundaryDecimal": 0.000001,
+          "justBelowBoundary": 5e-7,
+          "maxSafeInt": 9007199254740991,
+          "maxDouble": 1.7976931348623157e+308,
+          "negExp": -2.5e-8
+        }
+      },
+      "expectedCanonicalData": "{\"boundaryDecimal\":0.000001,\"hugeExp\":1e+21,\"justBelowBoundary\":5e-7,\"justBelowHuge\":100000000000000000000,\"maxDouble\":1.7976931348623157e+308,\"maxSafeInt\":9007199254740991,\"negExp\":-2.5e-8,\"tinyExp\":1.5e-9}",
+      "expectedHash": "dde27b3c8668b2707727980e7152937c7b3d2e4744f9baf1d66a388b0343c54c"
+    },
+    {
+      "name": "booleans-and-null",
+      "comment": "Canonicalization preserves nulls, empty strings, empty objects and empty arrays (cleaning is a separate, append-time concern).",
+      "block": {
+        "index": 7,
+        "timestamp": 1700000006,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "yes": true,
+          "no": false,
+          "nothing": null,
+          "emptyString": "",
+          "emptyObject": {},
+          "emptyArray": []
+        }
+      },
+      "expectedCanonicalData": "{\"emptyArray\":[],\"emptyObject\":{},\"emptyString\":\"\",\"no\":false,\"nothing\":null,\"yes\":true}",
+      "expectedHash": "72d8a7fbaa4ca8467705ee2899777e4f88d5715202a97e6d5c6d253ce163fc2f"
+    },
+    {
+      "name": "nested-structures",
+      "comment": "Recursive key sorting inside nested objects and arrays of objects; array order preserved.",
+      "block": {
+        "index": 8,
+        "timestamp": 1700000007,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "outer": {
+            "zInner": {
+              "b": 2,
+              "a": 1
+            },
+            "aInner": [
+              3,
+              2,
+              1
+            ]
+          },
+          "list": [
+            {
+              "z": "last",
+              "a": "first"
+            },
+            null,
+            "plain",
+            7,
+            [
+              {
+                "deep": true
+              }
+            ]
+          ]
+        }
+      },
+      "expectedCanonicalData": "{\"list\":[{\"a\":\"first\",\"z\":\"last\"},null,\"plain\",7,[{\"deep\":true}]],\"outer\":{\"aInner\":[3,2,1],\"zInner\":{\"a\":1,\"b\":2}}}",
+      "expectedHash": "863fd5ded87809646c67bd52d76602a2d8c0fae6c9b0939495291971c477551e"
+    },
+    {
+      "name": "excluded-keys-recursive",
+      "comment": "hash/_id/__v/createdAt/updatedAt are dropped at EVERY depth, including inside arrays.",
+      "block": {
+        "index": 9,
+        "timestamp": 1700000008,
+        "previousHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "hash": "must-not-appear",
+          "_id": "must-not-appear",
+          "__v": 3,
+          "createdAt": "must-not-appear",
+          "updatedAt": "must-not-appear",
+          "keep": {
+            "hash": "nested-must-not-appear",
+            "createdAt": "nested-must-not-appear",
+            "value": 1
+          },
+          "items": [
+            {
+              "hash": "in-array-must-not-appear",
+              "ok": true
+            }
+          ],
+          "modelHash": "kept-not-in-exclude-list"
+        }
+      },
+      "expectedCanonicalData": "{\"items\":[{\"ok\":true}],\"keep\":{\"value\":1},\"modelHash\":\"kept-not-in-exclude-list\"}",
+      "expectedHash": "576cd1d0a5f0b4335a4286ef104f73aba7344d782fff27aaba76b884726d35bd"
+    },
+    {
+      "name": "realistic-inference-block",
+      "comment": "Shape of a real Ernest inference block written by the NestJS backend.",
+      "block": {
+        "index": 10,
+        "timestamp": 1783017849,
+        "previousHash": "d6a55e1e1bc2fd33fa41b138bd47a9584fe3a0ca999445133a45dae04f30312b",
+        "data": {
+          "type": "inference",
+          "modelId": "race-test-v1",
+          "inferenceId": "race-inf-1",
+          "inputHash": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+          "outputHash": "2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6",
+          "executedAt": "2026-07-02T18:44:09.000Z"
+        }
+      },
+      "expectedCanonicalData": "{\"executedAt\":\"2026-07-02T18:44:09.000Z\",\"inferenceId\":\"race-inf-1\",\"inputHash\":\"3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d\",\"modelId\":\"race-test-v1\",\"outputHash\":\"2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6\",\"type\":\"inference\"}",
+      "expectedHash": "21683bd46ec78b44214a90ab2cc1434c8ad30ca8189c83b867639c0987e8773b"
+    },
+    {
+      "name": "realistic-event-block",
+      "comment": "Shape of a Go-event-writer block: provider event with nulls and URLs (ampersands in query strings must not be HTML-escaped).",
+      "block": {
+        "index": 11,
+        "timestamp": 1783068592,
+        "previousHash": "aaaa000000000000000000000000000000000000000000000000000000000000",
+        "data": {
+          "type": "model_registration",
+          "source": "huggingface",
+          "modelId": "openai-community/gpt2",
+          "rawEventHash": "7791764a90b1cb513f1437384ce2336eac19110ef70fa123f144a66e3f735db1",
+          "metadata": {
+            "huggingFaceUrl": "https://huggingface.co/api/models?author=openai&sort=downloads",
+            "updatedConfig": null,
+            "updatedRefs": null,
+            "score": 0.97,
+            "downloads": 1284391
+          }
+        }
+      },
+      "expectedCanonicalData": "{\"metadata\":{\"downloads\":1284391,\"huggingFaceUrl\":\"https://huggingface.co/api/models?author=openai&sort=downloads\",\"score\":0.97,\"updatedConfig\":null,\"updatedRefs\":null},\"modelId\":\"openai-community/gpt2\",\"rawEventHash\":\"7791764a90b1cb513f1437384ce2336eac19110ef70fa123f144a66e3f735db1\",\"source\":\"huggingface\",\"type\":\"model_registration\"}",
+      "expectedHash": "354af91bfe31622c3917472427ee3581e54cba4487deb7ecf1784de4abf9344a"
+    }
+  ]
+}

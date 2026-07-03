@@ -64,37 +64,39 @@ func (w MongoWriter) EnsureIndexes(ctx context.Context) error {
 		return err
 	}
 
-	_, err := w.db.Collection("ingested_events").Indexes().CreateOne(opCtx, mongo.IndexModel{
+	// Same tolerance for every remaining index: the NestJS backend's Mongoose schemas
+	// declare equivalent indexes under their own auto-generated names (e.g.
+	// "source_1_sourceEventId_1_eventType_1"), and whichever process reaches Mongo
+	// first wins the name.
+	events := w.db.Collection("ingested_events")
+	if err := ignoreIndexConflict(events.Indexes().CreateOne(opCtx, mongo.IndexModel{
 		Keys: bson.D{
 			{Key: "source", Value: 1},
 			{Key: "sourceEventId", Value: 1},
 			{Key: "eventType", Value: 1},
 		},
 		Options: options.Index().SetUnique(true).SetName("unique_source_event_type"),
-	})
-	if err != nil {
+	})); err != nil {
 		return err
 	}
-
-	_, err = w.db.Collection("ingested_events").Indexes().CreateOne(opCtx, mongo.IndexModel{
+	if err := ignoreIndexConflict(events.Indexes().CreateOne(opCtx, mongo.IndexModel{
 		Keys: bson.D{{Key: "verificationStatus", Value: 1}},
-	})
-	if err != nil {
+	})); err != nil {
 		return err
 	}
 
-	_, err = w.db.Collection("event_failures").Indexes().CreateMany(opCtx, []mongo.IndexModel{
-		{
-			Keys: bson.D{{Key: "failedAt", Value: -1}},
-		},
-		{
-			Keys: bson.D{{Key: "source", Value: 1}, {Key: "eventType", Value: 1}},
-		},
-		{
-			Keys: bson.D{{Key: "failureKind", Value: 1}, {Key: "authFailureType", Value: 1}},
-		},
-	})
-	return err
+	failures := w.db.Collection("event_failures")
+	failureIndexes := []mongo.IndexModel{
+		{Keys: bson.D{{Key: "failedAt", Value: -1}}},
+		{Keys: bson.D{{Key: "source", Value: 1}, {Key: "eventType", Value: 1}}},
+		{Keys: bson.D{{Key: "failureKind", Value: 1}, {Key: "authFailureType", Value: 1}}},
+	}
+	for _, model := range failureIndexes {
+		if err := ignoreIndexConflict(failures.Indexes().CreateOne(opCtx, model)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (w MongoWriter) AppendEvent(ctx context.Context, event events.CanonicalEvent) (Block, error) {

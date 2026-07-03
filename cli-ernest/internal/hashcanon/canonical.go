@@ -1,4 +1,4 @@
-package hashchain
+package hashcanon
 
 import (
 	"bytes"
