@@ -4,6 +4,39 @@ All notable changes to Ernest will be documented in this file.
 
 The format follows the spirit of Keep a Changelog, and this project uses semantic versioning once releases are tagged.
 
+## [Unreleased]
+
+### Added
+
+- Read-only vs. read-write access roles: `ERNEST_READ_API_KEY` alongside the existing write key, enforced globally (every route except `/health` and `/api/auth/whoami`).
+- Named, revocable access tokens for auditors and teams (`POST/GET/DELETE /api/auth/tokens`): SHA-256-hashed at rest, role-scoped, optionally expiring, with last-used tracking. Issued and revoked from the new `/settings/tokens` page.
+- Login page (`/login`) replacing the header key popup; the role badge links to it and write actions disable under a read-only credential.
+- Hourly automated chain-integrity check (plus once at startup): result recorded, surfaced in `/health`, and POSTed to `WEBHOOK_URL` when the chain is broken.
+- MongoDB backup/restore scripts (`scripts/backup-mongo.sh`, `scripts/restore-mongo.sh`) and a recovery runbook (`docs/backup-recovery.md`).
+- Hashchain block explorer page with per-block detail, chain-link verification and jump-to-index.
+- CycloneDX 1.6 AI/ML-BOM export for model provenance.
+- Cross-language hash consensus suite: `testdata/hash-golden-vectors.json` pins the canonicalization (RFC 8785 plus excluded keys) byte-for-byte across the NestJS backend, the Go event-writer and the Go CLI; golden tests run in all three CI jobs.
+- CLI chain verification without database credentials: `ernest hashchain verify --api` (a read-only key suffices) and `--file` for offline verification of the new `GET /api/blocks/export` bundle; direct-Mongo mode remains for forensic use.
+- Event-writer number normalization: all event numbers are pinned to doubles before hashing and storage, and integers beyond 2^53 are rejected to the DLQ instead of silently forking consensus between JS and Go verifiers.
+
+### Changed
+
+- Model registration is serialized through the unique `(modelId, version)` document index: a concurrent duplicate registration fails with 400 before touching the hashchain, and a failed block append compensates by removing the document.
+- `POST /api/inferences` returns 409 until the model's registration block is committed, so an inference block can never precede its model's registration in the chain.
+- Block timestamps are monotonic in both writers: never below the previous block's timestamp, keeping wall-clock claims consistent with the authoritative index order.
+- Threat model rewritten around explicit guarantees and non-guarantees (`docs/threat-model.md`).
+- Go event-writer canonicalization conformed to RFC 8785 (no HTML escaping, ECMAScript number notation, UTF-16 key order).
+- Removed the deprecated Next.js frontend; `frontend-svelte/` is the only dashboard.
+
+### Fixed
+
+- Event-writer crash-loop on `IndexOptionsConflict` when Mongoose had already created equivalent indexes under different auto-generated names (provenanceblocks, ingested_events and event_failures).
+- `PATCH /api/models/:id/status` was missing the write guard, allowing status changes with a read-only credential via direct API call.
+- CLI `hashchain verify` compared hashes against empty block data (nested BSON documents decode as `primitive.M`, which its type assertion never matched), re-cleaned stored data at verify time, and remapped the whole chain once per block.
+- Block explorer "next block" button 404ing past the chain tip.
+- Event E2E scripts failing with 401 against a key-gated backend.
+- Docker image rebuilds silently broken by Dockerfiles still copying the deleted legacy frontend's `package.json`.
+
 ## [0.1.0-alpha] - 2026-06-28
 
 ### Added

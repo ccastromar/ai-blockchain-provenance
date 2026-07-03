@@ -137,19 +137,23 @@ For private demos, Ernest can anchor to a local Hardhat chain. For external proo
 
 Ernest helps with:
 
-- Detecting modification of stored provenance blocks.
-- Detecting broken `previousHash` links in the local hashchain.
+- Detecting modification of stored provenance blocks — continuously: an hourly integrity check records its result, surfaces it in `/health`, and alerts `WEBHOOK_URL` if the chain breaks.
+- Detecting broken `previousHash` links in the local hashchain, verifiable independently by the CLI against a read-only API or an offline export.
 - Preserving hash-only evidence without storing sensitive payloads.
 - Producing external timestamp evidence through optional anchoring.
+- Scoping access: read-write vs. read-only keys, plus named, revocable, expiring tokens for external auditors.
 - Exporting reviewable evidence packets for audit discussions.
 
 Ernest does not solve by itself:
 
 - Whether the client computed hashes honestly.
 - Whether the submitted metadata is truthful.
-- Enterprise identity, RBAC, tenant isolation, or approvals.
+- Rewriting of not-yet-anchored history by whoever controls the database (anchoring bounds this window; see the threat model).
+- Per-client enterprise identity (OIDC/SSO), tenant isolation, or approval workflows.
 - Secure custody of production blockchain keys.
 - Regulatory compliance without surrounding process and controls.
+
+The full analysis — explicit guarantees, non-guarantees, attack scenarios and operator obligations — lives in [docs/threat-model.md](docs/threat-model.md).
 
 Planned enterprise controls include signed client submissions, OIDC/JWT auth, RBAC, tenant-aware authorization, and stronger append serialization.
 

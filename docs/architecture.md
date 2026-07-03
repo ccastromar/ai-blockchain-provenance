@@ -133,7 +133,7 @@ These are useful for demos and experiments, but the core stack is backend, front
 
 - Model registry: map `modelId`, version, artifact hash, and Git commit from MLflow, SageMaker, Vertex AI, Azure ML, or an internal registry.
 - Inference systems: compute `inputHash` and `outputHash` at the application boundary and submit only hashes plus non-sensitive metadata.
-- Identity layer: replace the alpha API key with OIDC/JWT, mTLS, or an API gateway policy.
+- Identity layer: Ernest ships read-write/read-only keys plus named, revocable auditor tokens; for per-client enterprise identity, layer OIDC/JWT, mTLS, or an API gateway policy on top.
 - Evidence export: use provenance and anchor endpoints to feed audit reports, GRC workflows, or internal compliance review.
 - Key management: move Sepolia or future mainnet private keys to a managed secrets system.
 
@@ -145,11 +145,11 @@ These are useful for demos and experiments, but the core stack is backend, front
 | MongoDB hashchain | Simple to inspect, query, and demo | High-throughput production use needs stronger serialization |
 | Optional public anchoring | External proof of existence without storing data on-chain | Requires RPC credentials and wallet operations |
 | Static SvelteKit frontend | Small deployable dashboard image | Runtime API URL changes should use same-origin proxying |
-| API key protection | Easy public PoC hardening | Not sufficient for enterprise identity and authorization |
+| Key/token access control (read-write, read-only, revocable auditor tokens) | Scoped, revocable access without new infrastructure | No per-client identity; enterprise SSO/OIDC still needed on top |
 
 ## Incubation Roadmap
 
-1. Replace API key demos with enterprise identity and role-based authorization.
+1. Layer per-client enterprise identity (OIDC/SSO) on top of the built-in role and token model.
 2. Add signed client submissions so Ernest can verify which system produced each hash.
 3. Add stronger append serialization for higher write throughput.
 4. Integrate with a real model registry and one production-like inference event source.
