@@ -47,7 +47,9 @@
         try { previousBlock = await getBlockByIndex(index - 1); } catch { previousBlock = null; }
       }
     } catch (e: any) {
-      detailError = e.message ?? `Failed to load block #${index}`;
+      detailError = e?.response?.status === 404
+        ? `Block #${index} does not exist — the chain currently ends at #${total - 1}.`
+        : e.message ?? `Failed to load block #${index}`;
     } finally {
       loadingDetail = false;
     }
@@ -169,7 +171,8 @@
                   class="btn-outline text-xs py-1.5 px-3 disabled:opacity-40">← Block {selectedBlock.index - 1}</button>
                 <button
                   onclick={() => selectBlock(selectedBlock.index + 1)}
-                  class="btn-outline text-xs py-1.5 px-3">Block {selectedBlock.index + 1} →</button>
+                  disabled={selectedBlock.index >= total - 1}
+                  class="btn-outline text-xs py-1.5 px-3 disabled:opacity-40">Block {selectedBlock.index + 1} →</button>
               </div>
             </div>
 
