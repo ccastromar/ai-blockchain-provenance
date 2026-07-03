@@ -103,31 +103,32 @@ jobs:
           cache-dependency-path: cli-ernest/go.sum
 
       - name: Test non-Docker packages
-        run: go test ./cmd/... ./internal/db/repositories/...
+        run: go test ./cmd/... ./internal/db/repositories/... ./internal/hashcanon/...
 
       - name: Build CLI
         run: go build -o ernest .
 
-  merkle-wasm:
-    name: Merkle WASM
+  event-ingestor:
+    name: Event Ingestor
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: merkle-wasm
+        working-directory: event-ingestor
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          workspaces: merkle-wasm
+          go-version-file: event-ingestor/go.mod
+          cache-dependency-path: event-ingestor/go.sum
 
       - name: Test
-        run: cargo test
+        run: go test ./...
+
+      - name: Build
+        run: go build ./...
 
   scripts:
     name: Scripts and Python Syntax

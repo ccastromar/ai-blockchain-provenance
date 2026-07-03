@@ -62,7 +62,7 @@ MLflow can help with experiment tracking and model registry workflows. Applicati
 - Runs an hourly integrity check of the full chain automatically (plus once at startup), records the result, surfaces it in `/health`, and posts to `WEBHOOK_URL` if the chain is found broken — so tampering doesn't require someone to remember to check `/api/verify` manually.
 - Computes a Merkle root over hashchain block hashes.
 - Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
-- Provides a SvelteKit dashboard with a local audit add-on, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
+- Provides a SvelteKit dashboard with a local audit add-on, NestJS API, Go CLI, Python demo sandbox, and optional auditor agent.
 
 ## What Ernest Is Not
 
@@ -159,10 +159,8 @@ Planned enterprise controls include signed client submissions, OIDC/JWT auth, RB
 | --- | --- | --- |
 | Backend | `backend/` | NestJS API, validation, hashchain, anchoring |
 | Frontend | `frontend-svelte/` | SvelteKit dashboard and Audit Readiness evidence review |
-| Legacy frontend | `frontend/` | Deprecated Next.js dashboard |
 | Blockchain | `blockchain/` | Hardhat project and Solidity contract |
 | CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
-| Merkle WASM | `merkle-wasm/` | Rust Merkle helper |
 | AI sandbox | `ai-sandbox/` | Iris training/demo integration |
 | Auditor | `agentic-auditor/` | Optional FastAPI-based audit agent |
 | Integrations | `integrations/` | Adapters for AI/ML tooling such as MLflow |
@@ -409,7 +407,6 @@ pnpm run frontend:build
 pnpm run blockchain:compile
 pnpm run audit:prod
 cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...
-cd merkle-wasm && cargo test
 python -m compileall ai-sandbox/domains/iris agentic-auditor/app
 bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
 ./scripts/deploy-check.sh

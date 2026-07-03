@@ -35,7 +35,6 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `pnpm run blockchain:compile`
 - [ ] `pnpm run audit:prod`
 - [ ] `pnpm run audit:all` findings are reviewed before tagging.
-- [ ] `cd merkle-wasm && cargo test`
 - [ ] `cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...`
 - [ ] `python -m compileall ai-sandbox/domains/iris agentic-auditor/app`
 - [ ] `PYTHONPATH=agentic-auditor python -m unittest discover -s agentic-auditor/tests`

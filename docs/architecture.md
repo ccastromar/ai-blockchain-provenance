@@ -125,7 +125,6 @@ Ernest verifies integrity of records it receives. It does not prove that the ori
 - `cli-ernest`: direct MongoDB querying and verification utilities.
 - `agentic-auditor`: FastAPI-based assistant for querying Ernest and summarizing audit data.
 - `ai-sandbox`: sample Iris model training and registration workflow.
-- `merkle-wasm`: Rust implementation for Merkle/hash utilities.
 
 These are useful for demos and experiments, but the core stack is backend, frontend, MongoDB, and optional Sepolia anchoring.
 
