@@ -12,7 +12,6 @@ FROM base AS builder
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/package.json
 COPY blockchain/package.json ./blockchain/package.json
-COPY frontend/package.json ./frontend/package.json
 COPY frontend-svelte/package.json ./frontend-svelte/package.json
 RUN pnpm install --filter ernest-backend... --frozen-lockfile
 
@@ -26,7 +25,6 @@ ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/package.json
 COPY blockchain/package.json ./blockchain/package.json
-COPY frontend/package.json ./frontend/package.json
 COPY frontend-svelte/package.json ./frontend-svelte/package.json
 RUN pnpm install --filter ernest-backend --prod --frozen-lockfile && pnpm store prune
 

@@ -1,9 +1,12 @@
 package hashchain
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,22 +25,32 @@ type Block struct {
 	Hash         string
 }
 
+var (
+	verifyAPIURL string
+	verifyAPIKey string
+	verifyFile   string
+)
+
 var verifyCmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Verify the hashchain integrity",
+	Long: `Verify the hashchain integrity.
+
+Block sources, in priority order:
+  --file   offline verification of an export bundle (GET /api/blocks/export)
+  --api    read-only verification through the Ernest API (a read-only key suffices;
+           defaults to $ERNEST_URL, key from --key or $ERNEST_API_KEY)
+  (none)   legacy direct-MongoDB mode, for forensic use on the host itself
+
+The API and file modes are the ones meant for external auditors: no database
+credentials involved.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		start := time.Now()
 
-		client, err := mongo.GetClient()
+		results, err := loadBlocks()
 		if err != nil {
-			return fmt.Errorf("failed to get Mongo client: %w", err)
-		}
-		repo := provenanceblocks.NewMongoRepository(client)
-
-		results, err := repo.GetAll(10000, 0)
-		if err != nil {
-			return fmt.Errorf("error obteniendo bloques desde repo: %w", err)
+			return err
 		}
 		fmt.Printf("Total bloques obtenidos: %d\n", len(results))
 
@@ -76,6 +89,38 @@ var verifyCmd = &cobra.Command{
 	},
 }
 
+func loadBlocks() ([]map[string]interface{}, error) {
+	if verifyFile != "" {
+		fmt.Printf("Fuente: export file %s\n", verifyFile)
+		return loadBlocksFromFile(verifyFile)
+	}
+
+	apiURL := verifyAPIURL
+	if apiURL == "" {
+		apiURL = os.Getenv("ERNEST_URL")
+	}
+	if apiURL != "" {
+		apiKey := verifyAPIKey
+		if apiKey == "" {
+			apiKey = os.Getenv("ERNEST_API_KEY")
+		}
+		fmt.Printf("Fuente: Ernest API %s\n", apiURL)
+		return loadBlocksFromAPI(strings.TrimRight(apiURL, "/"), apiKey)
+	}
+
+	fmt.Println("Fuente: MongoDB directo (modo forense; use --api o --file para verificar sin credenciales de base de datos)")
+	client, err := mongo.GetClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Mongo client: %w", err)
+	}
+	repo := provenanceblocks.NewMongoRepository(client)
+	results, err := repo.GetAll(10000, 0)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo bloques desde repo: %w", err)
+	}
+	return results, nil
+}
+
 func verifyBlock(blocks []Block, i int) error {
 	if i == 0 {
 		return nil // genesis, siempre válido
@@ -110,6 +155,9 @@ func getInt64FromAny(val interface{}) int64 {
 		return v
 	case float64:
 		return int64(v)
+	case json.Number:
+		iv, _ := v.Int64()
+		return iv
 	case string:
 		iv, _ := strconv.ParseInt(v, 10, 64)
 		return iv
@@ -159,5 +207,8 @@ func MapResultsToBlocks(results []map[string]interface{}) []Block {
 }
 
 func init() {
+	verifyCmd.Flags().StringVar(&verifyAPIURL, "api", "", "Ernest API base URL (e.g. http://localhost:3001); defaults to $ERNEST_URL")
+	verifyCmd.Flags().StringVar(&verifyAPIKey, "key", "", "Ernest API key for --api mode (read-only key suffices); defaults to $ERNEST_API_KEY")
+	verifyCmd.Flags().StringVar(&verifyFile, "file", "", "verify an offline export bundle (GET /api/blocks/export) instead of a live source")
 	HashchainCmd.AddCommand(verifyCmd)
 }

@@ -18,7 +18,6 @@ ENV PUBLIC_ERNEST_API_KEY=${PUBLIC_ERNEST_API_KEY}
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY backend/package.json ./backend/package.json
 COPY blockchain/package.json ./blockchain/package.json
-COPY frontend/package.json ./frontend/package.json
 COPY frontend-svelte/package.json ./frontend-svelte/package.json
 RUN pnpm install --filter ernest-frontend-svelte... --frozen-lockfile
 

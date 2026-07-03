@@ -136,7 +136,7 @@ The guarantees hold only if the deployment does its part:
 | Anchor key custody | Environment variable | Secrets manager or external signer service |
 | Supply-chain drift | CI + GHCR publishing | Image signing, SBOM, provenance attestations |
 | Sensitive data in metadata | Caller responsibility | Metadata schema validation / DLP checks |
-| CLI verification transport | Direct MongoDB connection | Read-only API or exported-dump verification |
+| CLI verification transport | Read-only API (`--api`) and offline export (`--file`) modes; direct Mongo kept for forensic use | Streaming export for chains too large for one JSON bundle |
 | Large-integer fidelity | int64 beyond 2^53 diverges between JS and Go verifiers | Reject or stringify >2^53 integers at ingest |
 
 ## Out of scope

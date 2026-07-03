@@ -135,6 +135,14 @@ export class ApiController {
     return await this.apiService.getAllBlocks(pagination.page, pagination.limit);
   }
 
+  // Declared before blocks/:index so "export" is not captured by the ParseIntPipe param.
+  @Get('blocks/export')
+  @ApiOperation({ summary: 'Export the full hashchain as a flat JSON bundle for offline verification (e.g. ernest CLI --file mode).' })
+  @ApiOkResponse({ description: 'All blocks sorted by index, stripped of Mongo internals.' })
+  async exportAllBlocks() {
+    return await this.apiService.exportAllBlocks();
+  }
+
   @Get('blocks/:index')
   @ApiOperation({ summary: 'Return a raw hashchain block by index.' })
   @ApiParam({ name: 'index', example: 1, type: Number })

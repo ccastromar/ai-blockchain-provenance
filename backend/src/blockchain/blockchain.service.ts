@@ -411,6 +411,22 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
+     * Full chain as a flat array of verifiable blocks, stripped of Mongo internals.
+     * This is the offline-audit format: download it, hand it to an auditor, and the
+     * CLI can verify it (ernest hashchain verify --file chain.json) with no access to
+     * the API or the database. Fine for PoC-scale chains; a streaming/chunked export
+     * is the known follow-up for chains that no longer fit comfortably in memory.
+     */
+    async exportAllBlocks(): Promise<{ exportedAt: string; totalBlocks: number; blocks: any[] }> {
+        const blocks = await this.provenanceBlockModel
+            .find()
+            .sort({ index: 1 })
+            .select('-_id -__v -createdAt -updatedAt')
+            .lean();
+        return { exportedAt: new Date().toISOString(), totalBlocks: blocks.length, blocks };
+    }
+
+    /**
      * Export provenance for a model as a signed JSON bundle
      */
     async exportProvenance(modelId: string): Promise<{ bundle: object; signature: string; algorithm: string }> {
