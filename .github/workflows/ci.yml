@@ -14,6 +14,19 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    # Real MongoDB for the HTTP auth-matrix integration suite (test/http-auth-matrix.test.js);
+    # the suite skips itself with a warning when no Mongo is reachable, so local runs
+    # without the docker stack still pass — CI always exercises it.
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand(\"ping\").ok'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
