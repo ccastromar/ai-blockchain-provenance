@@ -127,7 +127,12 @@ export class BlockchainService implements OnModuleInit {
                 throw new Error('Chain not initialized. Genesis block missing.');
             }
 
-            const timestamp = Math.floor(Date.now() / 1000);
+            // Never below the previous block's timestamp: if the host clock jumps
+            // backwards (NTP correction, restored VM), a block timestamped earlier than
+            // its predecessor would look like tampering to an auditor even though the
+            // chain is valid. Block index stays the authoritative order; this just keeps
+            // timestamps consistent with it.
+            const timestamp = Math.max(Math.floor(Date.now() / 1000), lastBlock.timestamp);
             const newBlock = {
                 index: lastBlock.index + 1,
                 timestamp,
@@ -354,6 +359,20 @@ export class BlockchainService implements OnModuleInit {
             metadata,
             organizationId,
         });
+    }
+
+    /**
+     * True once the model's registration block is committed to the chain. Used by
+     * ApiService.logInference to keep inference blocks causally after their model's
+     * registration block: the AIModel document alone isn't enough, since it is created
+     * just before the registration block is appended (see ApiService.registerModel).
+     */
+    async hasRegistrationBlock(modelId: string): Promise<boolean> {
+        const found = await this.provenanceBlockModel.exists({
+            'data.type': 'model_registration',
+            'data.modelId': modelId,
+        });
+        return !!found;
     }
 
     /**

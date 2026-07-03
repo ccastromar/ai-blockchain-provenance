@@ -329,9 +329,19 @@ func (w MongoWriter) appendOnce(ctx context.Context, data map[string]any) (Block
 		return Block{}, err
 	}
 
+	// Never below the previous block's timestamp: if the host clock jumps backwards
+	// (NTP correction, restored VM), a block timestamped earlier than its predecessor
+	// would look like tampering to an auditor even though the chain is valid. Block
+	// index stays the authoritative order; this keeps timestamps consistent with it.
+	// Mirrors BlockchainService.addBlock in the NestJS backend.
+	timestamp := time.Now().Unix()
+	if last.Timestamp > timestamp {
+		timestamp = last.Timestamp
+	}
+
 	block := Block{
 		Index:        last.Index + 1,
-		Timestamp:    time.Now().Unix(),
+		Timestamp:    timestamp,
 		Data:         data,
 		PreviousHash: last.Hash,
 	}

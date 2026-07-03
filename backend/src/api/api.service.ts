@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { MlflowService } from '../mlflow/mock.mlflow.service';
 import { RegisterModelDto } from './dto/register-model.dto';
@@ -35,27 +35,49 @@ export class ApiService {
     //   dto.metrics
     // );
 
-    const blockchainResult = await this.blockchainService.registerModel(
-      dto.modelId,
-      dto.modelName,
-      dto.version,
-      dto.mlflow.modelHash,
-      dto.mlflow.gitCommit,
-      dto.params,
-      dto.metrics,
-      dto.metadata,
-      dto.organizationId,
-    );
+    // Model document FIRST, block second. The unique (modelId, version) index makes the
+    // document insert the serialization point: of two concurrent registrations of the
+    // same model, the loser fails right here with a duplicate-key error -- before
+    // anything reaches the hashchain -- instead of both appending registration blocks
+    // and one caller getting an error after its block was already immutable.
+    try {
+      await this.modelService.create({
+          modelId: dto.modelId,
+          name: dto.modelName,
+          version: dto.version,
+          parameters: dto.params,
+          metrics: dto.metrics,
+          metadata: dto.metadata,
+          organizationId: dto.organizationId,
+      } as any);
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        throw new BadRequestException(`Model '${dto.modelId}' version '${dto.version}' already exists.`);
+      }
+      throw error;
+    }
 
-    await this.modelService.create({
-        modelId: dto.modelId,
-        name: dto.modelName,
-        version: dto.version,
-        parameters: dto.params,
-        metrics: dto.metrics,
-        metadata: dto.metadata,
-        organizationId: dto.organizationId,
-    } as any);
+    let blockchainResult;
+    try {
+      blockchainResult = await this.blockchainService.registerModel(
+        dto.modelId,
+        dto.modelName,
+        dto.version,
+        dto.mlflow.modelHash,
+        dto.mlflow.gitCommit,
+        dto.params,
+        dto.metrics,
+        dto.metadata,
+        dto.organizationId,
+      );
+    } catch (error) {
+      // Compensate: a model record without a registration block would accept inferences
+      // the chain can't trace back to any registration. Best-effort -- if this delete
+      // also fails, a retry of the register hits the duplicate guard above, which is at
+      // least loud rather than silently inconsistent.
+      await this.modelService.remove(dto.modelId, dto.version).catch(() => undefined);
+      throw error;
+    }
 
     return {
       success: true,
@@ -163,6 +185,17 @@ export class ApiService {
     if (!modelExists) {
       this.logger.error(`Model ID ${dto.modelId} does not exist`);
       throw new NotFoundException(`Model ID ${dto.modelId} does not exist`);
+    }
+
+    // The document existing isn't enough: it is created moments before the registration
+    // block is appended (see registerModel), so an inference racing a registration could
+    // otherwise land in the chain BEFORE its model's registration block -- a causal
+    // inversion an auditor would flag. 409 tells the caller to retry, not that the
+    // model doesn't exist.
+    if (!(await this.blockchainService.hasRegistrationBlock(dto.modelId))) {
+      throw new ConflictException(
+        `Model '${dto.modelId}' registration is not yet committed to the chain. Retry shortly.`,
+      );
     }
 
     // const inferenceResult = await this.mlflowService.executeInference(

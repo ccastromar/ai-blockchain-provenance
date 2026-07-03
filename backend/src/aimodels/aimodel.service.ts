@@ -40,8 +40,10 @@ export class AIModelService {
     return await this.aimodelModel.findOneAndUpdate({ modelId }, update, { new: true }).lean();
   }
 
-  async remove(modelId: string): Promise<{ acknowledged: boolean; deletedCount: number }> {
-    const result = await this.aimodelModel.deleteOne({ modelId }).exec();
+  async remove(modelId: string, version?: string): Promise<{ acknowledged: boolean; deletedCount: number }> {
+    // Version narrows the delete to one (modelId, version) document -- the unique key --
+    // so compensating a failed v2 registration cannot take out v1's record.
+    const result = await this.aimodelModel.deleteOne(version !== undefined ? { modelId, version } : { modelId }).exec();
     return {
       acknowledged: result.acknowledged,
       deletedCount: result.deletedCount,
