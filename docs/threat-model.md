@@ -136,7 +136,7 @@ The guarantees hold only if the deployment does its part:
 | Anchor key custody | Environment variable | Secrets manager or external signer service |
 | Supply-chain drift | CI + GHCR publishing | Image signing, SBOM, provenance attestations |
 | Sensitive data in metadata | Caller responsibility | Metadata schema validation / DLP checks |
-| CLI verification transport | Read-only API (`--api`) and offline export (`--file`) modes; direct Mongo kept for forensic use | Streaming export for chains too large for one JSON bundle |
+| CLI verification transport | Read-only API (`--api`) and offline export (`--file`) modes; direct Mongo kept for forensic use; export is cursor-streamed with constant server memory | — |
 | Large-integer fidelity | Event-writer normalizes all numbers to doubles and rejects integers beyond 2^53 at ingest (loud failure to the DLQ instead of a silent consensus fork); the JS API is inherently double-typed | — |
 
 ## Out of scope

@@ -169,7 +169,9 @@ test('HTTP auth matrix against the real application', async (t) => {
       assert.equal(patched.status, 200);
 
       const verify = await call('GET', '/api/verify', { key: WRITE_KEY });
-      assert.deepEqual(verify.body, { isValid: true, errors: [] }, 'chain must verify after the lifecycle');
+      assert.equal(verify.body.isValid, true, 'chain must verify after the lifecycle');
+      assert.deepEqual(verify.body.errors, []);
+      assert.ok(verify.body.blocksVerified >= 3, 'verify reports how many blocks it checked');
     });
 
     await t.test('issued token lifecycle: create, use, revoke, rejected', async () => {

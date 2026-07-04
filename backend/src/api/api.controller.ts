@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, Res, UseGuards } from '@nestjs/common';
 import { ApiAcceptedResponse, ApiCreatedResponse, ApiHeader, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { OrgId } from '../common/org-id.decorator';
@@ -137,10 +137,28 @@ export class ApiController {
 
   // Declared before blocks/:index so "export" is not captured by the ParseIntPipe param.
   @Get('blocks/export')
-  @ApiOperation({ summary: 'Export the full hashchain as a flat JSON bundle for offline verification (e.g. ernest CLI --file mode).' })
+  @ApiOperation({ summary: 'Export the full hashchain as a flat JSON bundle for offline verification (e.g. ernest CLI --file mode). Streamed with constant memory.' })
   @ApiOkResponse({ description: 'All blocks sorted by index, stripped of Mongo internals.' })
-  async exportAllBlocks() {
-    return await this.apiService.exportAllBlocks();
+  async exportAllBlocks(@Res() res: any) {
+    const { exportedAt, totalBlocks, cursor } = await this.apiService.exportAllBlocksCursor();
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="ernest-chain-export.json"');
+    res.write(`{"exportedAt":${JSON.stringify(exportedAt)},"totalBlocks":${totalBlocks},"blocks":[`);
+    try {
+      let first = true;
+      for await (const block of cursor) {
+        res.write((first ? '' : ',') + JSON.stringify(block));
+        first = false;
+      }
+      res.end(']}');
+    } catch (error) {
+      // Headers are already sent: the only honest failure mode mid-stream is killing
+      // the connection so the client sees a truncated (hence unverifiable) bundle
+      // rather than a silently complete-looking one.
+      this.logger.error(`Chain export stream failed: ${(error as Error).message}`);
+      res.destroy(error as Error);
+    }
   }
 
   @Get('blocks/:index/proof')

@@ -25,33 +25,90 @@ export class ScheduledBlockchainService implements OnModuleInit {
   }
 
   /**
-   * Periodically re-verify the full hashchain and record the result. verifyChain() only
-   * *detects* tampering when someone happens to call it (e.g. via /api/verify) — nothing
-   * ran it on a schedule before, so a broken chain could go unnoticed indefinitely.
-   * Executed hourly since it recomputes a hash per block (O(n) crypto work).
+   * Periodically re-verify the hashchain and record the result, checkpointed so the
+   * hourly cost is O(new blocks) instead of O(chain):
+   *
+   * - INCREMENTAL (hourly): re-hash from the last checkpoint to the tip, after
+   *   confirming the checkpoint block still carries the hash recorded at the last
+   *   successful check. Catches tail corruption and any recompute-forward rewrite.
+   * - ANCHOR ROOT (every run): recompute the latest confirmed anchor's Merkle root
+   *   from local hashes. This is the check with external teeth — the root lives on a
+   *   public chain, so rewriting anchored history cannot fool it even if every local
+   *   record (checkpoints included) is updated to match.
+   * - FULL (every INTEGRITY_FULL_SCAN_HOURS, default 24): re-hash everything. The one
+   *   thing only a full scan catches is a "lazy" tamper — block data edited while its
+   *   stored hash is left untouched — before the checkpoint, since neither the
+   *   incremental pass nor the anchor root (built from stored hashes) re-reads old data.
    */
   @Cron(CronExpression.EVERY_HOUR)
   async checkChainIntegrity() {
-    let result: { isValid: boolean; errors: string[] };
+    const checkedAt = new Date();
+    const errors: string[] = [];
+    let mode: 'full' | 'incremental' = 'full';
+    let result: Awaited<ReturnType<BlockchainService['verifyChain']>>;
+
     try {
-      result = await this.blockchainService.verifyChain();
+      const checkpoint = await this.integrityCheckModel
+        .findOne({ isValid: true, lastVerifiedIndex: { $gte: 0 } })
+        .sort({ checkedAt: -1 })
+        .lean();
+
+      const fullScanHours = Number(process.env.INTEGRITY_FULL_SCAN_HOURS || 24);
+      const lastFull = await this.integrityCheckModel
+        .findOne({ isValid: true, mode: 'full' })
+        .sort({ checkedAt: -1 })
+        .lean();
+      const fullScanDue =
+        !lastFull || checkedAt.getTime() - new Date(lastFull.checkedAt).getTime() >= fullScanHours * 3600_000;
+
+      if (checkpoint && !fullScanDue) {
+        mode = 'incremental';
+        result = await this.blockchainService.verifyChain(checkpoint.lastVerifiedIndex! + 1);
+        // The incremental pass re-hashed the checkpoint block itself (fromIndex - 1);
+        // also pin it to what the last successful check recorded, so a rewrite that
+        // regenerated a consistent tail since then still trips over history.
+        const checkpointBlock = await this.blockchainService.getBlockByIndex(checkpoint.lastVerifiedIndex!);
+        if (!checkpointBlock) {
+          errors.push(`Checkpoint block ${checkpoint.lastVerifiedIndex} has disappeared`);
+        } else if (checkpointBlock.hash !== checkpoint.lastVerifiedHash) {
+          errors.push(
+            `Checkpoint mismatch at block ${checkpoint.lastVerifiedIndex}: hash was ${checkpoint.lastVerifiedHash} at the last check, now ${checkpointBlock.hash} — pre-checkpoint history appears rewritten`,
+          );
+        }
+      } else {
+        result = await this.blockchainService.verifyChain();
+      }
     } catch (e: any) {
       this.logger.error(`Chain integrity check could not run: ${e.message}`);
       return;
     }
+    errors.push(...result.errors);
 
-    const checkedAt = new Date();
+    const anchorCheck = await this.blockchainService.verifyLatestAnchorRoot();
+    if (anchorCheck.checked && !anchorCheck.ok) {
+      errors.push(anchorCheck.error!);
+    }
+
+    const isValid = errors.length === 0;
     await this.integrityCheckModel.create({
-      isValid: result.isValid,
-      errors: result.errors,
+      isValid,
+      errors,
       checkedAt,
+      mode,
+      blocksVerified: result.blocksVerified,
+      // Only advance the checkpoint on a fully clean pass: a failed check must leave
+      // the previous trusted checkpoint in place.
+      ...(isValid && result.lastVerifiedIndex !== null
+        ? { lastVerifiedIndex: result.lastVerifiedIndex, lastVerifiedHash: result.lastVerifiedHash }
+        : {}),
+      ...(anchorCheck.checked ? { anchorRootOk: anchorCheck.ok } : {}),
     });
 
-    if (result.isValid) {
-      this.logger.debug('Chain integrity check passed');
+    if (isValid) {
+      this.logger.debug(`Chain integrity check passed (${mode}, ${result.blocksVerified} blocks)`);
     } else {
-      this.logger.error(`Chain integrity check FAILED: ${result.errors.join('; ')}`);
-      await this.notifyIntegrityWebhook(result.errors, checkedAt);
+      this.logger.error(`Chain integrity check FAILED: ${errors.join('; ')}`);
+      await this.notifyIntegrityWebhook(errors, checkedAt);
     }
   }
 

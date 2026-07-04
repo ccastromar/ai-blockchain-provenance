@@ -199,47 +199,94 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Verify hashchain integrity
+     * Verify hashchain integrity. Streams blocks with a cursor (constant memory, so a
+     * million-block chain does not get materialized in RAM) and optionally verifies
+     * only from `fromIndex` onwards -- the checkpointed mode used by the hourly
+     * scheduled check. When fromIndex > 0 the block just before it is also fetched and
+     * re-hashed so the first link is anchored to verified history.
+     *
+     * Returns the last verified index/hash so callers can persist a checkpoint.
      */
-    async verifyChain(): Promise<{ isValid: boolean; errors: string[] }> {
-        const blocks = await this.provenanceBlockModel
-            .find()
+    async verifyChain(fromIndex = 0): Promise<{
+        isValid: boolean;
+        errors: string[];
+        blocksVerified: number;
+        lastVerifiedIndex: number | null;
+        lastVerifiedHash: string | null;
+    }> {
+        const startAt = fromIndex > 0 ? fromIndex - 1 : 0;
+        const cursor = this.provenanceBlockModel
+            .find(startAt > 0 ? { index: { $gte: startAt } } : {})
             .sort({ index: 1 })
-            .lean();
+            .lean()
+            .cursor();
 
         const errors: string[] = [];
+        let previousBlock: any = null;
+        let expectedIndex = startAt;
+        let blocksVerified = 0;
+        let lastVerifiedIndex: number | null = null;
+        let lastVerifiedHash: string | null = null;
 
-        for (let i = 0; i < blocks.length; i++) {
-            const currentBlock = blocks[i];
+        for await (const currentBlock of cursor as any) {
+            if (currentBlock.index !== expectedIndex) {
+                errors.push(`Block ${currentBlock.index}: expected index ${expectedIndex} — chain is not contiguous`);
+                expectedIndex = currentBlock.index; // resync so one gap doesn't cascade
+            }
+            expectedIndex += 1;
 
-            // Calculate current block hash
             const calculatedHash = this.calculateHash(currentBlock);
-
             if (currentBlock.hash !== calculatedHash) {
                 errors.push(`Block ${currentBlock.index}: Hash mismatch`);
-                this.logger.error(`Block ${currentBlock.index} hash mismatch:`);
-                this.logger.error(`  Stored hash: ${currentBlock.hash}`);
-                this.logger.error(`  Calculated hash: ${calculatedHash}`);
-                this.logger.error(`  Block index: ${currentBlock.index}`);
-                this.logger.error(`  Data: ${JSON.stringify(currentBlock.data)}`);
-                this.logger.error(`  Timestamp: ${currentBlock.timestamp}`);
-                this.logger.error(`  Timestamp (ISO): ${new Date(currentBlock.timestamp * 1000).toISOString()}`);
+                this.logger.error(`Block ${currentBlock.index} hash mismatch: stored ${currentBlock.hash}, calculated ${calculatedHash}`);
             }
 
-            // Verify hash chaining (if not genesis)
-            if (i > 0) {
-                const previousBlock = blocks[i - 1];
-
-                if (currentBlock.previousHash !== previousBlock.hash) {
-                    errors.push(`Block ${currentBlock.index}: Hashchain broken ! (previousHash: ${currentBlock.previousHash.substring(0, 16)}..., expected: ${previousBlock.hash.substring(0, 16)}...)`);
-                }
+            if (previousBlock && currentBlock.previousHash !== previousBlock.hash) {
+                errors.push(`Block ${currentBlock.index}: Hashchain broken ! (previousHash: ${currentBlock.previousHash.substring(0, 16)}..., expected: ${previousBlock.hash.substring(0, 16)}...)`);
             }
+
+            previousBlock = currentBlock;
+            blocksVerified += 1;
+            lastVerifiedIndex = currentBlock.index;
+            lastVerifiedHash = currentBlock.hash;
         }
 
         return {
             isValid: errors.length === 0,
-            errors
+            errors,
+            blocksVerified,
+            lastVerifiedIndex,
+            lastVerifiedHash,
         };
+    }
+
+    /**
+     * Checks that the latest confirmed anchor's Merkle root is still reproducible from
+     * the local chain. This is the only check with EXTERNAL teeth: the root lives on a
+     * public chain, so a recompute-forward rewrite of anchored history cannot fool it
+     * even if every local record (including checkpoints) was updated to match.
+     */
+    async verifyLatestAnchorRoot(): Promise<{ checked: boolean; ok: boolean; error?: string }> {
+        const anchor = await this.anchorModel
+            .findOne({ status: 'confirmed' })
+            .sort({ lastBlockIndex: -1 })
+            .lean();
+        if (!anchor) {
+            return { checked: false, ok: true };
+        }
+        try {
+            const computedRoot = await this.getMerkleRoot(anchor.lastBlockIndex);
+            if (computedRoot !== anchor.merkleRoot) {
+                return {
+                    checked: true,
+                    ok: false,
+                    error: `Anchored Merkle root ${anchor.merkleRoot} (blocks 0..${anchor.lastBlockIndex}, tx ${anchor.txHash}) is no longer reproducible: computed ${computedRoot}`,
+                };
+            }
+            return { checked: true, ok: true };
+        } catch (e: any) {
+            return { checked: true, ok: false, error: `Anchor root check failed to run: ${e.message}` };
+        }
     }
 
     /**
@@ -411,19 +458,21 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-     * Full chain as a flat array of verifiable blocks, stripped of Mongo internals.
-     * This is the offline-audit format: download it, hand it to an auditor, and the
-     * CLI can verify it (ernest hashchain verify --file chain.json) with no access to
-     * the API or the database. Fine for PoC-scale chains; a streaming/chunked export
-     * is the known follow-up for chains that no longer fit comfortably in memory.
+     * Full chain as an offline-audit bundle: download it, hand it to an auditor, and
+     * the CLI can verify it (ernest hashchain verify --file chain.json) with no access
+     * to the API or the database. Returns a Mongo cursor so the controller can stream
+     * the JSON out with constant memory -- the chain is never materialized in RAM,
+     * which is what makes the export viable at 10^6 blocks.
      */
-    async exportAllBlocks(): Promise<{ exportedAt: string; totalBlocks: number; blocks: any[] }> {
-        const blocks = await this.provenanceBlockModel
+    async exportAllBlocksCursor(): Promise<{ exportedAt: string; totalBlocks: number; cursor: AsyncIterable<any> }> {
+        const totalBlocks = await this.provenanceBlockModel.countDocuments();
+        const cursor = this.provenanceBlockModel
             .find()
             .sort({ index: 1 })
             .select('-_id -__v -createdAt -updatedAt')
-            .lean();
-        return { exportedAt: new Date().toISOString(), totalBlocks: blocks.length, blocks };
+            .lean()
+            .cursor();
+        return { exportedAt: new Date().toISOString(), totalBlocks, cursor };
     }
 
     /**

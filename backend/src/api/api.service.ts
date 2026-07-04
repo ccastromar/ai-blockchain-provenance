@@ -256,8 +256,8 @@ export class ApiService {
     return await this.blockchainService.getAllBlocks(page, limit);
   }
 
-  async exportAllBlocks() {
-    return await this.blockchainService.exportAllBlocks();
+  async exportAllBlocksCursor() {
+    return await this.blockchainService.exportAllBlocksCursor();
   }
 
   async getBlockProof(index: number) {
