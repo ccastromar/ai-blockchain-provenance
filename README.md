@@ -165,7 +165,7 @@ Planned enterprise controls include signed client submissions, OIDC/JWT auth, RB
 | Frontend | `frontend-svelte/` | SvelteKit dashboard and Audit Readiness evidence review |
 | Blockchain | `blockchain/` | Hardhat project and Solidity contract |
 | CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
-| Merkle WASM | `merkle-wasm/` | Rust Merkle helper |
+| Merkle WASM | `merkle-wasm/` | Rust/WASM verifier: canonical hashing + Merkle proofs for in-browser receipt verification |
 | AI sandbox | `ai-sandbox/` | Iris training/demo integration |
 | Auditor | `agentic-auditor/` | Optional FastAPI-based audit agent |
 | Integrations | `integrations/` | Adapters for AI/ML tooling such as MLflow |

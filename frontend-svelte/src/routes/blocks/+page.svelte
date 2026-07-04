@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getAllBlocks, getBlockByIndex } from '$lib/api';
+  import { getAllBlocks, getBlockByIndex, getBlockProof } from '$lib/api';
 
   // ── List state ─────────────────────────────────────────────────────────────
   let blocks      = $state<any[]>([]);
@@ -19,6 +19,8 @@
   let loadingDetail = $state(false);
   let listError     = $state<string | null>(null);
   let detailError   = $state<string | null>(null);
+  let receiptLoading = $state(false);
+  let receiptError   = $state<string | null>(null);
 
   onMount(() => { loadList(); });
 
@@ -66,6 +68,28 @@
     return !!block && !!prev && block.previousHash === prev.hash;
   }
 
+  async function downloadReceipt() {
+    if (!selectedBlock) return;
+    receiptLoading = true;
+    receiptError = null;
+    try {
+      const receipt = await getBlockProof(selectedBlock.index);
+      const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `ernest-receipt-block-${selectedBlock.index}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      // 409 carries the two interesting cases: not yet anchored, or the chain no
+      // longer reproduces the anchored root (tamper evidence).
+      receiptError = e?.response?.data?.message ?? e.message ?? 'Could not build the receipt.';
+    } finally {
+      receiptLoading = false;
+    }
+  }
+
   function shortHash(value: string | undefined) {
     if (!value) return '—';
     return value.length > 20 ? `${value.slice(0, 12)}…${value.slice(-6)}` : value;
@@ -82,6 +106,7 @@
         {#if total > 0}
           <span class="text-blue-300 text-sm">{total} total</span>
         {/if}
+        <a href="/verify-receipt" class="btn-ghost text-sm py-1.5 px-3">Verify receipt</a>
       </div>
     </div>
   </div>
@@ -166,6 +191,13 @@
               </div>
               <div class="flex items-center gap-2">
                 <button
+                  onclick={downloadReceipt}
+                  disabled={receiptLoading}
+                  title="SPV-style inclusion receipt: Merkle proof connecting this block to its anchored root, verifiable offline"
+                  class="btn-outline text-xs py-1.5 px-3 disabled:opacity-40">
+                  {receiptLoading ? 'Building…' : '⬇ Receipt'}
+                </button>
+                <button
                   onclick={() => selectBlock(selectedBlock.index - 1)}
                   disabled={selectedBlock.index <= 0}
                   class="btn-outline text-xs py-1.5 px-3 disabled:opacity-40">← Block {selectedBlock.index - 1}</button>
@@ -175,6 +207,10 @@
                   class="btn-outline text-xs py-1.5 px-3 disabled:opacity-40">Block {selectedBlock.index + 1} →</button>
               </div>
             </div>
+
+            {#if receiptError}
+              <div class="alert-error text-sm">{receiptError}</div>
+            {/if}
 
             <!-- Chain link verification -->
             {#if selectedBlock.index > 0}

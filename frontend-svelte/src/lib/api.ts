@@ -237,6 +237,9 @@ export const getChainStats = async () => (await api.get('/stats')).data;
 export const verifyChain   = async () => (await api.get('/verify')).data;
 export const getBlockByIndex = async (index: number) => (await api.get(`/blocks/${index}`)).data;
 
+/** SPV-style inclusion receipt: block + Merkle proof to its covering confirmed anchor. */
+export const getBlockProof = async (index: number) => (await api.get(`/blocks/${index}/proof`)).data;
+
 export const getAllBlocks = async (page = 1, limit = 20): Promise<PaginatedResponse<any>> => {
   const res = (await api.get('/blocks', { params: { page, limit } })).data;
   if (Array.isArray(res)) return { data: res, total: res.length, page: 1, totalPages: 1 };

@@ -1,6 +1,21 @@
 use wasm_bindgen::prelude::*;
 use sha2::{Sha256, Digest};
 
+pub mod canonical;
+pub mod receipt;
+
+/// Verify an Ernest evidence receipt (GET /api/blocks/:index/proof) fully
+/// offline: block data must reproduce the block hash (shared canonicalization,
+/// pinned by testdata/hash-golden-vectors.json) and the hash must climb the
+/// Merkle proof to the anchored root (keccak256, sorted pairs, pinned by
+/// testdata/merkle-proof-golden.json). Returns a JSON verdict object.
+#[wasm_bindgen]
+pub fn verify_receipt(receipt_json: &str) -> String {
+    let verification = receipt::verify_receipt_json(receipt_json);
+    serde_json::to_string(&verification)
+        .unwrap_or_else(|e| format!("{{\"valid\":false,\"error\":\"serialize: {}\"}}", e))
+}
+
 #[cfg(target_arch = "wasm32")]
 fn js_error(message: &str) -> JsValue {
     JsValue::from_str(message)
