@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status: Alpha](https://img.shields.io/badge/status-0.1.0--alpha-orange.svg)](CHANGELOG.md)
+[![Status: Alpha](https://img.shields.io/badge/status-0.2.0--alpha-orange.svg)](CHANGELOG.md)
 
 AI systems are increasingly asked to prove what happened: which model version was used, which artifact hash was approved, which code commit produced it, whether inference evidence was recorded, and whether the audit trail was later changed.
 
@@ -92,7 +92,7 @@ MLflow is excellent for ML lifecycle tracking. Ernest is narrower: it turns sele
 
 ## Status
 
-This project is currently `0.1.0-alpha`.
+This project is currently `0.2.0-alpha`.
 
 It is suitable for demos, technical evaluation, and research prototypes. It is not a production compliance system. Ernest can support auditability workflows, but it does not by itself provide HIPAA, GDPR, FDA, banking, or enterprise compliance.
 

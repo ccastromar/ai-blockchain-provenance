@@ -4,7 +4,7 @@ All notable changes to Ernest will be documented in this file.
 
 The format follows the spirit of Keep a Changelog, and this project uses semantic versioning once releases are tagged.
 
-## [Unreleased]
+## [0.2.0-alpha] - 2026-07-04
 
 ### Added
 

@@ -1,6 +1,6 @@
 {
   "name": "ernest-frontend-svelte",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI Model Provenance & Auditing PoC - frontend",
   "type": "module",
   "scripts": {

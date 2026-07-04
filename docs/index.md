@@ -35,7 +35,8 @@ Use this map when presenting Ernest to evaluators, incubator reviewers, or techn
 ## Release And Risk
 
 - `CHANGELOG.md`: release history.
-- `docs/releases/v0.1.0-alpha.md`: alpha release notes.
+- `docs/releases/v0.2.0-alpha.md`: current alpha release notes.
+- `docs/releases/v0.1.0-alpha.md`: first alpha release notes.
 - `docs/release-checklist.md`: pre-release checklist.
 - `docs/release-assets.md`: release asset checklist.
 - `docs/dependency-risk.md`: dependency audit policy and accepted alpha risks.
