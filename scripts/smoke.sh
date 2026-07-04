@@ -48,7 +48,7 @@ curl --fail --silent --show-error \
   -H "Content-Type: application/json" \
   -d "{
     \"modelId\": \"${MODEL_ID}\",
-    \"modelName\": \"Smoke Test Model\",
+    \"modelName\": \"Smoke Test Model ${MODEL_ID}\",
     \"version\": \"0.0.1\",
     \"mlflow\": {
       \"modelHash\": \"${MODEL_HASH}\",
@@ -84,11 +84,11 @@ curl --fail --silent --show-error \
   }" >/dev/null
 
 echo "Verifying chain..."
-curl --fail --silent --show-error "${API_BASE}/verify"
+curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/verify"
 echo
 
 echo "Fetching stats..."
-curl --fail --silent --show-error "${API_BASE}/stats"
+curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/stats"
 echo
 
 echo "Smoke test completed for ${MODEL_ID}."

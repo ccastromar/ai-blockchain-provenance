@@ -40,7 +40,7 @@ echo "Checking OpenAPI JSON..."
 curl --fail --silent --show-error "${API_ORIGIN%/}/api/docs-json" >/dev/null
 
 echo "Checking chain stats..."
-curl --fail --silent --show-error "${API_BASE}/stats" >/dev/null
+curl --fail --silent --show-error "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" "${API_BASE}/stats" >/dev/null
 
 if [ -z "${ERNEST_API_KEY}" ]; then
   echo "ERNEST_API_KEY is not set; skipping write check."
