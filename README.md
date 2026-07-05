@@ -53,6 +53,18 @@ MLflow can help with experiment tracking and model registry workflows. Applicati
 - Security or architecture teams reviewing tamper-evident AI evidence patterns.
 - Incubators or research teams exploring verifiable AI lifecycle controls.
 
+## Regulatory Fit
+
+Record-keeping for AI systems is becoming law, not hygiene. The EU AI Act (Art. 12)
+requires high-risk AI systems — including creditworthiness evaluation, the exact
+scenario above — to automatically record events for traceability, with logs retained
+under Arts. 19/26; ISO/IEC 42001 and the NIST AI RMF ask for the same discipline in
+management-system form. Ernest produces precisely that shape of evidence, with one
+property those frameworks assume but rarely get: records a third party can verify were
+never altered. The honest mapping — what Ernest covers, what stays your responsibility —
+is in [docs/regulatory-mapping.md](docs/regulatory-mapping.md). Ernest does not make you
+compliant; it makes your evidence provable.
+
 ## What It Does
 
 - Registers AI models with version, artifact hash, Git commit, parameters, metrics, and metadata.

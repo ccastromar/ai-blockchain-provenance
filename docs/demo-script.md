@@ -1,95 +1,97 @@
 # Demo Script
 
-Use this script for a 5-minute company or incubator presentation. It assumes the stack is already running and the dashboard is available.
+Use this script for a 5-minute company or incubator presentation. It assumes the stack
+is already running and the dashboard is available. The demo builds to one moment: an
+evidence receipt that still verifies **after you shut the server down**.
 
 ## Setup
 
 - Dashboard: `http://localhost:3000` or the public demo URL.
 - API docs: `http://localhost:3001/api/docs` or `/api/docs` behind the proxy.
-- Optional terminal ready for `./scripts/deploy-check.sh`.
-- If write protection is enabled, have `ERNEST_API_KEY` available.
-- For local anchoring, start with `docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build`.
+- If access keys are configured, sign in at `/login` with the read-write key beforehand.
+- For the anchoring/receipt finale, have at least one confirmed anchor covering the
+  demo blocks. Self-contained option: start with
+  `docker compose -f docker-compose.yml -f docker-compose.local-chain.yml --env-file .env.local-chain up -d --build`
+  and trigger `POST /api/anchors` after seeding.
+- Optional terminal ready with the `ernest` CLI for the alternative offline finale.
 
 ## Talk Track
 
-### 1. Frame The Problem
+### 1. Frame the problem (30s)
 
-AI governance teams need evidence that links models, versions, decisions, and audit events. Ernest demonstrates a narrow provenance layer: it stores hashes and metadata, not raw sensitive AI data.
+AI governance teams are being asked to keep records of what their AI systems did —
+the EU AI Act makes automatic event logging a legal requirement for high-risk systems
+(see [regulatory-mapping.md](regulatory-mapping.md)). Most teams have logs. Almost
+nobody can prove their logs weren't edited afterwards.
 
-Key point: Ernest is not replacing a model registry or data platform. It records tamper-evident evidence beside them.
+Key point: Ernest is not a model registry or a data platform. It records
+**tamper-evident evidence** beside them — hashes and metadata, never raw data.
 
-### 2. Register A Model
+### 2. Seed and register (60s)
 
-Open the dashboard and register a model with:
+Click **Seed demo** on the dashboard (or register `credit-risk-logreg-v1` manually with
+a SHA-256 artifact hash and a git commit).
 
-- `modelId`: `credit-risk-logreg-v1`
-- `version`: `1.0.0`
-- `modelHash`: any valid SHA-256 demo hash
-- `gitCommit`: a valid hex commit-like value
-- basic params and metrics
+Explain while it loads:
 
-Explain:
+- Every event becomes a block in an append-only hashchain; each block's hash covers
+  its content and the previous block's hash.
+- Inference evidence is hash-only: client systems hash inputs/outputs outside Ernest.
+- Concurrent writers can't fork the chain (unique index serialization), and an
+  inference can never be recorded before its model's registration.
 
-- The backend validates the payload.
-- A provenance block is appended to the MongoDB-backed hashchain.
-- The block links to the previous hash.
+### 3. Show the chain being watched (45s)
 
-### 3. Log An Inference
+Open the **Blocks** explorer: pick a block, show the recomputed link verification.
+Mention what they can't see: an hourly integrity check re-verifies the chain from a
+checkpoint, re-validates the anchored Merkle root, and pages a webhook if anything
+stops adding up — tampering doesn't wait for someone to look.
 
-Log an inference for the same model using input and output hashes.
+If asked about access: the badge in the header. Read-only keys and revocable,
+expiring auditor tokens are built in (`/settings/tokens`).
 
-Explain:
+### 4. Anchor (30s)
 
-- Ernest never needs the raw input or output.
-- Client systems hash sensitive values outside Ernest.
-- The chain now links model registration to later inference evidence.
+Show `GET /api/anchors/status`, trigger `POST /api/anchors` if using the local chain.
 
-### 4. View Provenance
+- Ernest computes a Merkle root over the chain and publishes **only that root** —
+  32 bytes and organizational metadata, never data.
+- From this moment, rewriting the anchored history is detectable by anyone,
+  including against us, the operators.
 
-Open the provenance view for the model.
+### 5. The finale: a receipt that doesn't need us (90s)
 
-Explain:
+1. In the block explorer, open the inference block for the credit decision and click
+   **⬇ Receipt**. Show the file: the block, ~a dozen hashes, the anchor transaction.
+2. Open `/verify-receipt`, drop the file: two green checks — data reproduces its
+   hash, proof reaches the anchored root. Point out it ran **in the browser, via
+   WebAssembly; nothing was sent anywhere**.
+3. Now the moment: `docker compose stop backend`. Reload the dashboard — dead.
+   Verify the receipt again on `/verify-receipt` (the page is static) — **still
+   green**.
 
-- The UI shows the event history for a model.
-- Verification recomputes block hashes and `previousHash` links.
-- A tampered local record would break verification.
+Say it plainly: *the auditor does not need to trust our servers, our database, or our
+uptime. The evidence stands on its own, against a public chain.*
 
-### 5. Show Chain Stats And API Contract
+(Terminal alternative: `ernest proof verify receipt.json` — same two checks, same
+independence. Bring the backend back with `docker compose start backend`.)
 
-Open stats and Swagger/OpenAPI docs.
+### 6. Close with the path (30s)
 
-Explain:
-
-- The API is intentionally small: register model, log inference, verify chain, anchor root.
-- Read endpoints can be integrated into audit reports or internal tools.
-
-### 6. Optional Anchor
-
-For a self-contained demo, open `GET /api/anchors/status` and show `mode: local`, then trigger `POST /api/anchors`. Sepolia can be used later with real RPC credentials and a low-fund demo wallet.
-
-Explain:
-
-- Ernest computes a Merkle root over the local chain.
-- Only the root and organizational metadata go on-chain.
-- The local Hardhat chain proves the anchoring flow without requiring Sepolia funds.
-- Public Sepolia anchoring provides an external proof of existence, not raw data storage.
-
-### 7. Close With Roadmap
-
-Close with the incubation path:
-
-- Enterprise identity and RBAC.
-- Signed client submissions.
-- Model registry and inference-system integrations.
-- Operational metrics, backup validation, and structured evidence exports.
+- Regulatory fit: [regulatory-mapping.md](regulatory-mapping.md) — EU AI Act Art. 12
+  record-keeping is exactly this shape of evidence.
+- Next milestones: signed client submissions (who wrote each event), enterprise
+  identity (OIDC/SSO on top of the built-in roles), one production ML-platform
+  integration, production anchoring policy.
 
 ## Expected Questions
 
 | Question | Short Answer |
 | --- | --- |
-| Does Ernest store prompts or inference outputs? | No. It stores hashes and metadata only. |
-| Is this production-ready? | No. It is an alpha PoC suitable for demos and controlled pilots. |
-| What does blockchain add? | Public proof of existence for a Merkle root without publishing private data. |
-| Can a client lie about a hash? | In the alpha, yes. Signed submissions are a planned milestone. |
-| Does it support enterprise SSO? | Not yet. The current public-demo protection is API-key based. |
-| Can this integrate with MLflow or internal registries? | Yes, that is a natural next milestone. |
+| Does Ernest store prompts or inference outputs? | No. Hashes and metadata only, by design. |
+| Is this production-ready? | No — alpha, honest about it. See the threat model for exact guarantees and non-guarantees. |
+| What does blockchain add? | A public 32-byte commitment that makes rewriting history detectable by outsiders. No data goes on-chain, and it's optional. |
+| Can a client lie about a hash? | Yes — Ernest proves what was recorded and when, not that it was true. Signed submissions are the planned control for *who*. |
+| Access control? | Read-write vs read-only keys plus named, revocable, expiring auditor tokens, enforced API-wide. Enterprise SSO is the next layer, not a replacement. |
+| What if someone edits the database? | Detected: hourly checkpointed integrity checks, anchored-root re-validation, webhook alerts — and any auditor with a receipt or export can catch it independently. |
+| MLflow / registry integrations? | An MLflow adapter exists for demos; a production-grade integration is the declared alpha-exit milestone. |
