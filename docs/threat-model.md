@@ -133,7 +133,7 @@ The guarantees hold only if the deployment does its part:
 
 | Threat | Current state | Recommended next control |
 | --- | --- | --- |
-| Client identity on writes | Shared write key or issued tokens | Signed submissions / OIDC per-client identity |
+| Client identity on writes | Shared write key or issued tokens | Per-emitter Ed25519 signed submissions — designed in [adr-001-signed-submissions.md](adr-001-signed-submissions.md); sigstore/OIDC as v2 |
 | Browser demo key exposure | `PUBLIC_ERNEST_API_KEY` documented as public | Session auth or server-side write proxy |
 | Anchor key custody | Eliminated under the recommended `ANCHOR_PROVIDER=ots` (OpenTimestamps: keyless, free Bitcoin attestation); EVM contract anchoring remains optional with its wallet in an environment variable | Secrets manager or external signer for deployments that choose EVM anchoring |
 | Supply-chain drift | CI + GHCR publishing | Image signing, SBOM, provenance attestations |

@@ -11,6 +11,7 @@ Use this map when presenting Ernest to evaluators, incubator reviewers, or techn
 - `docs/demo-script.md`: 5-minute presentation flow and talk track.
 - `docs/maturity-model.md`: alpha-to-enterprise maturity path.
 - `docs/threat-model.md`: alpha threat model and enterprise security gaps.
+- `docs/adr-001-signed-submissions.md`: accepted-pending design for per-emitter Ed25519 signed submissions.
 - `docs/regulatory-mapping.md`: EU AI Act / ISO 42001 / NIST AI RMF record-keeping obligations mapped to Ernest evidence.
 - `docs/architecture.md`: system design, deployment view, trust boundaries, trade-offs, and roadmap.
 - `docs/security-model.md`: guarantees, non-goals, trust assumptions, and hardening backlog.
