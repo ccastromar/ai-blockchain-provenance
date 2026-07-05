@@ -116,9 +116,9 @@ responsibility.
 
 The guarantees hold only if the deployment does its part:
 
-1. **Anchoring must actually run** (`INFURA_URL`, `PRIVATE_KEY`, `CONTRACT_ADDRESS`).
-   Without it, G2 evaporates and N1 becomes "the operator can rewrite everything,
-   always".
+1. **Anchoring must actually run** — `ANCHOR_PROVIDER=ots` (keyless, free) or the EVM
+   configuration (`INFURA_URL`, `PRIVATE_KEY`, `CONTRACT_ADDRESS`). Without either,
+   G2 evaporates and N1 becomes "the operator can rewrite everything, always".
 2. **Set `WEBHOOK_URL`** so integrity failures page someone instead of waiting in
    `/health` for a viewer.
 3. **Configure access keys.** With neither key set the instance is open — demos only.
