@@ -73,3 +73,18 @@ python integrations/mlflow/register_mlflow_run.py --run-id <run-id> --dry-run
 - If `--artifact-path` is omitted, the script tries common MLflow model artifact paths.
 - If no artifact can be downloaded, the script hashes stable run metadata as a fallback and records that in `metadata.artifactHashSource`.
 - Ernest still trusts the integration client to read the correct MLflow run. For enterprise pilots, pair this with signed submissions and service identity.
+
+## Continuous watcher
+
+`watch_mlflow.py` runs the same mapping continuously: it polls the MLflow model
+registry and registers every new model version in Ernest, no human in the loop.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.mlflow.yml up -d mlflow-watcher
+./scripts/mlflow-watcher-e2e.sh   # end-to-end proof: train in MLflow, watch Ernest
+```
+
+Idempotency comes from Ernest itself (duplicate `(modelId, version)` registrations
+are rejected before touching the hashchain), so the watcher is stateless-safe across
+restarts; a watermark file (`WATCHER_STATE_FILE`) just bounds the scan. `WATCHER_BACKFILL=none`
+skips history on first run. Unit tests: `python3 -m unittest discover -s integrations/mlflow/tests`.

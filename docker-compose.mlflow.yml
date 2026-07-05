@@ -71,5 +71,39 @@ services:
       - ernest-network
     restart: "no"
 
+  # Continuous MLflow → Ernest mirror: polls the model registry (OSS MLflow has no
+  # webhooks) and registers every new model version as tamper-evident provenance.
+  # Idempotent against Ernest's duplicate rejection, so restarts are safe.
+  mlflow-watcher:
+    image: ernest-ai-sandbox:dev
+    container_name: ernest-mlflow-watcher
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:8111
+      - ERNEST_API_BASE=http://backend:3001/api
+      - ERNEST_API_KEY=${ERNEST_API_KEY:-}
+      - ERNEST_ORG_ID=${ERNEST_ORG_ID:-}
+      - WATCHER_POLL_SECONDS=${WATCHER_POLL_SECONDS:-10}
+      - WATCHER_STATE_FILE=/state/mlflow-watcher.json
+      - WATCHER_BACKFILL=${WATCHER_BACKFILL:-all}
+    volumes:
+      - ./integrations/mlflow:/watcher:ro
+      - mlflow_watcher_state:/state
+    working_dir: /watcher
+    command: ["python", "watch_mlflow.py"]
+    depends_on:
+      backend:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - ernest-network
+    restart: unless-stopped
+
 volumes:
   mlflow_data:
+  mlflow_watcher_state:

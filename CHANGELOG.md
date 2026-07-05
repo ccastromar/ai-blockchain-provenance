@@ -8,6 +8,7 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ### Added
 
+- Continuous MLflow integration: `integrations/mlflow/watch_mlflow.py` polls the MLflow model registry (OSS MLflow has no webhooks) and mirrors every new model version into Ernest as tamper-evident provenance, reusing the adapter's artifact-hashing payload mapping. Crash-safe by design: Ernest's duplicate rejection makes re-submissions idempotent, and the watermark only advances past durably recorded versions. Ships as the `mlflow-watcher` compose service with `scripts/mlflow-watcher-e2e.sh` proving the hands-off path (train in MLflow only, assert Ernest provenance appears).
 - Opt-in clock drift detection: when `NTP_CHECK_SERVER` is set, the hourly integrity check measures local clock offset via SNTP (dependency-free RFC 4330 client), records it with the check, and alerts `WEBHOOK_URL` (`clock.drift.exceeded`) beyond `NTP_MAX_DRIFT_MS` — drift is detected instead of silently notarized into block timestamps (threat model N3).
 
 ### Fixed

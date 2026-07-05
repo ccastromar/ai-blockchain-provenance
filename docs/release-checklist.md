@@ -39,6 +39,8 @@ Use this checklist before publishing an official Ernest release.
 - [ ] `cd cli-ernest && go test ./cmd/... ./internal/db/repositories/...`
 - [ ] `python -m compileall ai-sandbox/domains/iris agentic-auditor/app`
 - [ ] `PYTHONPATH=agentic-auditor python -m unittest discover -s agentic-auditor/tests`
+- [ ] `PYTHONPATH=integrations/mlflow python -m unittest discover -s integrations/mlflow/tests`
+- [ ] `./scripts/mlflow-watcher-e2e.sh` completes when the MLflow integration is part of the release story.
 - [ ] `bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh agentic-auditor/run.sh`
 
 ## Security

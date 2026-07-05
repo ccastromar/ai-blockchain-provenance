@@ -98,29 +98,29 @@ def download_artifact_hash(client, run_id: str, artifact_path: str | None) -> tu
     raise RuntimeError("; ".join(errors) if errors else "No artifact path provided")
 
 
-def build_payload(args) -> dict:
-    mlflow, MlflowClient = load_mlflow()
-    if args.tracking_uri:
-        mlflow.set_tracking_uri(args.tracking_uri)
-
-    client = MlflowClient()
-
-    model_version = None
-    run_id = args.run_id
-    if not run_id:
-        if not args.registered_model_name:
-            raise SystemExit("Provide either --run-id or --registered-model-name")
-        model_version = resolve_latest_model_version(client, args.registered_model_name)
-        run_id = model_version.run_id
-
-    run = client.get_run(run_id)
+def payload_from_run(
+    client,
+    run,
+    *,
+    model_version=None,
+    model_id=None,
+    model_name=None,
+    version=None,
+    git_commit=None,
+    artifact_path=None,
+    org_id=None,
+) -> dict:
+    """Core mapping from an MLflow run (plus optional registry version) to an Ernest
+    registration payload. Shared by the one-shot CLI below and the continuous
+    watcher (watch_mlflow.py) so both submit byte-identical evidence."""
+    run_id = run.info.run_id
     params = dict(run.data.params)
     metrics = {key: float(value) for key, value in run.data.metrics.items()}
     tags = dict(run.data.tags)
 
-    artifact_hash_source = args.artifact_path or "auto"
+    artifact_hash_source = artifact_path or "auto"
     try:
-        model_hash, artifact_hash_source = download_artifact_hash(client, run_id, args.artifact_path)
+        model_hash, artifact_hash_source = download_artifact_hash(client, run_id, artifact_path)
     except Exception:
         model_hash = stable_json_hash(
             {
@@ -134,7 +134,7 @@ def build_payload(args) -> dict:
         artifact_hash_source = "run-metadata-fallback"
 
     git_commit = (
-        args.git_commit
+        git_commit
         or tags.get("mlflow.source.git.commit")
         or tags.get("git.commit")
         or os.getenv("GIT_COMMIT")
@@ -142,9 +142,10 @@ def build_payload(args) -> dict:
     )
 
     run_name = getattr(run.info, "run_name", None) or tags.get("mlflow.runName")
-    model_id = args.model_id or args.registered_model_name or run_name or run_id
-    model_name = args.model_name or args.registered_model_name or run_name or model_id
-    version = args.version or (str(model_version.version) if model_version else "mlflow-run")
+    registered_name = model_version.name if model_version else None
+    model_id = model_id or registered_name or run_name or run_id
+    model_name = model_name or registered_name or run_name or model_id
+    version = version or (str(model_version.version) if model_version else "mlflow-run")
 
     metadata = {
         "source": "integrations/mlflow",
@@ -178,11 +179,42 @@ def build_payload(args) -> dict:
         "params": params,
         "metrics": metrics,
         "metadata": metadata,
-        **({"organizationId": args.org_id} if args.org_id else {}),
+        **({"organizationId": org_id} if org_id else {}),
     }
 
 
-def post_to_ernest(api_base: str, payload: dict, api_key: str | None, org_id: str | None) -> dict:
+def build_payload(args) -> dict:
+    mlflow, MlflowClient = load_mlflow()
+    if args.tracking_uri:
+        mlflow.set_tracking_uri(args.tracking_uri)
+
+    client = MlflowClient()
+
+    model_version = None
+    run_id = args.run_id
+    if not run_id:
+        if not args.registered_model_name:
+            raise SystemExit("Provide either --run-id or --registered-model-name")
+        model_version = resolve_latest_model_version(client, args.registered_model_name)
+        run_id = model_version.run_id
+
+    run = client.get_run(run_id)
+    return payload_from_run(
+        client,
+        run,
+        model_version=model_version,
+        model_id=args.model_id or args.registered_model_name,
+        model_name=args.model_name or args.registered_model_name,
+        version=args.version,
+        git_commit=args.git_commit,
+        artifact_path=args.artifact_path,
+        org_id=args.org_id,
+    )
+
+
+def submit_to_ernest(api_base: str, payload: dict, api_key: str | None, org_id: str | None) -> tuple[int, str]:
+    """POST a registration payload. Returns (status_code, body) without raising on
+    HTTP errors, so callers can treat duplicate registrations as idempotent."""
     url = api_base.rstrip("/") + "/models"
     body = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
@@ -197,10 +229,16 @@ def post_to_ernest(api_base: str, payload: dict, api_key: str | None, org_id: st
     )
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            return json.loads(response.read().decode("utf-8"))
+            return response.status, response.read().decode("utf-8")
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise SystemExit(f"Ernest API returned {exc.code}: {detail}") from exc
+        return exc.code, exc.read().decode("utf-8", errors="replace")
+
+
+def post_to_ernest(api_base: str, payload: dict, api_key: str | None, org_id: str | None) -> dict:
+    status, body = submit_to_ernest(api_base, payload, api_key, org_id)
+    if status >= 400:
+        raise SystemExit(f"Ernest API returned {status}: {body}")
+    return json.loads(body)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
