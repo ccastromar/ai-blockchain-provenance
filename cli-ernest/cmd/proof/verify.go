@@ -9,6 +9,7 @@ import (
 	"cli-ernest/cmd"
 	"cli-ernest/internal/hashcanon"
 	"cli-ernest/internal/merkleproof"
+	"cli-ernest/internal/sigverify"
 
 	"github.com/spf13/cobra"
 )
@@ -82,6 +83,14 @@ var verifyCmd = &cobra.Command{
 			return fmt.Errorf("TAMPERED: block data does not reproduce its hash (computed %s, receipt says %s)", recomputed, r.Block.Hash)
 		}
 		fmt.Printf("✓ block #%d data matches its hash %s…\n", r.Block.Index, r.Block.Hash[:16])
+
+		// ADR-001: embedded emitter signature, verified offline like everything else.
+		if envelope, found := sigverify.FromBlockData(data); found {
+			if err := sigverify.Verify(data, envelope); err != nil {
+				return fmt.Errorf("TAMPERED: emitter signature invalid: %w", err)
+			}
+			fmt.Printf("✓ signed by emitter %s (ed25519)\n", envelope.KeyID)
+		}
 
 		// 2. Hash must climb the proof path to the anchored root.
 		valid, err := merkleproof.Verify(r.Block.Hash, r.Proof, r.MerkleRoot)

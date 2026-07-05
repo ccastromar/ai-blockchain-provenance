@@ -106,3 +106,35 @@ fn full_receipt_roundtrip_and_tamper_detection() {
     assert_eq!(verdict["valid"], false);
     assert_eq!(verdict["dataMatchesHash"], false);
 }
+
+#[test]
+fn signed_submission_golden_vectors_verify() {
+    let fixture = testdata("signed-submission-golden.json");
+    for vector in fixture["vectors"].as_array().unwrap() {
+        let name = vector["name"].as_str().unwrap();
+        let data = &vector["blockData"];
+
+        let bytes = merkle_wasm::signing::signed_bytes(data).unwrap();
+        let expected = vector["paeBase64"].as_str().unwrap();
+        use base64::Engine;
+        assert_eq!(
+            base64::engine::general_purpose::STANDARD.encode(&bytes),
+            expected,
+            "PAE mismatch in {}",
+            name
+        );
+
+        let check = merkle_wasm::signing::check_embedded_signature(data);
+        assert!(check.present && check.valid, "{}: golden signature must verify ({:?})", name, check.error);
+        assert_eq!(check.key_id, fixture["keyId"].as_str().unwrap());
+    }
+}
+
+#[test]
+fn signed_submission_tampered_data_fails() {
+    let fixture = testdata("signed-submission-golden.json");
+    let mut data = fixture["vectors"][0]["blockData"].clone();
+    data["modelId"] = serde_json::json!("tampered");
+    let check = merkle_wasm::signing::check_embedded_signature(&data);
+    assert!(check.present && !check.valid, "tampered data must fail signature verification");
+}

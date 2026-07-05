@@ -25,6 +25,10 @@ curl -H "X-Ernest-Api-Key: $READ_ONLY_KEY" https://ernest.example.com/api/blocks
 MONGO_URI=mongodb://127.0.0.1:27017 BLUEPRINT_DB_DATABASE=ernest ./ernest hashchain verify
 ```
 
+When a block embeds an ADR-001 emitter signature, `proof verify` also checks it
+offline and reports the signing `keyId`. Generate emitter keypairs with
+`./ernest emitter keygen`.
+
 A tampered block or broken `previousHash` link reports the exact block index and the
 mismatching hashes, and the command exits non-zero.
 

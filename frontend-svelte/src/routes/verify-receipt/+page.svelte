@@ -109,6 +109,14 @@
             <li class={result.proofReachesRoot ? 'text-emerald-700' : 'text-red-700'}>
               {result.proofReachesRoot ? '✓' : '✗'} Merkle proof ({result.proofLength} hashes) reaches the anchored root
             </li>
+            {#if result.signaturePresent}
+              <li class={result.signatureValid ? 'text-emerald-700' : 'text-red-700'}>
+                {result.signatureValid ? '✓' : '✗'} Emitter signature (ed25519) — signed by <span class="font-mono">{result.signedBy}</span>
+                {#if !result.signatureValid && result.error}
+                  <div class="text-xs text-slate-500 mt-1">{result.error}</div>
+                {/if}
+              </li>
+            {/if}
           </ul>
 
           {#if result.valid && blockInfo && anchorInfo}

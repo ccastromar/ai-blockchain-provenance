@@ -408,6 +408,7 @@ export class BlockchainService implements OnModuleInit {
         metrics?: Record<string, any>,
         metadata?: Record<string, any>,
         organizationId?: string,
+        signature?: Record<string, any>,
     ) {
         return await this.addBlock({
             type: 'model_registration',
@@ -420,6 +421,8 @@ export class BlockchainService implements OnModuleInit {
             metrics,
             metadata,
             organizationId,
+            // ADR-001: embedded so receipts/exports verify authorship offline.
+            signature,
         });
     }
 
@@ -447,6 +450,7 @@ export class BlockchainService implements OnModuleInit {
         outputHash: string,
         params: Record<string, any>,
         metadata: Record<string, any>,
+        signature?: Record<string, any>,
     ) {
         return await this.addBlock({
             type: 'inference',
@@ -456,7 +460,9 @@ export class BlockchainService implements OnModuleInit {
             outputHash,
             params,
             metadata,
-            executedAt: new Date().toISOString(),            
+            // executedAt is server-augmented: excluded from the signed bytes by ADR-001.
+            executedAt: new Date().toISOString(),
+            signature,
         });
     }
 

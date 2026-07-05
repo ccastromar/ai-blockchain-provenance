@@ -1,4 +1,6 @@
-import { IsHash, IsString, IsObject, IsOptional } from 'class-validator';
+import { IsHash, IsString, IsObject, IsOptional, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { SignatureEnvelopeDto } from './signature-envelope.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class LogInferenceDto {
@@ -47,4 +49,13 @@ export class LogInferenceDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description: 'ADR-001 emitter signature over the canonical submission payload. Verified against the registered emitter keys; policy set by SIGNED_SUBMISSIONS.',
+    type: SignatureEnvelopeDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SignatureEnvelopeDto)
+  signature?: SignatureEnvelopeDto;
 }

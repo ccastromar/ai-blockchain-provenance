@@ -81,7 +81,10 @@ recoverable — see [backup-recovery.md](backup-recovery.md).
 **N2 — Garbage in, garbage forever.** Ernest proves an event was recorded at a point in
 time and not altered since. It cannot prove the event was *true*. A model registered
 with a falsified accuracy metric is preserved with perfect integrity. Provenance is
-evidence of process, not of honesty at the source.
+evidence of process, not of honesty at the source. Signed submissions (ADR-001)
+narrow this: with `SIGNED_SUBMISSIONS=required` and per-emitter Ed25519 keys, every
+event is non-repudiably attributable — a lie now has an author, verifiable offline
+from the block itself.
 
 **N3 — Timestamps are claims, not proofs.** Block timestamps come from the writing
 host's clock. Monotonicity is enforced (a block never carries a timestamp earlier than
@@ -106,7 +109,8 @@ responsibility.
 | Operator edits one historical block in Mongo | Detected (G1): next verify fails, webhook fires within the hour |
 | Operator rewrites the unanchored tail *and* recomputes all hashes | Undetected internally if done perfectly, **unless** an anchor already covered it (G2). This is the N1 window |
 | Operator deletes the whole database and re-seeds | New chain verifies internally, but published anchors expose the rewrite to anyone who checks |
-| Client submits false hashes / fake metrics | Recorded faithfully; N2 — Ernest is not a lie detector |
+| Client submits false hashes / fake metrics | Recorded faithfully; N2 — Ernest is not a lie detector. With signed submissions, the lie is at least signed: attributable to a registered emitter key |
+| Stolen write credential used to forge events | Under `SIGNED_SUBMISSIONS=required`, useless without an admitted emitter key; a stolen emitter key is revoked (stops new admissions; history stays attributable and time-bounded by anchors) |
 | Auditor's read-only token leaks | Reads exposed until revoked (immediate effect); no write or admin capability attached |
 | Provider webhook replayed | Rejected: HMAC timestamp tolerance (`PROVIDER_HMAC_TOLERANCE_SECONDS`) plus per-event dedup index |
 | Host clock set back before writing | Order preserved (index + monotonic timestamps); wall-clock claim wrong until the next anchor bounds it (N3) |
@@ -133,7 +137,7 @@ The guarantees hold only if the deployment does its part:
 
 | Threat | Current state | Recommended next control |
 | --- | --- | --- |
-| Client identity on writes | Shared write key or issued tokens | Per-emitter Ed25519 signed submissions — designed in [adr-001-signed-submissions.md](adr-001-signed-submissions.md); sigstore/OIDC as v2 |
+| Client identity on writes | Per-emitter Ed25519 signed submissions implemented ([adr-001-signed-submissions.md](adr-001-signed-submissions.md)): registry with revocation, offline-verifiable envelopes in blocks/receipts, `off/optional/required` modes | sigstore/OIDC keyless envelopes (v2); ingestor-path signing contract (v1.1) |
 | Browser demo key exposure | `PUBLIC_ERNEST_API_KEY` documented as public | Session auth or server-side write proxy |
 | Anchor key custody | Eliminated under the recommended `ANCHOR_PROVIDER=ots` (OpenTimestamps: keyless, free Bitcoin attestation); EVM contract anchoring remains optional with its wallet in an environment variable | Secrets manager or external signer for deployments that choose EVM anchoring |
 | Supply-chain drift | CI + GHCR publishing | Image signing, SBOM, provenance attestations |

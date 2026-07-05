@@ -1,6 +1,6 @@
 # ADR-001: Signed Provenance Submissions (v1 — per-emitter Ed25519)
 
-**Status:** Proposed
+**Status:** Accepted (implemented 2026-07-05)
 **Date:** 2026-07-05
 **Deciders:** Carlos (project owner)
 
@@ -73,6 +73,10 @@ inside `block.data`:
   "sig": "<base64 64B>"
 }
 ```
+
+**Client payload rule:** submissions must omit null/empty values — the signed bytes
+are computed over the stored (cleaned) form, so a payload carrying nulls would sign
+bytes the chain never stores.
 
 ### 3. Enforcement modes
 

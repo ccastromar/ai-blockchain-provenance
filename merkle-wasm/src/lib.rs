@@ -3,6 +3,7 @@ use sha2::{Sha256, Digest};
 
 pub mod canonical;
 pub mod receipt;
+pub mod signing;
 
 /// Verify an Ernest evidence receipt (GET /api/blocks/:index/proof) fully
 /// offline: block data must reproduce the block hash (shared canonicalization,

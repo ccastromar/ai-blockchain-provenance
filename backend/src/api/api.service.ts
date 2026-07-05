@@ -1,9 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { BlockchainService } from '../blockchain/blockchain.service';
 import { MlflowService } from '../mlflow/mock.mlflow.service';
 import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AIModelService } from 'src/aimodels/aimodel.service';
+import { EmitterKeyService } from 'src/auth/emitter-key.service';
+import { SignatureEnvelope, verifyEnvelope } from '../common/signing.util';
 
 @Injectable()
 export class ApiService {
@@ -13,8 +15,43 @@ export class ApiService {
   constructor(
     private readonly blockchainService: BlockchainService,
     private readonly mlflowService: MlflowService,
-    private readonly modelService: AIModelService
+    private readonly modelService: AIModelService,
+    private readonly emitterKeyService: EmitterKeyService,
   ) {}
+
+  /**
+   * ADR-001 admission control. Returns the envelope to embed in the block (or
+   * undefined when unsigned/disabled). Policy via SIGNED_SUBMISSIONS:
+   * off = envelopes ignored (not stored: an unverified claim is worse than none),
+   * optional = verify when present, required = unsigned submissions rejected.
+   * The registry only matters HERE -- the block embeds the key, so downstream
+   * verification is offline (see docs/adr-001-signed-submissions.md).
+   */
+  private async admitSignature(
+    payload: Record<string, any>,
+    envelope: SignatureEnvelope | undefined,
+  ): Promise<SignatureEnvelope | undefined> {
+    const mode = (process.env.SIGNED_SUBMISSIONS || 'optional').toLowerCase();
+    if (mode === 'off') {
+      return undefined;
+    }
+    if (!envelope) {
+      if (mode === 'required') {
+        throw new BadRequestException('signature_required: this deployment only accepts signed submissions');
+      }
+      return undefined;
+    }
+
+    const cryptoCheck = verifyEnvelope(payload, envelope);
+    if ('reason' in cryptoCheck) {
+      throw new UnauthorizedException(`signature rejected: ${cryptoCheck.reason}`);
+    }
+    const admission = await this.emitterKeyService.isAdmissible(envelope.keyId, envelope.publicKey);
+    if ('reason' in admission) {
+      throw new UnauthorizedException(`signature rejected: ${admission.reason}`);
+    }
+    return envelope;
+  }
 
   async registerModel(dto: RegisterModelDto) {
     this.logger.log(`Registering model: ${dto.modelName} with version: ${dto.version}`);
@@ -26,6 +63,24 @@ export class ApiService {
       if (already) {
         throw new BadRequestException(`Model with modelName '${dto.modelName}' and version '${dto.version}' already exists.`);
       }
+
+    // Signature is admitted against the exact block-data shape that will be stored
+    // (flat modelHash/gitCommit), so offline verifiers recompute identical bytes.
+    const signature = await this.admitSignature(
+      {
+        type: 'model_registration',
+        modelId: dto.modelId,
+        modelName: dto.modelName,
+        version: dto.version,
+        modelHash: dto.mlflow.modelHash,
+        gitCommit: dto.mlflow.gitCommit,
+        params: dto.params,
+        metrics: dto.metrics,
+        metadata: dto.metadata,
+        organizationId: dto.organizationId,
+      },
+      dto.signature,
+    );
 
     //simulation
     // const mlflowResult = await this.mlflowService.registerModel(
@@ -69,6 +124,7 @@ export class ApiService {
         dto.metrics,
         dto.metadata,
         dto.organizationId,
+        signature,
       );
     } catch (error) {
       // Compensate: a model record without a registration block would accept inferences
@@ -198,6 +254,19 @@ export class ApiService {
       );
     }
 
+    const signature = await this.admitSignature(
+      {
+        type: 'inference',
+        modelId: dto.modelId,
+        inferenceId: dto.inferenceId,
+        inputHash: dto.inputHash,
+        outputHash: dto.outputHash,
+        params: dto.params,
+        metadata: dto.metadata,
+      },
+      dto.signature,
+    );
+
     // const inferenceResult = await this.mlflowService.executeInference(
     //   dto.modelId,
     //   dto.inputHash,
@@ -211,7 +280,8 @@ export class ApiService {
       dto.inputHash,
       dto.outputHash,
       dto.params,
-      dto.metadata
+      dto.metadata,
+      signature,
     );
 
     return {

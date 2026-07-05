@@ -102,6 +102,9 @@ test('HTTP auth matrix against the real application', async (t) => {
         ['POST', '/api/auth/tokens'],
         ['GET', '/api/auth/tokens'],
         ['DELETE', '/api/auth/tokens/000000000000000000000000'],
+        ['POST', '/api/auth/emitters'],
+        ['GET', '/api/auth/emitters'],
+        ['DELETE', '/api/auth/emitters/0000000000000000'],
         ['POST', '/api/ingestor/simulate/huggingface'],
       ]) {
         const { status } = await call(method, path, { body: method === 'GET' ? undefined : {} });
@@ -198,6 +201,64 @@ test('HTTP auth matrix against the real application', async (t) => {
       const afterRevoke = await call('GET', '/api/auth/whoami', { key: issued.body.token });
       assert.deepEqual(afterRevoke.body, { role: 'anonymous', openAccess: false });
       assert.equal((await call('GET', '/api/models', { key: issued.body.token })).status, 401);
+    });
+    await t.test('signed submission lifecycle (ADR-001): register key, sign, verify, revoke', async () => {
+      const { generateKeyPairSync, createHash, sign: cryptoSign } = require('node:crypto');
+      const { signedBytes } = require('../dist/common/signing.util');
+
+      const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+      const spki = publicKey.export({ format: 'der', type: 'spki' });
+      const raw = spki.subarray(spki.length - 32);
+      const publicKeyB64 = raw.toString('base64');
+      const keyId = createHash('sha256').update(raw).digest('hex').slice(0, 16);
+
+      const registered = await call('POST', '/api/auth/emitters', {
+        key: WRITE_KEY,
+        body: { label: 'HTTP matrix pipeline', publicKey: publicKeyB64 },
+      });
+      assert.equal(registered.status, 201, JSON.stringify(registered.body));
+      assert.equal(registered.body.keyId, keyId);
+
+      const payload = {
+        type: 'model_registration',
+        modelId: 'it-signed-model-v1',
+        modelName: 'Signed Matrix Model',
+        version: '1.0.0',
+        modelHash: HASH_A,
+        gitCommit: GIT_COMMIT,
+      };
+      const envelope = (sig) => ({
+        alg: 'ed25519', keyId, publicKey: publicKeyB64,
+        signedAt: new Date().toISOString(),
+        sig: sig.toString('base64'),
+      });
+      const goodSig = cryptoSign(null, signedBytes(payload), privateKey);
+
+      // Invalid signature: rejected before anything is stored.
+      const badBody = {
+        modelId: payload.modelId, modelName: payload.modelName, version: payload.version,
+        mlflow: { modelHash: HASH_A, gitCommit: GIT_COMMIT },
+        signature: envelope(Buffer.from(goodSig).fill(0, 0, 8)),
+      };
+      assert.equal((await call('POST', '/api/models', { key: WRITE_KEY, body: badBody })).status, 401);
+
+      // Valid signature: accepted, envelope embedded in the block.
+      const goodBody = { ...badBody, signature: envelope(goodSig) };
+      const created = await call('POST', '/api/models', { key: WRITE_KEY, body: goodBody });
+      assert.equal(created.status, 201, JSON.stringify(created.body));
+      const block = await call('GET', `/api/blocks/${created.body.blockIndex}`, { key: READ_KEY });
+      assert.equal(block.body.data.signature.keyId, keyId, 'block must embed the emitter signature');
+
+      // Revoked key: same (fresh) payload signed by it is now rejected at admission.
+      assert.equal((await call('DELETE', `/api/auth/emitters/${keyId}`, { key: WRITE_KEY })).status, 200);
+      const payload2 = { ...payload, modelId: 'it-signed-model-v2' };
+      const body2 = {
+        ...badBody, modelId: payload2.modelId,
+        signature: envelope(cryptoSign(null, signedBytes(payload2), privateKey)),
+      };
+      const afterRevoke = await call('POST', '/api/models', { key: WRITE_KEY, body: body2 });
+      assert.equal(afterRevoke.status, 401, 'revoked emitter key must be rejected');
+      assert.match(JSON.stringify(afterRevoke.body), /key_revoked/);
     });
   } finally {
     const connection = app.get(getConnectionToken());

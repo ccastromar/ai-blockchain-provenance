@@ -8,6 +8,7 @@ use serde_json::Value;
 use tiny_keccak::{Hasher, Keccak};
 
 use crate::canonical;
+use crate::signing;
 
 #[derive(Deserialize)]
 struct Receipt {
@@ -34,6 +35,12 @@ pub struct Verification {
     pub data_matches_hash: bool,
     #[serde(rename = "proofReachesRoot")]
     pub proof_reaches_root: bool,
+    #[serde(rename = "signaturePresent")]
+    pub signature_present: bool,
+    #[serde(rename = "signatureValid")]
+    pub signature_valid: bool,
+    #[serde(rename = "signedBy")]
+    pub signed_by: String,
     #[serde(rename = "computedHash")]
     pub computed_hash: String,
     #[serde(rename = "proofLength")]
@@ -80,6 +87,9 @@ pub fn verify_receipt_json(receipt_json: &str) -> Verification {
         valid: false,
         data_matches_hash: false,
         proof_reaches_root: false,
+        signature_present: false,
+        signature_valid: false,
+        signed_by: String::new(),
         computed_hash: String::new(),
         proof_length: 0,
         error: Some(error),
@@ -106,12 +116,18 @@ pub fn verify_receipt_json(receipt_json: &str) -> Verification {
         Err(e) => return failed(e),
     };
 
+    // ADR-001: embedded emitter signature (when present) must also verify.
+    let signature = signing::check_embedded_signature(&receipt.block.data);
+
     Verification {
-        valid: data_matches_hash && proof_ok,
+        valid: data_matches_hash && proof_ok && signature.valid,
         data_matches_hash,
         proof_reaches_root: proof_ok,
+        signature_present: signature.present,
+        signature_valid: signature.valid,
+        signed_by: signature.key_id,
         computed_hash,
         proof_length: receipt.proof.len(),
-        error: None,
+        error: signature.error,
     }
 }

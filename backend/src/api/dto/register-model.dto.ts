@@ -1,5 +1,6 @@
 import { IsHash, IsObject, IsOptional, IsString, Matches, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SignatureEnvelopeDto } from './signature-envelope.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class MlflowMetadataDto {
@@ -95,4 +96,13 @@ export class RegisterModelDto {
   @Type(() => MlflowMetadataDto)
   mlflow: MlflowMetadataDto;
 
+
+  @ApiPropertyOptional({
+    description: 'ADR-001 emitter signature over the canonical submission payload. Verified against the registered emitter keys; policy set by SIGNED_SUBMISSIONS.',
+    type: SignatureEnvelopeDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SignatureEnvelopeDto)
+  signature?: SignatureEnvelopeDto;
 }

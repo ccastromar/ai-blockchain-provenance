@@ -1,0 +1,68 @@
+{
+  "$comment": "Cross-language golden fixture for ADR-001 signed submissions. Signature = Ed25519 over DSSE PAE(\"application/vnd.ernest.provenance+json\", ernest-canonical(blockData minus signature minus serverAugmentedFields)). Consumed by backend/test/signing.util.test.js, cli-ernest golden tests and merkle-wasm golden tests. Test keypair only — never sign real evidence with it.",
+  "payloadType": "application/vnd.ernest.provenance+json",
+  "serverAugmentedFields": [
+    "executedAt"
+  ],
+  "keyId": "f1d7e0e9c8b035b4",
+  "publicKeyBase64": "2sDj1OvJEqPfzG4/rQKXKapybXFTtCRkz61okg0g2dw=",
+  "privateKeySeedHex": "f8a06e808aab760215d700ad9b875cf6e0d5e775253059aa2df657ce8e746828",
+  "vectors": [
+    {
+      "name": "model-registration",
+      "comment": "Flat block-data shape for a registration, as stored by the backend.",
+      "blockData": {
+        "type": "model_registration",
+        "modelId": "credit-risk-v1",
+        "modelName": "Credit Risk",
+        "version": "1.0.0",
+        "modelHash": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+        "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2",
+        "params": {
+          "solver": "liblinear",
+          "threshold": 0.42
+        },
+        "metrics": {
+          "roc_auc": 0.86
+        },
+        "organizationId": "ernest-demo",
+        "signature": {
+          "alg": "ed25519",
+          "keyId": "f1d7e0e9c8b035b4",
+          "publicKey": "2sDj1OvJEqPfzG4/rQKXKapybXFTtCRkz61okg0g2dw=",
+          "signedAt": "2026-07-05T10:00:00Z",
+          "sig": "o8SqXnphpZBIzY1xW+pEGU7OuNio3asslOwrR431jm/SAyHv2nDawozFcs+Ew3n0VvRQzC11mpGVgLPM2q1qCA=="
+        }
+      },
+      "signedCanonical": "{\"gitCommit\":\"a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2\",\"metrics\":{\"roc_auc\":0.86},\"modelHash\":\"3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d\",\"modelId\":\"credit-risk-v1\",\"modelName\":\"Credit Risk\",\"organizationId\":\"ernest-demo\",\"params\":{\"solver\":\"liblinear\",\"threshold\":0.42},\"type\":\"model_registration\",\"version\":\"1.0.0\"}",
+      "paeBase64": "RFNTRXYxIDM4IGFwcGxpY2F0aW9uL3ZuZC5lcm5lc3QucHJvdmVuYW5jZStqc29uIDM0MSB7ImdpdENvbW1pdCI6ImEzZjlkMTJlNmI0YzhmNzJiNmYyYzFkMGVmOWEzMWZjYjRkYmU3YjIiLCJtZXRyaWNzIjp7InJvY19hdWMiOjAuODZ9LCJtb2RlbEhhc2giOiIzZTIzZTgxNjAwMzk1OTRhMzM4OTRmNjU2NGUxYjEzNDhiYmQ3YTAwODhkNDJjNGFjYjczZWVhZWQ1OWMwMDlkIiwibW9kZWxJZCI6ImNyZWRpdC1yaXNrLXYxIiwibW9kZWxOYW1lIjoiQ3JlZGl0IFJpc2siLCJvcmdhbml6YXRpb25JZCI6ImVybmVzdC1kZW1vIiwicGFyYW1zIjp7InNvbHZlciI6ImxpYmxpbmVhciIsInRocmVzaG9sZCI6MC40Mn0sInR5cGUiOiJtb2RlbF9yZWdpc3RyYXRpb24iLCJ2ZXJzaW9uIjoiMS4wLjAifQ==",
+      "signatureBase64": "o8SqXnphpZBIzY1xW+pEGU7OuNio3asslOwrR431jm/SAyHv2nDawozFcs+Ew3n0VvRQzC11mpGVgLPM2q1qCA=="
+    },
+    {
+      "name": "inference-with-server-augmented-field",
+      "comment": "executedAt is present in stored data but excluded from signing (server-added after the client signed).",
+      "blockData": {
+        "type": "inference",
+        "modelId": "credit-risk-v1",
+        "inferenceId": "inf-42",
+        "inputHash": "2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6",
+        "outputHash": "7791764a90b1cb513f1437384ce2336eac19110ef70fa123f144a66e3f735db1",
+        "executedAt": "2026-07-05T10:00:01.000Z",
+        "metadata": {
+          "channel": "loan-workflow",
+          "urls": "https://x.example/a?b=1&c=2"
+        },
+        "signature": {
+          "alg": "ed25519",
+          "keyId": "f1d7e0e9c8b035b4",
+          "publicKey": "2sDj1OvJEqPfzG4/rQKXKapybXFTtCRkz61okg0g2dw=",
+          "signedAt": "2026-07-05T10:00:00Z",
+          "sig": "jsLN7OXHOlKgCE90sgmRdukhc9UvaUKm95erz9pYlFOPiCnGbmFwcDyWP1EQuXIXD4cTB07IC065FH7yyty8BA=="
+        }
+      },
+      "signedCanonical": "{\"inferenceId\":\"inf-42\",\"inputHash\":\"2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6\",\"metadata\":{\"channel\":\"loan-workflow\",\"urls\":\"https://x.example/a?b=1&c=2\"},\"modelId\":\"credit-risk-v1\",\"outputHash\":\"7791764a90b1cb513f1437384ce2336eac19110ef70fa123f144a66e3f735db1\",\"type\":\"inference\"}",
+      "paeBase64": "RFNTRXYxIDM4IGFwcGxpY2F0aW9uL3ZuZC5lcm5lc3QucHJvdmVuYW5jZStqc29uIDMwNSB7ImluZmVyZW5jZUlkIjoiaW5mLTQyIiwiaW5wdXRIYXNoIjoiMmU3ZDJjMDNhOTUwN2FlMjY1ZWNmNWI1MzU2ODg1YTUzMzkzYTIwMjlkMjQxMzk0OTk3MjY1YTFhMjVhZWZjNiIsIm1ldGFkYXRhIjp7ImNoYW5uZWwiOiJsb2FuLXdvcmtmbG93IiwidXJscyI6Imh0dHBzOi8veC5leGFtcGxlL2E/Yj0xJmM9MiJ9LCJtb2RlbElkIjoiY3JlZGl0LXJpc2stdjEiLCJvdXRwdXRIYXNoIjoiNzc5MTc2NGE5MGIxY2I1MTNmMTQzNzM4NGNlMjMzNmVhYzE5MTEwZWY3MGZhMTIzZjE0NGE2NmUzZjczNWRiMSIsInR5cGUiOiJpbmZlcmVuY2UifQ==",
+      "signatureBase64": "jsLN7OXHOlKgCE90sgmRdukhc9UvaUKm95erz9pYlFOPiCnGbmFwcDyWP1EQuXIXD4cTB07IC065FH7yyty8BA=="
+    }
+  ]
+}
