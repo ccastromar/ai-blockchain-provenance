@@ -4,6 +4,16 @@ All notable changes to Ernest will be documented in this file.
 
 The format follows the spirit of Keep a Changelog, and this project uses semantic versioning once releases are tagged.
 
+## [Unreleased]
+
+### Added
+
+- Opt-in clock drift detection: when `NTP_CHECK_SERVER` is set, the hourly integrity check measures local clock offset via SNTP (dependency-free RFC 4330 client), records it with the check, and alerts `WEBHOOK_URL` (`clock.drift.exceeded`) beyond `NTP_MAX_DRIFT_MS` — drift is detected instead of silently notarized into block timestamps (threat model N3).
+
+### Fixed
+
+- CHANGELOG backfilled with the previously untracked `v0.1.1-alpha` tag; removed a stale duplicate env template; keyed `bson.D` literals in the CLI repositories (`go vet` clean).
+
 ## [0.2.0-alpha] - 2026-07-04
 
 ### Added
@@ -40,6 +50,14 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Block explorer "next block" button 404ing past the chain tip.
 - Event E2E scripts failing with 401 against a key-gated backend.
 - Docker image rebuilds silently broken by Dockerfiles still copying the deleted legacy frontend's `package.json`.
+
+## [0.1.1-alpha] - 2026-06-29
+
+### Fixed
+
+- MLflow demo host checks and artifact handling.
+- CI pipeline: corepack-pinned pnpm and Svelte environment fixes.
+- Audit Readiness integrity flag; added frontend unit tests.
 
 ## [0.1.0-alpha] - 2026-06-28
 

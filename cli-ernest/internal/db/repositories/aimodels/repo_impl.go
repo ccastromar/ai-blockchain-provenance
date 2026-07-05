@@ -48,7 +48,7 @@ func (r *mongoRepository) GetByModelID(modelID string) (map[string]interface{}, 
 	defer cancel()
 
 	var result map[string]interface{}
-	err := coll.FindOne(ctx, bson.D{{"modelId", modelID}}).Decode(&result)
+	err := coll.FindOne(ctx, bson.D{{Key: "modelId", Value: modelID}}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no ai model found with modelId %s", modelID)

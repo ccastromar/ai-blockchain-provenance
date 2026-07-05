@@ -77,7 +77,7 @@ func (r *mongoRepository) GetByIndex(index int64) (map[string]interface{}, error
 	defer cancel()
 
 	var result map[string]interface{}
-	err := coll.FindOne(ctx, bson.D{{"index", index}}).Decode(&result)
+	err := coll.FindOne(ctx, bson.D{{Key: "index", Value: index}}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no block found with index %d", index)
@@ -93,7 +93,7 @@ func (r *mongoRepository) GetByHash(hash string) (map[string]interface{}, error)
 	defer cancel()
 
 	var result map[string]interface{}
-	err := coll.FindOne(ctx, bson.D{{"hash", hash}}).Decode(&result)
+	err := coll.FindOne(ctx, bson.D{{Key: "hash", Value: hash}}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, fmt.Errorf("no block found with hash %s", hash)

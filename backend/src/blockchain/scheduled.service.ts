@@ -6,6 +6,7 @@ import { Anchor, AnchorDocument } from './models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckDocument } from './models/integrity-check.schema';
 import { Model } from 'mongoose';
 import { BlockchainService } from './blockchain.service';
+import { queryClockOffsetMs } from '../common/ntp';
 
 @Injectable()
 export class ScheduledBlockchainService implements OnModuleInit {
@@ -89,6 +90,11 @@ export class ScheduledBlockchainService implements OnModuleInit {
       errors.push(anchorCheck.error!);
     }
 
+    // Opt-in clock drift detection (threat model N3: timestamps are claims whose
+    // quality depends on this host's clock). Drift does NOT invalidate the chain --
+    // it gets its own webhook event -- and network failures are soft.
+    const clockDriftMs = await this.measureClockDrift();
+
     const isValid = errors.length === 0;
     await this.integrityCheckModel.create({
       isValid,
@@ -102,6 +108,7 @@ export class ScheduledBlockchainService implements OnModuleInit {
         ? { lastVerifiedIndex: result.lastVerifiedIndex, lastVerifiedHash: result.lastVerifiedHash }
         : {}),
       ...(anchorCheck.checked ? { anchorRootOk: anchorCheck.ok } : {}),
+      ...(clockDriftMs !== null ? { clockDriftMs } : {}),
     });
 
     if (isValid) {
@@ -109,6 +116,46 @@ export class ScheduledBlockchainService implements OnModuleInit {
     } else {
       this.logger.error(`Chain integrity check FAILED: ${errors.join('; ')}`);
       await this.notifyIntegrityWebhook(errors, checkedAt);
+    }
+  }
+
+  /**
+   * Returns the local clock offset vs NTP_CHECK_SERVER in ms, or null when the check
+   * is disabled or the query failed (soft failure). Alerts through WEBHOOK_URL when
+   * |offset| exceeds NTP_MAX_DRIFT_MS (default 5000).
+   */
+  private async measureClockDrift(): Promise<number | null> {
+    const server = process.env.NTP_CHECK_SERVER;
+    if (!server) return null;
+
+    try {
+      const offsetMs = Math.round(await queryClockOffsetMs(server));
+      const maxDriftMs = Number(process.env.NTP_MAX_DRIFT_MS || 5000);
+      if (Math.abs(offsetMs) > maxDriftMs) {
+        this.logger.error(`Host clock drifts ${offsetMs}ms from ${server} (threshold ${maxDriftMs}ms) — block timestamps are being recorded with a skewed clock`);
+        await this.notifyClockDriftWebhook(offsetMs, maxDriftMs, server);
+      } else {
+        this.logger.debug(`Clock drift vs ${server}: ${offsetMs}ms`);
+      }
+      return offsetMs;
+    } catch (e: any) {
+      this.logger.warn(`Clock drift check against ${server} failed (soft): ${e.message}`);
+      return null;
+    }
+  }
+
+  private async notifyClockDriftWebhook(offsetMs: number, thresholdMs: number, server: string) {
+    const webhookUrl = process.env.WEBHOOK_URL;
+    if (!webhookUrl) return;
+    try {
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: 'clock.drift.exceeded', offsetMs, thresholdMs, server, detectedAt: new Date().toISOString() }),
+      });
+      this.logger.log(`Clock drift webhook notified: ${webhookUrl} → ${res.status}`);
+    } catch (e: any) {
+      this.logger.warn(`Clock drift webhook delivery failed (${webhookUrl}): ${e.message}`);
     }
   }
 

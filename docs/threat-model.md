@@ -86,7 +86,9 @@ evidence of process, not of honesty at the source.
 **N3 — Timestamps are claims, not proofs.** Block timestamps come from the writing
 host's clock. Monotonicity is enforced (a block never carries a timestamp earlier than
 its predecessor's) and the block index is the authoritative order, but the wall-clock
-value is only as good as the host's NTP discipline. The cryptographic time bound is the
+value is only as good as the host's NTP discipline. The optional drift check
+(`NTP_CHECK_SERVER`) alerts when the local clock strays beyond `NTP_MAX_DRIFT_MS`,
+turning silent skew into a paged event. The cryptographic time bound is still the
 anchor: "before the anchor's on-chain timestamp", nothing finer.
 
 **N4 — Availability.** Nothing in the design resists deletion or denial of service.

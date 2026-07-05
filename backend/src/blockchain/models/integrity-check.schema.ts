@@ -18,6 +18,9 @@ export class IntegrityCheck {
   @Prop() lastVerifiedHash?: string;
   // Whether the latest confirmed anchor's Merkle root was still reproducible.
   @Prop() anchorRootOk?: boolean;
+  // Local clock offset vs NTP_CHECK_SERVER in ms (positive = local clock behind).
+  // Only present when the opt-in drift check ran successfully.
+  @Prop() clockDriftMs?: number;
 }
 export type IntegrityCheckDocument = IntegrityCheck & Document;
 export const IntegrityCheckSchema = SchemaFactory.createForClass(IntegrityCheck);
