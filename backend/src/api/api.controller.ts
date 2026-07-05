@@ -136,6 +136,22 @@ export class ApiController {
   }
 
   // Declared before blocks/:index so "export" is not captured by the ParseIntPipe param.
+  @Get('anchors/:id/ots')
+  @ApiOperation({ summary: 'Download an OpenTimestamps proof (.ots) for offline verification with the official ots client.' })
+  @ApiParam({ name: 'id', description: 'Anchor id (see /api/anchors/status or a block receipt)' })
+  @ApiOkResponse({ description: 'Serialized .ots proof bytes.' })
+  @ApiNotFoundResponse({ description: 'No OTS anchor with that id.' })
+  async downloadOtsProof(@Param('id') id: string, @Res() res: any) {
+    const result = await this.apiService.getOtsProof(id).catch(() => null);
+    if (!result) {
+      res.status(404).json({ statusCode: 404, message: 'No OTS anchor with that id' });
+      return;
+    }
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="ernest-anchor-${id}.ots"`);
+    res.end(result.proof);
+  }
+
   @Get('blocks/export')
   @ApiOperation({ summary: 'Export the full hashchain as a flat JSON bundle for offline verification (e.g. ernest CLI --file mode). Streamed with constant memory.' })
   @ApiOkResponse({ description: 'All blocks sorted by index, stripped of Mongo internals.' })

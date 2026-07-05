@@ -264,6 +264,10 @@ export class ApiService {
     return await this.blockchainService.getBlockProof(index);
   }
 
+  async getOtsProof(anchorId: string) {
+    return await this.blockchainService.getOtsProof(anchorId);
+  }
+
   async getBlockByIndex(index: number) {
     return await this.blockchainService.getBlockByIndex(index);
   }

@@ -15,6 +15,7 @@ import { ethers } from 'ethers';
 import { Anchor, AnchorDocument } from './models/anchor.schema';
 import { canonicalizeEx } from 'json-canonicalize';
 import abiJson from '../abis/ErnestMerkleAnchor.json';
+import { OtsClient } from './ots.client';
 import { buildCycloneDxMlBom } from './cyclonedx';
 
 const anchorAbi = abiJson.abi;
@@ -38,7 +39,21 @@ export class BlockchainService implements OnModuleInit {
         private provenanceBlockModel: Model<ProvenanceBlockDocument>,
         @InjectModel(Anchor.name)
         private anchorModel: Model<AnchorDocument>,
+        private readonly otsClient: OtsClient,
     ) { }
+
+    /**
+     * Which anchoring backend is active. 'ots' (OpenTimestamps on Bitcoin: free,
+     * keyless, no crypto custody -- the production default recommendation) is chosen
+     * explicitly via ANCHOR_PROVIDER=ots; otherwise 'evm' when the contract
+     * configuration is present, or null when anchoring is disabled.
+     */
+    getAnchorProvider(): 'ots' | 'evm' | null {
+        if ((process.env.ANCHOR_PROVIDER || '').toLowerCase() === 'ots') {
+            return 'ots';
+        }
+        return this.getAnchorConfig(false) ? 'evm' : null;
+    }
 
     async onModuleInit() {
         await this.ensureIndexes();
@@ -629,6 +644,7 @@ export class BlockchainService implements OnModuleInit {
             hashAlgorithm: 'keccak256',
             pairSorting: 'sorted',
             anchor: {
+                provider: anchor.provider ?? 'evm',
                 txHash: anchor.txHash,
                 blockNumber: anchor.blockNumber,
                 chainId: anchor.chainId,
@@ -636,6 +652,14 @@ export class BlockchainService implements OnModuleInit {
                 organizationId: anchor.organizationId,
                 lastBlockIndex: anchor.lastBlockIndex,
                 anchoredAt: anchor.anchoredAt,
+                ...(anchor.provider === 'ots'
+                    ? {
+                        bitcoinBlockHeight: anchor.bitcoinBlockHeight,
+                        // The .ots proof completes the chain of trust offline:
+                        //   ots verify ernest-anchor-<id>.ots
+                        otsProofUrl: `/api/anchors/${anchor._id}/ots`,
+                    }
+                    : {}),
             },
             generatedAt: new Date().toISOString(),
         };
@@ -657,8 +681,8 @@ export class BlockchainService implements OnModuleInit {
      * Check last anchor and decides to anchor a new one
      */
     async maybeAnchorNew() {
-        const config = this.getAnchorConfig(false);
-        if (!config) {
+        const provider = this.getAnchorProvider();
+        if (!provider) {
             return { anchored: false, reason: 'Anchoring is not configured.' };
         }
 
@@ -680,7 +704,95 @@ export class BlockchainService implements OnModuleInit {
             return { anchored: false, reason: `Not enough new blocks (${newBlocks}), wait for ${anchorEveryNBlocks}.` };
         }
 
-        return await this.anchorMerkleRootToEthereum();
+        return provider === 'ots'
+            ? await this.anchorMerkleRootToOts()
+            : await this.anchorMerkleRootToEthereum();
+    }
+
+    /**
+     * Anchor via OpenTimestamps: stamp the Merkle root against the public calendar
+     * servers. The proof starts PENDING (a calendar promise); the scheduled
+     * upgrade cycle completes it once the calendars aggregate into a mined Bitcoin
+     * block (typically hours). No wallet, no keys, no cost.
+     */
+    async anchorMerkleRootToOts(): Promise<any> {
+        const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
+        if (!lastBlock) {
+            throw new Error('No blocks found to anchor');
+        }
+
+        const merkleRoot = await this.getMerkleRoot(lastBlock.index);
+        const otsProof = await this.otsClient.stamp(merkleRoot);
+
+        const anchor = await this.anchorModel.create({
+            merkleRoot,
+            provider: 'ots',
+            otsProof,
+            txHash: '',
+            organizationId: process.env.ANCHOR_ORGANIZATION_ID || 'ernest-demo',
+            organizationName: process.env.ANCHOR_ORGANIZATION_NAME || 'Ernest Demo',
+            domain: process.env.ANCHOR_DOMAIN || 'ai-provenance',
+            lastBlockIndex: lastBlock.index,
+            anchoredAt: new Date(),
+            status: 'pending',
+        });
+
+        this.logger.log(`OTS anchor created (pending) for blocks 0..${lastBlock.index}, root ${merkleRoot}`);
+        return {
+            anchored: true,
+            provider: 'ots',
+            merkleRoot,
+            lastBlockIndex: lastBlock.index,
+            status: anchor.status,
+            otsProofUrl: `/api/anchors/${anchor._id}/ots`,
+        };
+    }
+
+    /**
+     * Upgrade cycle for pending OTS anchors: asks the calendars whether the proof
+     * has been aggregated into Bitcoin yet. Called by the scheduler; a proof that
+     * completes gets status 'confirmed' plus the attested block height. An OTS
+     * anchor is 'confirmed' in the receipt sense once that attestation exists --
+     * anyone can verify the upgraded proof offline with the official `ots` client.
+     */
+    async upgradePendingOtsAnchors(): Promise<{ upgraded: number; pending: number }> {
+        const pending = await this.anchorModel.find({ provider: 'ots', status: 'pending' }).lean();
+        let upgraded = 0;
+        for (const anchor of pending) {
+            try {
+                const result = await this.otsClient.upgrade(anchor.otsProof!);
+                if (result.complete) {
+                    await this.anchorModel.updateOne(
+                        { _id: anchor._id },
+                        {
+                            $set: {
+                                otsProof: result.proofBase64,
+                                bitcoinBlockHeight: result.bitcoinBlockHeight,
+                                status: 'confirmed',
+                                confirmedAt: new Date(),
+                            },
+                        },
+                    );
+                    upgraded += 1;
+                    this.logger.log(`OTS anchor ${anchor._id} confirmed in Bitcoin block ${result.bitcoinBlockHeight}`);
+                } else if (result.proofBase64 !== anchor.otsProof) {
+                    // Partial upgrade (new calendar data, no Bitcoin attestation yet).
+                    await this.anchorModel.updateOne({ _id: anchor._id }, { $set: { otsProof: result.proofBase64 } });
+                }
+            } catch (e: any) {
+                this.logger.warn(`OTS upgrade for anchor ${anchor._id} failed: ${e.message}`);
+            }
+        }
+        return { upgraded, pending: pending.length - upgraded };
+    }
+
+    /** Raw .ots proof bytes for offline verification with the official tooling. */
+    async getOtsProof(anchorId: string): Promise<{ proof: Buffer; anchor: any } | null> {
+        const anchor = await this.anchorModel.findOne({ _id: anchorId, provider: 'ots' }).lean();
+        if (!anchor?.otsProof) {
+            return null;
+        }
+        return { proof: Buffer.from(anchor.otsProof, 'base64'), anchor };
     }
 
     /**
@@ -750,11 +862,26 @@ export class BlockchainService implements OnModuleInit {
         const config = this.getAnchorConfig(false);
         const lastAnchor = await this.getLastAnchor();
 
+        if (this.getAnchorProvider() === 'ots') {
+            const [pendingOts, confirmedOts] = await Promise.all([
+                this.anchorModel.countDocuments({ provider: 'ots', status: 'pending' }),
+                this.anchorModel.countDocuments({ provider: 'ots', status: 'confirmed' }),
+            ]);
+            return {
+                configured: true,
+                mode: 'ots',
+                reason: 'OpenTimestamps anchoring: free, keyless Bitcoin attestation via public calendar servers.',
+                pendingProofs: pendingOts,
+                confirmedProofs: confirmedOts,
+                lastAnchor,
+            };
+        }
+
         if (!config) {
             return {
                 configured: false,
                 mode: 'disabled',
-                reason: 'Set INFURA_URL, PRIVATE_KEY and CONTRACT_ADDRESS to enable anchoring.',
+                reason: 'Set INFURA_URL, PRIVATE_KEY and CONTRACT_ADDRESS for contract anchoring, or ANCHOR_PROVIDER=ots for keyless OpenTimestamps anchoring.',
                 lastAnchor,
             };
         }

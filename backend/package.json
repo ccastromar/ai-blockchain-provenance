@@ -28,6 +28,7 @@
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.6.0",
     "mongoose": "^8.0.3",
+    "opentimestamps": "^0.4.9",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {

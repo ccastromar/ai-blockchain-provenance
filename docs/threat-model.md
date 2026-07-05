@@ -135,7 +135,7 @@ The guarantees hold only if the deployment does its part:
 | --- | --- | --- |
 | Client identity on writes | Shared write key or issued tokens | Signed submissions / OIDC per-client identity |
 | Browser demo key exposure | `PUBLIC_ERNEST_API_KEY` documented as public | Session auth or server-side write proxy |
-| Anchor key custody | Environment variable | Secrets manager or external signer service |
+| Anchor key custody | Eliminated under the recommended `ANCHOR_PROVIDER=ots` (OpenTimestamps: keyless, free Bitcoin attestation); EVM contract anchoring remains optional with its wallet in an environment variable | Secrets manager or external signer for deployments that choose EVM anchoring |
 | Supply-chain drift | CI + GHCR publishing | Image signing, SBOM, provenance attestations |
 | Sensitive data in metadata | Caller responsibility | Metadata schema validation / DLP checks |
 | CLI verification transport | Read-only API (`--api`) and offline export (`--file`) modes; direct Mongo kept for forensic use; export is cursor-streamed with constant server memory | — |

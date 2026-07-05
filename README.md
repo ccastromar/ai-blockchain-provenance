@@ -143,7 +143,7 @@ Optional blockchain anchoring adds an external timestamped commitment:
 
 This does not put AI data on-chain. It provides a public proof that a specific evidence state existed at a specific time.
 
-For private demos, Ernest can anchor to a local Hardhat chain. For external proof of existence, it can anchor to Sepolia or another EVM network.
+For private demos, Ernest can anchor to a local Hardhat chain. For external proof of existence there are two providers: **OpenTimestamps on Bitcoin** (`ANCHOR_PROVIDER=ots` — free, keyless, no crypto custody; the recommended production default, verifiable forever with the independent `ots` client) or an EVM contract (Sepolia for demos, any EVM network for richer on-chain anchor history).
 
 ## Threat Model
 

@@ -187,12 +187,24 @@ export class ScheduledBlockchainService implements OnModuleInit {
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async confirmPendingAnchors() {
+    // OTS anchors upgrade against the public calendars -- no RPC configuration needed.
+    try {
+      const ots = await this.blockchainService.upgradePendingOtsAnchors();
+      if (ots.upgraded > 0 || ots.pending > 0) {
+        this.logger.log(`OTS anchors: ${ots.upgraded} confirmed, ${ots.pending} still pending aggregation`);
+      }
+    } catch (e: any) {
+      this.logger.warn(`OTS anchor upgrade cycle failed: ${e.message}`);
+    }
+
     if (!process.env.INFURA_URL) {
-      this.logger.debug(`Skipping pending anchor confirmation: INFURA_URL is not configured`);
+      this.logger.debug(`Skipping EVM pending anchor confirmation: INFURA_URL is not configured`);
       return;
     }
 
-    const pending = await this.anchorModel.find({ status: 'pending' }).lean();
+    // Only EVM anchors have transactions to poll; OTS ones were handled above and
+    // legacy anchors (no provider field) are EVM.
+    const pending = await this.anchorModel.find({ status: 'pending', provider: { $ne: 'ots' } }).lean();
 
     if (pending.length === 0) {
       this.logger.debug(`No pending anchors...`);

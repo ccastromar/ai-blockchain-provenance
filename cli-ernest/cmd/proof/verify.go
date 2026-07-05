@@ -30,12 +30,15 @@ type receipt struct {
 	Proof      []string `json:"proof"`
 	MerkleRoot string   `json:"merkleRoot"`
 	Anchor     struct {
-		TxHash          string `json:"txHash"`
-		ChainID         int64  `json:"chainId"`
-		ContractAddress string `json:"contractAddress"`
-		OrganizationID  string `json:"organizationId"`
-		LastBlockIndex  int64  `json:"lastBlockIndex"`
-		AnchoredAt      string `json:"anchoredAt"`
+		Provider           string `json:"provider"`
+		TxHash             string `json:"txHash"`
+		ChainID            int64  `json:"chainId"`
+		ContractAddress    string `json:"contractAddress"`
+		OrganizationID     string `json:"organizationId"`
+		LastBlockIndex     int64  `json:"lastBlockIndex"`
+		AnchoredAt         string `json:"anchoredAt"`
+		BitcoinBlockHeight int64  `json:"bitcoinBlockHeight"`
+		OtsProofURL        string `json:"otsProofUrl"`
 	} `json:"anchor"`
 }
 
@@ -90,13 +93,23 @@ var verifyCmd = &cobra.Command{
 		}
 		fmt.Printf("✓ Merkle proof (%d hashes) reaches anchored root %s…\n", len(r.Proof), r.MerkleRoot[:18])
 
-		// 3. Point at the on-chain fact that makes it evidence.
+		// 3. Point at the public-chain fact that makes it evidence.
 		fmt.Println("✓ receipt verified offline")
 		fmt.Printf("\nAnchored root: %s\n", r.MerkleRoot)
-		fmt.Printf("Anchor tx:     %s (chainId %d)\n", r.Anchor.TxHash, r.Anchor.ChainID)
-		fmt.Printf("Contract:      %s\n", r.Anchor.ContractAddress)
-		fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", r.Anchor.AnchoredAt, r.Anchor.OrganizationID, r.Anchor.LastBlockIndex)
-		fmt.Println("\nTo complete the chain of trust, confirm that transaction records this root on the public chain.")
+		if r.Anchor.Provider == "ots" {
+			fmt.Printf("Anchoring:     OpenTimestamps (Bitcoin)")
+			if r.Anchor.BitcoinBlockHeight > 0 {
+				fmt.Printf(", attested at block %d", r.Anchor.BitcoinBlockHeight)
+			}
+			fmt.Println()
+			fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", r.Anchor.AnchoredAt, r.Anchor.OrganizationID, r.Anchor.LastBlockIndex)
+			fmt.Printf("\nTo complete the chain of trust, download the proof (%s)\nand verify it with the official client:  ots verify <file>.ots\n", r.Anchor.OtsProofURL)
+		} else {
+			fmt.Printf("Anchor tx:     %s (chainId %d)\n", r.Anchor.TxHash, r.Anchor.ChainID)
+			fmt.Printf("Contract:      %s\n", r.Anchor.ContractAddress)
+			fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", r.Anchor.AnchoredAt, r.Anchor.OrganizationID, r.Anchor.LastBlockIndex)
+			fmt.Println("\nTo complete the chain of trust, confirm that transaction records this root on the public chain.")
+		}
 		return nil
 	},
 }

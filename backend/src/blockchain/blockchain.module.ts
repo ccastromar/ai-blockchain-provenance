@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { BlockchainService } from './blockchain.service';
+import { OtsClient } from './ots.client';
 import { ProvenanceBlock, ProvenanceBlockSchema } from './models/provenance-block.schema';
 import { Anchor, AnchorSchema } from './models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckSchema } from './models/integrity-check.schema';
@@ -16,7 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ]),
     ScheduleModule.forRoot(),
   ],
-  providers: [BlockchainService, ScheduledBlockchainService],
+  providers: [BlockchainService, ScheduledBlockchainService, OtsClient],
   exports: [BlockchainService]
 })
 export class BlockchainModule {}
