@@ -5,7 +5,10 @@ services:
     image: mongo:7
     container_name: ernest-mongodb
     ports:
-      - "127.0.0.1:27017:27017"
+      - target: 27017
+        host_ip: 127.0.0.1
+        published: 27017
+        protocol: tcp
     volumes:
       - mongodb_data:/data/db
     environment:
@@ -29,7 +32,10 @@ services:
     image: ${ERNEST_IMAGE_NAMESPACE:-ghcr.io/ccastromar}/ai-blockchain-provenance-backend:${ERNEST_IMAGE_TAG:-latest}
     container_name: ernest-backend
     ports:
-      - "127.0.0.1:3001:3001"
+      - target: 3001
+        host_ip: 127.0.0.1
+        published: 3001
+        protocol: tcp
     environment:
       - PORT=3001
       - MONGODB_URI=mongodb://mongodb:27017/ernest
@@ -67,7 +73,10 @@ services:
     image: ${ERNEST_IMAGE_NAMESPACE:-ghcr.io/ccastromar}/ai-blockchain-provenance-frontend:${ERNEST_IMAGE_TAG:-latest}
     container_name: ernest-frontend
     ports:
-      - "127.0.0.1:3000:3000"
+      - target: 3000
+        host_ip: 127.0.0.1
+        published: 3000
+        protocol: tcp
     environment:
       - NGINX_ENTRYPOINT_QUIET_LOGS=1
     depends_on:

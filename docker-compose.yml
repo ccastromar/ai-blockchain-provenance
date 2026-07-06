@@ -5,7 +5,10 @@ services:
     image: mongo:7
     container_name: ernest-mongodb
     ports:
-      - "127.0.0.1:27017:27017"
+      - target: 27017
+        host_ip: 127.0.0.1
+        published: 27017
+        protocol: tcp
     volumes:
       - mongodb_data:/data/db
     environment:
@@ -29,7 +32,10 @@ services:
     image: redis:7-alpine
     container_name: ernest-redis
     ports:
-      - "127.0.0.1:6379:6379"
+      - target: 6379
+        host_ip: 127.0.0.1
+        published: 6379
+        protocol: tcp
     volumes:
       - redis_data:/data
     command: ["redis-server", "--appendonly", "yes"]
@@ -54,7 +60,10 @@ services:
       dockerfile: backend/Dockerfile
     container_name: ernest-backend
     ports:
-      - "127.0.0.1:3001:3001"
+      - target: 3001
+        host_ip: 127.0.0.1
+        published: 3001
+        protocol: tcp
     environment:
       - PORT=3001
       - MONGODB_URI=mongodb://mongodb:27017/ernest
@@ -92,8 +101,14 @@ services:
     container_name: ernest-event-ingestor
     command: ["serve"]
     ports:
-      - "127.0.0.1:3011:3011"
-      - "127.0.0.1:9102:9102"
+      - target: 3011
+        host_ip: 127.0.0.1
+        published: 3011
+        protocol: tcp
+      - target: 9102
+        host_ip: 127.0.0.1
+        published: 9102
+        protocol: tcp
     environment:
       - PORT=3011
       - REDIS_ADDR=redis:6379
@@ -133,7 +148,10 @@ services:
     container_name: ernest-event-writer
     command: ["worker"]
     ports:
-      - "127.0.0.1:9103:9102"
+      - target: 9102
+        host_ip: 127.0.0.1
+        published: 9103
+        protocol: tcp
     environment:
       - REDIS_ADDR=redis:6379
       - REDIS_STREAM=${REDIS_STREAM:-ernest:events:incoming}
@@ -171,7 +189,10 @@ services:
         PUBLIC_ERNEST_API_KEY: ${PUBLIC_ERNEST_API_KEY:-}
     container_name: ernest-frontend
     ports:
-      - "127.0.0.1:3000:3000"
+      - target: 3000
+        host_ip: 127.0.0.1
+        published: 3000
+        protocol: tcp
     environment:
       - NGINX_ENTRYPOINT_QUIET_LOGS=1
     depends_on:

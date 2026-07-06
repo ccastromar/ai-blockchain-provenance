@@ -1,4 +1,4 @@
-# Optional overlay for hosts that already run their own MongoDB/Redis (e.g. "cubic").
+# Optional overlay for hosts that already run their own MongoDB/Redis.
 #
 # Ernest brings its OWN mongodb and redis on an isolated bridge network, so it never
 # touches the host's existing services -- the only clash is the published host ports.
@@ -6,7 +6,7 @@
 # each other internally (mongodb:27017, redis:6379), they just aren't exposed on the
 # host, so there's nothing to collide with.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.cubic.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.shared-host.yml up -d
 #
 # `!reset []` clears the list from the base file (a plain `ports: []` would MERGE and
 # leave the base entry in place). Requires Docker Compose v2.24+. On older Compose,
@@ -22,7 +22,13 @@ services:
 # --- Fallback for Compose < 2.24 (no !reset): publish on free host ports instead ---
 #  mongodb:
 #    ports: !override
-#      - "127.0.0.1:27018:27017"
+#      - target: 27017
+#        host_ip: 127.0.0.1
+#        published: 27018
+#        protocol: tcp
 #  redis:
 #    ports: !override
-#      - "127.0.0.1:6380:6379"
+#      - target: 6379
+#        host_ip: 127.0.0.1
+#        published: 6380
+#        protocol: tcp

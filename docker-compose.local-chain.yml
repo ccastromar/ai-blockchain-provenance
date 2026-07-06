@@ -8,7 +8,10 @@ services:
     image: ernest-local-chain:dev
     container_name: ernest-local-chain
     ports:
-      - "127.0.0.1:8545:8545"
+      - target: 8545
+        host_ip: 127.0.0.1
+        published: 8545
+        protocol: tcp
     command: ["pnpm", "--filter", "blockchain", "local:node"]
     healthcheck:
       test:

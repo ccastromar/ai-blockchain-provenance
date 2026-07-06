@@ -23,7 +23,10 @@ services:
         "*"
       ]
     ports:
-      - "127.0.0.1:8111:8111"
+      - target: 8111
+        host_ip: 127.0.0.1
+        published: 8111
+        protocol: tcp
     volumes:
       - mlflow_data:/mlflow
     healthcheck:
