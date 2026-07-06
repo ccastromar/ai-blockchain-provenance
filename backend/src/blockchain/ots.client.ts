@@ -20,12 +20,21 @@ const OpenTimestamps = require('opentimestamps');
 export class OtsClient {
     private readonly logger = new Logger(OtsClient.name);
 
-    /** Stamps a 32-byte hex digest. Returns the serialized pending proof (base64). */
+    /**
+     * Stamps the 32 raw bytes of the Merkle root. Returns the serialized pending
+     * proof (base64).
+     *
+     * Uses fromBytes (NOT fromHash): the proof then commits to sha256(rootBytes), so
+     * an auditor can verify it with the official client against a "raw" file that is
+     * exactly those root bytes -- `ots verify -f <rawfile> <proof>.ots`. fromHash would
+     * instead treat the root as an already-computed sha256 file hash, for which no
+     * such file exists, making the proof CLI-unverifiable.
+     */
     async stamp(rootHex: string): Promise<string> {
-        const digest = Buffer.from(rootHex.replace(/^0x/, ''), 'hex');
-        const detached = OpenTimestamps.DetachedTimestampFile.fromHash(
+        const rootBytes = Buffer.from(rootHex.replace(/^0x/, ''), 'hex');
+        const detached = OpenTimestamps.DetachedTimestampFile.fromBytes(
             new OpenTimestamps.Ops.OpSHA256(),
-            digest,
+            rootBytes,
         );
         await OpenTimestamps.stamp(detached);
         return Buffer.from(detached.serializeToBytes()).toString('base64');

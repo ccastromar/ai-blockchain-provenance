@@ -152,6 +152,24 @@ export class ApiController {
     res.end(result.proof);
   }
 
+  @Get('anchors/:id/ots/raw')
+  @ApiOperation({ summary: 'Download the raw Merkle-root bytes that the .ots proof commits to. Needed to verify: `ots verify -f ernest-anchor-<id> ernest-anchor-<id>.ots`.' })
+  @ApiParam({ name: 'id', description: 'Anchor id' })
+  @ApiOkResponse({ description: 'The 32 raw bytes of the anchored Merkle root.' })
+  @ApiNotFoundResponse({ description: 'No OTS anchor with that id.' })
+  async downloadOtsRoot(@Param('id') id: string, @Res() res: any) {
+    const result = await this.apiService.getOtsProof(id).catch(() => null);
+    if (!result) {
+      res.status(404).json({ statusCode: 404, message: 'No OTS anchor with that id' });
+      return;
+    }
+    // Exactly the bytes stamped (see OtsClient.stamp) — no extension so the filename
+    // matches the .ots proof's base name for `ots verify` to pair them automatically.
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="ernest-anchor-${id}"`);
+    res.end(Buffer.from(result.anchor.merkleRoot.replace(/^0x/, ''), 'hex'));
+  }
+
   @Get('blocks/export')
   @ApiOperation({ summary: 'Export the full hashchain as a flat JSON bundle for offline verification (e.g. ernest CLI --file mode). Streamed with constant memory.' })
   @ApiOkResponse({ description: 'All blocks sorted by index, stripped of Mongo internals.' })

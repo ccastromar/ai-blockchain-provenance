@@ -231,6 +231,10 @@ export const exportProvenance = (modelId: string) =>
 export const exportProvenanceCycloneDx = (modelId: string) =>
   `${apiUrl}/api/provenances/${modelId}/export/cyclonedx`;
 
+/** Turn a backend-relative API path (e.g. an anchor's otsProofUrl "/api/anchors/:id/ots")
+ * into a browser-usable href: absolute to the backend in dev, same-origin in prod. */
+export const absoluteApiHref = (apiPath: string) => `${apiUrl}${apiPath}`;
+
 // ── Chain ──────────────────────────────────────────────────────────────────
 
 export const getChainStats = async () => (await api.get('/stats')).data;

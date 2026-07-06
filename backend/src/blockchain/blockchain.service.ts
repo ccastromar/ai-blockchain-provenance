@@ -398,6 +398,9 @@ export class BlockchainService implements OnModuleInit {
                 otsProofUrl: lastAnchor.provider === 'ots'
                     ? `/api/anchors/${lastAnchor._id}/ots`
                     : undefined,
+                otsRawUrl: lastAnchor.provider === 'ots'
+                    ? `/api/anchors/${lastAnchor._id}/ots/raw`
+                    : undefined,
             } : null
         };
     }
@@ -668,9 +671,10 @@ export class BlockchainService implements OnModuleInit {
                 ...(anchor.provider === 'ots'
                     ? {
                         bitcoinBlockHeight: anchor.bitcoinBlockHeight,
-                        // The .ots proof completes the chain of trust offline:
-                        //   ots verify ernest-anchor-<id>.ots
+                        // The .ots proof + raw root complete the chain of trust offline:
+                        //   ots verify -f ernest-anchor-<id> ernest-anchor-<id>.ots
                         otsProofUrl: `/api/anchors/${anchor._id}/ots`,
+                        otsRawUrl: `/api/anchors/${anchor._id}/ots/raw`,
                     }
                     : {}),
             },

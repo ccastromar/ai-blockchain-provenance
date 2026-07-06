@@ -40,6 +40,7 @@ type receipt struct {
 		AnchoredAt         string `json:"anchoredAt"`
 		BitcoinBlockHeight int64  `json:"bitcoinBlockHeight"`
 		OtsProofURL        string `json:"otsProofUrl"`
+		OtsRawURL          string `json:"otsRawUrl"`
 	} `json:"anchor"`
 }
 
@@ -112,7 +113,7 @@ var verifyCmd = &cobra.Command{
 			}
 			fmt.Println()
 			fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", r.Anchor.AnchoredAt, r.Anchor.OrganizationID, r.Anchor.LastBlockIndex)
-			fmt.Printf("\nTo complete the chain of trust, download the proof (%s)\nand verify it with the official client:  ots verify <file>.ots\n", r.Anchor.OtsProofURL)
+			fmt.Printf("\nTo complete the chain of trust, download BOTH the proof (%s)\nand the root file (%s), then verify with the official client:\n  ots verify -f ernest-anchor-<id> ernest-anchor-<id>.ots\n", r.Anchor.OtsProofURL, r.Anchor.OtsRawURL)
 		} else {
 			fmt.Printf("Anchor tx:     %s (chainId %d)\n", r.Anchor.TxHash, r.Anchor.ChainID)
 			fmt.Printf("Contract:      %s\n", r.Anchor.ContractAddress)

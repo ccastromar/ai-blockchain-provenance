@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { format } from 'date-fns';
-  import { getChainStats, verifyChain, getHealth, anchorNow } from '$lib/api';
+  import { getChainStats, verifyChain, getHealth, anchorNow, absoluteApiHref } from '$lib/api';
   import { authState } from '$lib/auth';
   import AccessBadge from '$lib/components/AccessBadge.svelte';
 
@@ -302,9 +302,14 @@
           {#if isOts}
             <div class="sm:col-span-2">
               <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">OpenTimestamps proof</dt>
-              <dd class="text-xs text-slate-600">
-                <a href={anchor.otsProofUrl} class="text-blue-600 hover:text-blue-800 underline">Download .ots proof</a>
-                <span class="text-slate-400"> — verify offline with <code class="bg-slate-100 px-1 rounded">ots verify</code></span>
+              <dd class="text-xs text-slate-600 space-y-1">
+                <div>
+                  <a href={absoluteApiHref(anchor.otsProofUrl)} class="text-blue-600 hover:text-blue-800 underline">Download .ots proof</a>
+                  <span class="text-slate-400"> and </span>
+                  <a href={absoluteApiHref(anchor.otsRawUrl)} class="text-blue-600 hover:text-blue-800 underline">root file</a>
+                  <span class="text-slate-400"> (both needed).</span>
+                </div>
+                <div class="text-slate-400">Verify offline: <code class="bg-slate-100 px-1 rounded">ots verify -f ernest-anchor-{anchor.otsProofUrl.split('/')[3]} ernest-anchor-{anchor.otsProofUrl.split('/')[3]}.ots</code></div>
               </dd>
             </div>
           {:else if anchor.txHash}
