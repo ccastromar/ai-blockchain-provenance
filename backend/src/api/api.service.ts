@@ -315,7 +315,18 @@ export class ApiService {
   }
 
   async anchorMerkleRoot() {
-    return await this.blockchainService.anchorMerkleRootToEthereum();
+    // Force an anchor NOW, ignoring the ANCHOR_EVERY_N_BLOCKS threshold, but honour the
+    // configured provider -- a manual anchor under ANCHOR_PROVIDER=ots must stamp via
+    // OpenTimestamps, not fall through to EVM.
+    const provider = this.blockchainService.getAnchorProvider();
+    if (!provider) {
+      throw new BadRequestException(
+        'Anchoring is not configured. Set ANCHOR_PROVIDER=ots or the EVM contract variables (INFURA_URL, PRIVATE_KEY, CONTRACT_ADDRESS).',
+      );
+    }
+    return provider === 'ots'
+      ? await this.blockchainService.anchorMerkleRootToOts()
+      : await this.blockchainService.anchorMerkleRootToEthereum();
   }
 
   async getAnchorStatus() {

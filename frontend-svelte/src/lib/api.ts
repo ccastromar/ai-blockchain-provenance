@@ -235,6 +235,9 @@ export const exportProvenanceCycloneDx = (modelId: string) =>
 
 export const getChainStats = async () => (await api.get('/stats')).data;
 export const verifyChain   = async () => (await api.get('/verify')).data;
+export const getAnchorStatus = async () => (await api.get('/anchors/status')).data;
+/** Force an anchor now (ignores the block-count threshold). Requires a read-write credential. */
+export const anchorNow = async () => (await api.post('/anchors')).data;
 export const getBlockByIndex = async (index: number) => (await api.get(`/blocks/${index}`)).data;
 
 /** SPV-style inclusion receipt: block + Merkle proof to its covering confirmed anchor. */

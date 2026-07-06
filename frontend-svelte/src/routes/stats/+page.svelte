@@ -1,7 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { format } from 'date-fns';
-  import { getChainStats, verifyChain, getHealth } from '$lib/api';
+  import { getChainStats, verifyChain, getHealth, anchorNow } from '$lib/api';
+  import { authState } from '$lib/auth';
+  import AccessBadge from '$lib/components/AccessBadge.svelte';
+
+  let canWrite = $derived($authState.role === 'read-write');
 
   let stats        = $state<any>(null);
   let verification = $state<any>(null);
@@ -9,6 +13,25 @@
   let loading      = $state(true);
   let autoRefresh  = $state(true);
   let interval: ReturnType<typeof setInterval> | null = null;
+
+  let anchoring     = $state(false);
+  let anchorMessage = $state('');
+  let anchorError   = $state('');
+
+  async function forceAnchor() {
+    anchoring = true; anchorMessage = ''; anchorError = '';
+    try {
+      const result = await anchorNow();
+      anchorMessage = result.provider === 'ots'
+        ? `OpenTimestamps anchor submitted (pending Bitcoin aggregation), blocks 0..${result.lastBlockIndex}.`
+        : `Anchored blocks 0..${result.lastBlockIndex ?? '?'} — tx ${(result.txHash ?? '').slice(0, 14)}…`;
+      await loadStats();
+    } catch (e: any) {
+      anchorError = e?.response?.data?.message ?? e.message ?? 'Anchoring failed.';
+    } finally {
+      anchoring = false;
+    }
+  }
 
   async function loadStats() {
     try {
@@ -49,6 +72,7 @@
       <span class="text-xs text-blue-400 hidden sm:block">
         {format(new Date(), 'HH:mm:ss')}
       </span>
+      <AccessBadge />
     </div>
   </div>
 </div>
@@ -222,9 +246,24 @@
 
     <!-- Ethereum anchor -->
     <div class="card p-6">
-      <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-        <span class="text-blue-600">⛓️</span> Blockchain Anchor <span class="text-xs font-normal text-slate-400 ml-1">(Ethereum)</span>
-      </h3>
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-slate-700 flex items-center gap-2">
+          <span class="text-blue-600">⛓️</span> Blockchain Anchor
+        </h3>
+        <button
+          onclick={forceAnchor}
+          disabled={anchoring || !canWrite}
+          title={canWrite ? 'Force an anchor now, ignoring the block-count threshold' : 'Read-only access — anchoring requires a read-write key'}
+          class="btn-outline text-xs py-1.5 px-3 disabled:opacity-50">
+          {anchoring ? 'Anchoring…' : '⚓ Anchor now'}
+        </button>
+      </div>
+      {#if anchorMessage}
+        <div class="alert-success text-xs text-emerald-800 mb-3">{anchorMessage}</div>
+      {/if}
+      {#if anchorError}
+        <div class="alert-error text-xs mb-3">{anchorError}</div>
+      {/if}
       {#if stats?.lastAnchor}
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           {#each [
@@ -245,15 +284,17 @@
               {stats.lastAnchor.merkleRoot}
             </dd>
           </div>
-          <div class="sm:col-span-2">
-            <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">Tx Hash</dt>
-            <dd>
-              <a href={stats.lastAnchor.etherscanUrl} target="_blank" rel="noopener noreferrer"
-                class="font-mono text-xs text-blue-600 hover:text-blue-800 underline break-all">
-                {stats.lastAnchor.txHash}
-              </a>
-            </dd>
-          </div>
+          {#if stats.lastAnchor.txHash}
+            <div class="sm:col-span-2">
+              <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">Tx Hash</dt>
+              <dd>
+                <a href={stats.lastAnchor.etherscanUrl} target="_blank" rel="noopener noreferrer"
+                  class="font-mono text-xs text-blue-600 hover:text-blue-800 underline break-all">
+                  {stats.lastAnchor.txHash}
+                </a>
+              </dd>
+            </div>
+          {/if}
         </dl>
       {:else}
         <div class="text-sm text-slate-400 text-center py-6">
