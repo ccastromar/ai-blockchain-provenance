@@ -123,9 +123,15 @@
             <div class="border-t border-slate-100 pt-3 text-sm text-slate-600 space-y-1">
               <div>Block <span class="font-mono text-blue-700">#{blockInfo.index}</span> · {blockInfo.data?.type ?? '—'} · model <span class="font-mono">{blockInfo.data?.modelId ?? '—'}</span></div>
               <div class="text-xs text-slate-500">Anchored root: <span class="font-mono break-all">{anchorInfo && result ? (JSON.parse(receiptText).merkleRoot ?? '—') : '—'}</span></div>
-              <div class="text-xs text-slate-500">Anchor tx: <span class="font-mono break-all">{anchorInfo.txHash}</span> (chainId {anchorInfo.chainId})</div>
-              <div class="text-xs text-slate-500">Anchored at {anchorInfo.anchoredAt} · covers blocks 0..{anchorInfo.lastBlockIndex}</div>
-              <p class="text-xs text-slate-400 pt-1">To complete the chain of trust, confirm that transaction records this root on the public chain.</p>
+              {#if anchorInfo.provider === 'ots'}
+                <div class="text-xs text-slate-500">Anchoring: OpenTimestamps (Bitcoin){anchorInfo.bitcoinBlockHeight ? `, attested at block ${anchorInfo.bitcoinBlockHeight}` : ' — pending aggregation'}</div>
+                <div class="text-xs text-slate-500">Anchored at {anchorInfo.anchoredAt} · covers blocks 0..{anchorInfo.lastBlockIndex}</div>
+                <p class="text-xs text-slate-400 pt-1">To complete the chain of trust, verify the OpenTimestamps proof against Bitcoin (download the .ots proof and root from Ernest, then <code class="bg-slate-100 px-1 rounded">ots verify</code>).</p>
+              {:else}
+                <div class="text-xs text-slate-500">Anchor tx: <span class="font-mono break-all">{anchorInfo.txHash}</span> (chainId {anchorInfo.chainId})</div>
+                <div class="text-xs text-slate-500">Anchored at {anchorInfo.anchoredAt} · covers blocks 0..{anchorInfo.lastBlockIndex}</div>
+                <p class="text-xs text-slate-400 pt-1">To complete the chain of trust, confirm that transaction records this root on the public chain.</p>
+              {/if}
             </div>
           {/if}
         {/if}
