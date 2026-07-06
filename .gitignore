@@ -135,3 +135,6 @@ ernest
 # Rust
 target/
 pkg/
+
+# Local dev helper (not for the repo)
+scripts/dev-local.sh
