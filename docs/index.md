@@ -8,6 +8,7 @@ Use this map when presenting Ernest to evaluators, incubator reviewers, or techn
 - `docs/quick-eval.md`: 10-minute evaluator path.
 - `docs/incubation-brief.md`: company-facing summary for an IT incubator or internal sponsor.
 - `docs/presentation-deck.md`: 6-8 slide structure for company presentation.
+- `DEMO.md` (repo root): cold-start guide — zero to the offline-receipt demo in 10 minutes.
 - `docs/demo-script.md`: 5-minute presentation flow and talk track.
 - `docs/maturity-model.md`: alpha-to-enterprise maturity path.
 - `docs/threat-model.md`: alpha threat model and enterprise security gaps.

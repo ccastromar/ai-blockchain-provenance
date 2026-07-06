@@ -128,7 +128,7 @@ flowchart LR
   Hashchain --> Review
 ```
 
-More detail: [docs/architecture.md](docs/architecture.md).
+More detail: [docs/architecture.md](docs/architecture.md). Cold-start demo in 10 minutes: [DEMO.md](DEMO.md).
 
 ## Why Blockchain?
 
