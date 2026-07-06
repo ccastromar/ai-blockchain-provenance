@@ -376,20 +376,27 @@ export class BlockchainService implements OnModuleInit {
             chainValid: verification.isValid,
             verificationErrors: verification.errors,
             lastAnchor: lastAnchor ? {
+                provider: lastAnchor.provider ?? 'evm',
                 merkleRoot: lastAnchor.merkleRoot,
                 lastBlockIndex: lastAnchor.lastBlockIndex,
-                txHash: lastAnchor.txHash,
-                blockNumber: lastAnchor.blockNumber,
-                chainId: lastAnchor.chainId,
-                contractAddress: lastAnchor.contractAddress,
                 organizationId: lastAnchor.organizationId,
                 organizationName: lastAnchor.organizationName,
                 domain: lastAnchor.domain,
                 anchoredAt: lastAnchor.anchoredAt,
                 confirmedAt: lastAnchor.confirmedAt,
                 status: lastAnchor.status,
+                // EVM-specific
+                txHash: lastAnchor.txHash || undefined,
+                blockNumber: lastAnchor.blockNumber,
+                chainId: lastAnchor.chainId,
+                contractAddress: lastAnchor.contractAddress,
                 etherscanUrl: lastAnchor.txHash
                     ? `https://sepolia.etherscan.io/tx/${lastAnchor.txHash}`
+                    : undefined,
+                // OTS-specific
+                bitcoinBlockHeight: lastAnchor.bitcoinBlockHeight,
+                otsProofUrl: lastAnchor.provider === 'ots'
+                    ? `/api/anchors/${lastAnchor._id}/ots`
                     : undefined,
             } : null
         };

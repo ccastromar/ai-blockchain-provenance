@@ -14,6 +14,9 @@
   let autoRefresh  = $state(true);
   let interval: ReturnType<typeof setInterval> | null = null;
 
+  let anchor = $derived(stats?.lastAnchor);
+  let isOts  = $derived(anchor?.provider === 'ots');
+
   let anchoring     = $state(false);
   let anchorMessage = $state('');
   let anchorError   = $state('');
@@ -244,11 +247,16 @@
       </div>
     </div>
 
-    <!-- Ethereum anchor -->
+    <!-- Blockchain anchor (EVM contract or OpenTimestamps/Bitcoin) -->
     <div class="card p-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold text-slate-700 flex items-center gap-2">
           <span class="text-blue-600">⛓️</span> Blockchain Anchor
+          {#if anchor}
+            <span class="text-xs font-normal text-slate-400 ml-1">
+              ({isOts ? 'OpenTimestamps · Bitcoin' : 'EVM contract'})
+            </span>
+          {/if}
         </h3>
         <button
           onclick={forceAnchor}
@@ -264,15 +272,22 @@
       {#if anchorError}
         <div class="alert-error text-xs mb-3">{anchorError}</div>
       {/if}
-      {#if stats?.lastAnchor}
+      {#if anchor}
         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          {#each [
-            { label: 'Block number',    value: stats.lastAnchor.blockNumber },
-            { label: 'Last block idx',  value: stats.lastAnchor.lastBlockIndex },
-            { label: 'Anchor time',     value: new Date(stats.lastAnchor.anchoredAt).toLocaleString() },
-            { label: 'Chain ID',        value: stats.lastAnchor.chainId },
-            { label: 'Status',          value: stats.lastAnchor.status }
-          ] as item}
+          {#each (isOts
+            ? [
+                { label: 'Last block idx',  value: anchor.lastBlockIndex },
+                { label: 'Anchor time',     value: new Date(anchor.anchoredAt).toLocaleString() },
+                { label: 'Status',          value: anchor.status },
+                { label: 'Bitcoin block',   value: anchor.bitcoinBlockHeight ?? 'pending aggregation' }
+              ]
+            : [
+                { label: 'Block number',    value: anchor.blockNumber },
+                { label: 'Last block idx',  value: anchor.lastBlockIndex },
+                { label: 'Anchor time',     value: new Date(anchor.anchoredAt).toLocaleString() },
+                { label: 'Chain ID',        value: anchor.chainId },
+                { label: 'Status',          value: anchor.status }
+              ]) as item}
             <div>
               <dt class="text-xs text-slate-400 uppercase tracking-wider mb-0.5">{item.label}</dt>
               <dd class="font-medium text-slate-700">{item.value}</dd>
@@ -281,16 +296,24 @@
           <div class="sm:col-span-2">
             <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">Merkle Root</dt>
             <dd class="font-mono text-xs bg-slate-50 border border-slate-200 rounded p-2 break-all text-slate-600">
-              {stats.lastAnchor.merkleRoot}
+              {anchor.merkleRoot}
             </dd>
           </div>
-          {#if stats.lastAnchor.txHash}
+          {#if isOts}
+            <div class="sm:col-span-2">
+              <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">OpenTimestamps proof</dt>
+              <dd class="text-xs text-slate-600">
+                <a href={anchor.otsProofUrl} class="text-blue-600 hover:text-blue-800 underline">Download .ots proof</a>
+                <span class="text-slate-400"> — verify offline with <code class="bg-slate-100 px-1 rounded">ots verify</code></span>
+              </dd>
+            </div>
+          {:else if anchor.txHash}
             <div class="sm:col-span-2">
               <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">Tx Hash</dt>
               <dd>
-                <a href={stats.lastAnchor.etherscanUrl} target="_blank" rel="noopener noreferrer"
+                <a href={anchor.etherscanUrl} target="_blank" rel="noopener noreferrer"
                   class="font-mono text-xs text-blue-600 hover:text-blue-800 underline break-all">
-                  {stats.lastAnchor.txHash}
+                  {anchor.txHash}
                 </a>
               </dd>
             </div>
@@ -298,7 +321,7 @@
         </dl>
       {:else}
         <div class="text-sm text-slate-400 text-center py-6">
-          No anchor found. The system has not yet anchored the chain state in Ethereum.
+          No anchor yet. Anchor the chain state to an EVM contract or OpenTimestamps (Bitcoin).
         </div>
       {/if}
     </div>
