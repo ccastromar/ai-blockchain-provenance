@@ -30,6 +30,7 @@ Use this map when presenting Ernest to evaluators, incubator reviewers, or techn
 
 - `docs/api.md`: API reference and request examples.
 - `docs/integrations.md`: current and planned AI tooling integrations.
+- `docs/connectors-real-integration.md`: turning simulated provider connectors into real ones (push/webhook vs pull/poller patterns, per provider).
 - `cli-ernest/README.md`: CLI-oriented verification and querying.
 - `integrations/mlflow/`: MLflow-to-Ernest registration adapter.
 - `ai-sandbox/`: sample AI workflow that registers demo model events.

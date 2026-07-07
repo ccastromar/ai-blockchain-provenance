@@ -50,8 +50,11 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
   ladder. Needs its own "signed subset" contract because adapters enrich payloads.
 - 🔜 **Enterprise identity (OIDC/SSO)** layered on top of the built-in role/token model —
   per-client identity, not just "whoever holds the key".
-- 🔜 **Real provider connectors.** Today 8 providers are *simulated*; the MLflow watcher
-  is the one real integration. Make one more provider real, end to end.
+- 🔜 **Real provider connectors.** Today 8 providers are *simulated* (the adapters are
+  real parsers; only the *source* is faked) and the MLflow watcher is the one real
+  integration. Two patterns cover all of them — **push** (native webhooks: HF, Databricks)
+  and **pull** (poller, the MLflow template: SageMaker/Azure/Vertex registries). Make
+  Hugging Face real end to end first. Recipe: [docs/connectors-real-integration.md](docs/connectors-real-integration.md).
 - 🔜 **Production anchoring policy** doc: OTS as default; EVM on an L2 (not Sepolia) for
   deployments that want on-chain anchor history; costs/custody guidance.
 - 🔜 **Per-model integrity check hardening** — close the neighbor "lazy-tamper" blind spot
