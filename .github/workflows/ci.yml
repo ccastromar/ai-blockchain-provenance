@@ -115,8 +115,11 @@ jobs:
           go-version-file: cli-ernest/go.mod
           cache-dependency-path: cli-ernest/go.sum
 
-      - name: Test non-Docker packages
-        run: go test ./cmd/... ./internal/db/repositories/... ./internal/hashcanon/... ./internal/merkleproof/...
+      - name: Test (incl. testcontainers Mongo integration)
+        # ./... runs every package, incl. sigverify golden tests and the testcontainers
+        # Mongo integration tests (they self-provision a container; CI runners have
+        # Docker, and the tests skip gracefully where it's absent).
+        run: go test ./...
 
       - name: Build CLI
         run: go build -o ernest .

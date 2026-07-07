@@ -66,7 +66,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 - 🕓 **Standards alignment**: W3C PROV, OpenLineage — speak the vocabularies GRC tools use.
 - 🕓 **Streaming CLI verification / export** for chains too large to buffer as one file
   (the server export already streams; the file format could go NDJSON).
-- 🕓 **Testcontainers CLI integration tests in CI** (currently Docker-gated, out of CI).
+- ✅ **Testcontainers CLI integration tests in CI** — the CLI Mongo tests self-provision a container (they already used testcontainers); now run via `go test ./...` in CI and skip gracefully where Docker is absent. (This also pulled the sigverify golden tests into CI, which were silently excluded.)
 - 🕓 **Large-artifact references** (IPFS / object store) for evidence that points at big
   blobs without storing them.
 

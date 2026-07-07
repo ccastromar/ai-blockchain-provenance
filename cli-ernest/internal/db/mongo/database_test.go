@@ -2,15 +2,27 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"testing"
 
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/mongodb"
 )
 
-func mustStartMongoContainer() (func(context.Context, ...testcontainers.TerminateOption) error, error) {
-	dbContainer, err := mongodb.Run(context.Background(), "mongo:latest")
+func mustStartMongoContainer() (teardown func(context.Context, ...testcontainers.TerminateOption) error, err error) {
+	// testcontainers PANICS (not errors) when no Docker is reachable
+	// ("rootless Docker not found"), so recover turns that into an error the caller
+	// can treat as "skip" rather than crashing `go test ./...` on a Docker-less machine.
+	defer func() {
+		if r := recover(); r != nil {
+			teardown, err = nil, fmt.Errorf("docker unavailable: %v", r)
+		}
+	}()
+
+	// mongo:7 to match the rest of the stack (docker-compose), not a floating :latest.
+	dbContainer, err := mongodb.Run(context.Background(), "mongo:7")
 	if err != nil {
 		return nil, err
 	}
@@ -34,14 +46,21 @@ func mustStartMongoContainer() (func(context.Context, ...testcontainers.Terminat
 func TestMain(m *testing.M) {
 	teardown, err := mustStartMongoContainer()
 	if err != nil {
-		log.Fatalf("could not start mongodb container: %v", err)
+		// No Docker (or the image can't be pulled): skip this integration package
+		// instead of failing, so `go test ./...` works for contributors without
+		// Docker. CI runners have Docker, so the tests run there.
+		log.Printf("skipping mongo integration tests: %v", err)
+		os.Exit(0)
 	}
 
-	m.Run()
+	code := m.Run()
 
-	if teardown != nil && teardown(context.Background()) != nil {
-		log.Fatalf("could not teardown mongodb container: %v", err)
+	if teardown != nil {
+		if teardownErr := teardown(context.Background()); teardownErr != nil {
+			log.Printf("could not teardown mongodb container: %v", teardownErr)
+		}
 	}
+	os.Exit(code)
 }
 
 func TestNew(t *testing.T) {
