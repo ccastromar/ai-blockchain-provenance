@@ -249,11 +249,13 @@ test('HTTP auth matrix against the real application', async (t) => {
       const block = await call('GET', `/api/blocks/${created.body.blockIndex}`, { key: READ_KEY });
       assert.equal(block.body.data.signature.keyId, keyId, 'block must embed the emitter signature');
 
-      // Revoked key: same (fresh) payload signed by it is now rejected at admission.
+      // Revoked key: a fresh, fully-distinct model (unique name+id so it doesn't trip
+      // the duplicate-name guard first) signed by the revoked key is rejected at admission.
       assert.equal((await call('DELETE', `/api/auth/emitters/${keyId}`, { key: WRITE_KEY })).status, 200);
-      const payload2 = { ...payload, modelId: 'it-signed-model-v2' };
+      const payload2 = { ...payload, modelId: 'it-signed-model-v2', modelName: 'Signed Matrix Model v2' };
       const body2 = {
-        ...badBody, modelId: payload2.modelId,
+        modelId: payload2.modelId, modelName: payload2.modelName, version: payload2.version,
+        mlflow: { modelHash: HASH_A, gitCommit: GIT_COMMIT },
         signature: envelope(cryptoSign(null, signedBytes(payload2), privateKey)),
       };
       const afterRevoke = await call('POST', '/api/models', { key: WRITE_KEY, body: body2 });

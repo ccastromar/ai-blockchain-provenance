@@ -993,9 +993,12 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
-    * Clean undefined, null and empty recursively 
+    * Clean undefined, null and empty recursively. Public because signature admission
+    * (ApiService.admitSignature) must verify over the SAME cleaned form that gets
+    * stored in block.data -- otherwise the backend and the Go/CLI/WASM verifiers (which
+    * check the stored, already-cleaned data) would disagree on the signed bytes.
     */
-    private cleanObject(obj: any): any {
+    cleanObject(obj: any): any {
         if (obj === null || obj === undefined) {
             return {};
         }

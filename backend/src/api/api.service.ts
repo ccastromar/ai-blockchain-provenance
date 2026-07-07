@@ -42,7 +42,13 @@ export class ApiService {
       return undefined;
     }
 
-    const cryptoCheck = verifyEnvelope(payload, envelope);
+    // Verify over the cleaned form that will actually be stored in block.data (drops
+    // undefined/null/empty), so a client that simply omits optional fields signs the
+    // same bytes the backend checks -- and the same bytes the Go/CLI/WASM verifiers
+    // later recompute from the stored block. Without this, absent optionals leak in as
+    // `"params":undefined` and every well-formed signature is rejected.
+    const cleaned = this.blockchainService.cleanObject(payload);
+    const cryptoCheck = verifyEnvelope(cleaned, envelope);
     if ('reason' in cryptoCheck) {
       throw new UnauthorizedException(`signature rejected: ${cryptoCheck.reason}`);
     }
