@@ -437,18 +437,14 @@ Threat model — what Ernest detects vs. cannot prevent: [docs/threat-model.md](
 
 ## Roadmap
 
-- Enterprise identity integration.
-- Signed client submissions.
-- In-product MLflow import UI and signed integration submissions.
-- User authentication and RBAC.
-- Digital signatures for model and inference events.
-- AI Act evidence mapping and policy-control checklists.
-- Standards alignment with W3C PROV, OpenLineage, and OpenTelemetry-style event streams.
-- ✅ CycloneDX 1.6 AI/ML-BOM export (`/api/provenances/:modelId/export/cyclonedx`), so provenance evidence can be read by tools that already speak CycloneDX (dependency-track, GUAC, etc.) without a custom integration. In-toto/SLSA provenance attestations are a natural next export format on the same data.
-- IPFS or object-store references for large artifacts.
-- Stronger production deployment patterns.
-- Multi-party verification flows.
-- Real-time updates.
+Full roadmap with honest status markers (shipped / next / later / not doing) and the
+alpha-exit criteria: **[ROADMAP.md](ROADMAP.md)**.
+
+The short version: the engineering foundation is in place (tamper-evident chain,
+offline-verifiable receipts, EVM + OpenTimestamps anchoring, per-emitter signatures,
+cross-language verification consensus, regulatory mapping). The most valuable next step
+is not more code — it is one or two regulated design partners and a real pilot.
+
 
 ## Contributing
 
