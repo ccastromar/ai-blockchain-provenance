@@ -43,6 +43,43 @@ deploying Annex III systems are building their logging story now.
 | MEASURE | Mechanisms to track AI system trustworthiness over time | Tamper-evident inference evidence linked to model versions; audit-readiness scoring of evidence completeness |
 | MANAGE | Incident response and post-hoc analysis | Verifiable reconstruction of which model version was live at a decision point; receipts as portable incident evidence |
 
+## eIDAS (EU Regulation 910/2014, and eIDAS 2.0 — Regulation (EU) 2024/1183)
+
+Where the AI Act says *"keep records of what your AI system did,"* eIDAS is the framework
+that says *"here is how electronic records and signatures acquire legal trust in the EU."*
+The two are complementary: the AI Act is the obligation, eIDAS is the trust layer.
+
+eIDAS defines **trust services**, each available in a *qualified* form (provided by a
+Qualified Trust Service Provider on an EU Trusted List, carrying a **legal presumption**)
+or a non-qualified form. Ernest's primitives map conceptually to three of them:
+
+| eIDAS trust service | Ernest's corresponding primitive | Qualified? |
+| --- | --- | --- |
+| **Electronic timestamp** | Anchoring (OpenTimestamps/Bitcoin, EVM) — proof a record existed before a point in time | **No** — cryptographically strong, but not from a qualified TSA |
+| **Electronic seal** (origin + integrity, for a legal person/system) | Per-emitter Ed25519 signed submissions (ADR-001) | **No** — self-managed keys, not QTSP-issued seal certificates |
+| **Electronic ledger** (eIDAS 2.0 — records with integrity and accurate chronological order) | The tamper-evident hashchain itself | **No** — the architecture matches; the *qualified* status does not |
+
+**The honest gap:** Ernest is **not** a Qualified Trust Service Provider. Its timestamps
+and seals are cryptographically sound and independently verifiable, but they do **not**
+carry the automatic legal presumption that *qualified* eIDAS services do. Saying otherwise
+would be the kind of overclaim this whole document exists to avoid.
+
+**The integration path (positioning, mostly not code):** Ernest can *incorporate*
+qualified trust services without ceasing to be Ernest —
+
+- anchor additionally with a **qualified electronic timestamp** (an RFC 3161 TSA operated
+  by a QTSP) alongside the blockchain anchor, and/or
+- let emitters sign with **qualified electronic seals** (QTSP-issued certificates) instead
+  of, or in addition to, self-managed Ed25519.
+
+That upgrades the evidence from *"cryptographically verifiable"* to *"legally qualified
+under eIDAS"* — a decisive line for EU regulated buyers. See `ROADMAP.md` (Later).
+
+*Caveat:* eIDAS 2.0 and its implementing acts (the electronic ledger trust service, the
+EU Digital Identity Wallet) are being rolled out through 2025–2026; the precise
+requirements for a *qualified electronic ledger* are still settling. Treat this as
+strategic direction, not settled letter.
+
 ## GDPR (note)
 
 Ernest stores **hashes and metadata only** — by design it holds no prompts, inputs,
