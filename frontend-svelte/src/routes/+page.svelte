@@ -59,7 +59,7 @@
             <div class="w-9 h-9 bg-sky-400 rounded-lg flex items-center justify-center font-bold text-blue-900 text-lg">E</div>
             <div>
               <h1 class="text-xl font-bold text-white tracking-tight">Ernest</h1>
-              <p class="text-xs text-blue-200 leading-none mt-0.5">AI Provenance · Blockchain</p>
+              <p class="text-xs text-blue-200 leading-none mt-0.5">AI Provenance</p>
             </div>
           </div>
         </div>
