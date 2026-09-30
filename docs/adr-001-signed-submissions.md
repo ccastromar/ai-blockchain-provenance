@@ -2,7 +2,7 @@
 
 **Status:** Accepted (implemented 2026-07-05)
 **Date:** 2026-07-05
-**Deciders:** Carlos (project owner)
+**Deciders:** project maintainers
 
 ## Context
 
