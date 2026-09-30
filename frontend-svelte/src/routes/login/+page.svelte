@@ -2,11 +2,13 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { authState, setActiveKey, clearActiveKey } from '$lib/auth';
+  import { authState, setActiveKey, clearAllCredentials } from '$lib/auth';
   import { refreshAuthRole } from '$lib/api';
+  import { oidcEnabled, beginLogin } from '$lib/oidc';
 
   let keyInput = $state('');
   let submitting = $state(false);
+  let ssoSubmitting = $state(false);
   let error = $state('');
 
   onMount(() => { refreshAuthRole(); });
@@ -35,8 +37,19 @@
     goto(redirectTo);
   }
 
+  async function signInWithSso() {
+    ssoSubmitting = true;
+    error = '';
+    try {
+      await beginLogin(redirectTo); // redirects away; resolves only on failure
+    } catch (e) {
+      error = (e as Error).message;
+      ssoSubmitting = false;
+    }
+  }
+
   async function signOut() {
-    clearActiveKey();
+    clearAllCredentials();
     await refreshAuthRole();
   }
 </script>
@@ -52,7 +65,7 @@
     <div class="card p-6 space-y-4">
       {#if $authState.role !== 'loading' && $authState.role !== 'anonymous'}
         <div class="alert-success text-sm text-emerald-800">
-          Signed in as <strong>{ROLE_LABEL[$authState.role]}</strong>{#if $authState.label} · {$authState.label}{/if}
+          Signed in as <strong>{ROLE_LABEL[$authState.role]}</strong>{#if $authState.label} · {$authState.label}{/if}{#if $authState.subject} · <span title="OIDC subject">{$authState.subject}</span>{/if}
         </div>
         <div class="flex gap-2">
           <a href={redirectTo} class="btn-primary text-sm flex-1 text-center">Continue</a>
@@ -67,6 +80,14 @@
         {#if error}
           <div class="alert-error text-sm">{error}</div>
         {/if}
+        {#if oidcEnabled}
+          <button onclick={signInWithSso} disabled={ssoSubmitting} class="btn-primary text-sm w-full">
+            {ssoSubmitting ? 'Redirecting…' : 'Sign in with SSO'}
+          </button>
+          <div class="flex items-center gap-3 text-xs text-slate-400">
+            <span class="h-px bg-slate-200 flex-1"></span>or use a key<span class="h-px bg-slate-200 flex-1"></span>
+          </div>
+        {/if}
         <div>
           <label for="access-key" class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Access key or token</label>
           <input
@@ -77,7 +98,7 @@
             placeholder="ernest_ro_… or your admin key"
             class="input-field text-sm w-full" />
         </div>
-        <button onclick={signIn} disabled={submitting || !keyInput.trim()} class="btn-primary text-sm w-full">
+        <button onclick={signIn} disabled={submitting || !keyInput.trim()} class="{oidcEnabled ? 'btn-outline' : 'btn-primary'} text-sm w-full">
           {submitting ? 'Checking…' : 'Sign in'}
         </button>
         <p class="text-xs text-slate-400 text-center">Stored only for this browser tab.</p>

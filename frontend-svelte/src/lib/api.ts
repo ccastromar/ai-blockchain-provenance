@@ -1,6 +1,6 @@
 import axios, { type AxiosError } from 'axios';
 import { env } from '$env/dynamic/public';
-import { authState, getActiveKey } from './auth';
+import { authState, getActiveCredential } from './auth';
 
 const configuredApiUrl = env.PUBLIC_API_URL ?? '';
 const apiUrl = configuredApiUrl === 'http://localhost:3001' ? '' : configuredApiUrl;
@@ -12,13 +12,16 @@ const api = axios.create({
   }
 });
 
-// Attach the current key per-request (not once at module load) so switching keys at
-// runtime -- e.g. an auditor pasting their own read-only key -- takes effect
-// immediately, without needing a full page reload.
+// Attach the current credential per-request (not once at module load) so switching it at
+// runtime -- an auditor pasting a key, or an SSO sign-in producing a bearer -- takes
+// effect immediately, without a full page reload. An OIDC bearer is sent as a standard
+// Authorization header; a pasted key uses X-Ernest-Api-Key.
 api.interceptors.request.use((config) => {
-  const key = getActiveKey();
-  if (key) {
-    config.headers['X-Ernest-Api-Key'] = key;
+  const cred = getActiveCredential();
+  if (cred?.kind === 'bearer') {
+    config.headers['Authorization'] = `Bearer ${cred.value}`;
+  } else if (cred?.kind === 'key') {
+    config.headers['X-Ernest-Api-Key'] = cred.value;
   }
   return config;
 });
@@ -38,7 +41,7 @@ api.interceptors.response.use(
 
 // ── Auth ───────────────────────────────────────────────────────────────────
 
-export const getWhoAmI = async (): Promise<{ role: 'read-write' | 'read-only' | 'anonymous'; openAccess: boolean; label?: string }> =>
+export const getWhoAmI = async (): Promise<{ role: 'read-write' | 'read-only' | 'anonymous'; openAccess: boolean; label?: string; subject?: string }> =>
   (await api.get('/auth/whoami')).data;
 
 export async function refreshAuthRole() {
