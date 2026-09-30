@@ -2,7 +2,8 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatu
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ApiKeyGuard } from '../common/api-key.guard';
 import { AccessTokenService } from './access-token.service';
-import { resolveAccess } from './access-role.util';
+import { OidcService } from './oidc.service';
+import { bearerFrom, resolveAccess } from './access-role.util';
 import { CreateAccessTokenDto } from './dto/create-access-token.dto';
 import { EmitterKeyService } from './emitter-key.service';
 import { RegisterEmitterKeyDto } from './dto/register-emitter-key.dto';
@@ -17,24 +18,29 @@ export class AuthController {
   constructor(
     private readonly tokenService: AccessTokenService,
     private readonly emitterKeyService: EmitterKeyService,
+    private readonly oidcService: OidcService,
   ) {}
 
   @Get('whoami')
-  @ApiOperation({ summary: 'Return the access role granted by the provided X-Ernest-Api-Key header.' })
-  @ApiOkResponse({ description: '"role" is one of read-write, read-only, or anonymous.' })
-  async whoami(@Req() request: any): Promise<{ role: ErnestRole; openAccess: boolean; label?: string }> {
+  @ApiOperation({ summary: 'Return the access role granted by the provided credential (X-Ernest-Api-Key header or OIDC bearer token).' })
+  @ApiOkResponse({ description: '"role" is one of read-write, read-only, or anonymous; "subject" is present when authenticated via OIDC.' })
+  async whoami(@Req() request: any): Promise<{ role: ErnestRole; openAccess: boolean; label?: string; subject?: string }> {
     const writeKey = process.env.ERNEST_API_KEY;
     const readKey = process.env.ERNEST_READ_API_KEY;
 
-    if (!writeKey && !readKey) {
+    if (!writeKey && !readKey && !this.oidcService?.enabled) {
       return { role: 'read-write', openAccess: true };
     }
 
     const headerValue = request.headers[API_KEY_HEADER];
     const actualKey = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+    const bearer = bearerFrom(request.headers.authorization);
 
-    const { role, label } = await resolveAccess(actualKey, this.tokenService);
-    return { role, openAccess: false, ...(label ? { label } : {}) };
+    const { role, label, subject } = await resolveAccess(actualKey, this.tokenService, {
+      bearer,
+      oidc: this.oidcService,
+    });
+    return { role, openAccess: false, ...(label ? { label } : {}), ...(subject ? { subject } : {}) };
   }
 
   @Post('tokens')

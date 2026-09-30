@@ -5,6 +5,7 @@ import { AccessToken, AccessTokenSchema } from './access-token.schema';
 import { EmitterKey, EmitterKeySchema } from './emitter-key.schema';
 import { EmitterKeyService } from './emitter-key.service';
 import { AccessTokenService } from './access-token.service';
+import { OidcService } from './oidc.service';
 
 // Global because ApiKeyGuard and ReadAccessGuard need AccessTokenService, and those
 // guards are attached from other feature modules (e.g. IngestionModule) via
@@ -16,7 +17,7 @@ import { AccessTokenService } from './access-token.service';
     { name: EmitterKey.name, schema: EmitterKeySchema },
   ])],
   controllers: [AuthController],
-  providers: [AccessTokenService, EmitterKeyService],
-  exports: [AccessTokenService, EmitterKeyService],
+  providers: [AccessTokenService, EmitterKeyService, OidcService],
+  exports: [AccessTokenService, EmitterKeyService, OidcService],
 })
 export class AuthModule {}

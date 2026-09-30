@@ -1,6 +1,6 @@
 # ADR-002: Enterprise Identity (OIDC) and Qualified Trust Services (QTSP)
 
-**Status:** Proposed
+**Status:** Decision A (OIDC) implemented 2026-09-30; Decision B (QTSP) proposed
 **Date:** 2026-09-30
 **Deciders:** project maintainers
 **Related:** [ADR-001](adr-001-signed-submissions.md) (per-emitter Ed25519 signing),
@@ -37,6 +37,12 @@ that define Ernest: **offline verification** (receipts verify with no live servi
 
 Add OpenID Connect as an **additive** third resolution path in request auth, alongside
 the existing static keys and Mongo tokens. Opt-in via env; absent config, nothing changes.
+
+> **Implemented** (A1–A4): `OidcService` ([backend/src/auth/oidc.service.ts](../backend/src/auth/oidc.service.ts))
+> validates bearer JWTs via `jose` (discovery + cached JWKS), maps claims to `ErnestRole`,
+> and is wired into `resolveAccess` and both guards; `whoami` reports the OIDC identity;
+> guards attach the resolved identity to the request (`request.ernestAccess`) for A4.
+> A5 (binding emitter keys to an OIDC subject) remains optional/deferred.
 
 ### A1. Token validation
 

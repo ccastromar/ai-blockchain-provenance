@@ -35,6 +35,10 @@ async function bootstrap() {
       },
       'ernest-api-key',
     )
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'oidc-bearer',
+    )
     .build();
 
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);

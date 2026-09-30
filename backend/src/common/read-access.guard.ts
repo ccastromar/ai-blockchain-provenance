@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AccessTokenService } from '../auth/access-token.service';
-import { resolveAccess } from '../auth/access-role.util';
+import { OidcService } from '../auth/oidc.service';
+import { bearerFrom, resolveAccess } from '../auth/access-role.util';
 
 const API_KEY_HEADER = 'x-ernest-api-key';
 
@@ -15,7 +16,10 @@ const EXEMPT_PATHS = new Set(['/health', '/api/auth/whoami']);
 // write routes additionally require ApiKeyGuard, which only accepts read-write access.
 @Injectable()
 export class ReadAccessGuard implements CanActivate {
-  constructor(private readonly tokenService: AccessTokenService) {}
+  constructor(
+    private readonly tokenService: AccessTokenService,
+    private readonly oidcService: OidcService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -25,18 +29,21 @@ export class ReadAccessGuard implements CanActivate {
 
     const writeKey = process.env.ERNEST_API_KEY;
     const readKey = process.env.ERNEST_READ_API_KEY;
-    if (!writeKey && !readKey) {
+    if (!writeKey && !readKey && !this.oidcService?.enabled) {
       return true;
     }
 
     const headerValue = request.headers[API_KEY_HEADER];
     const actualKey = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+    const bearer = bearerFrom(request.headers.authorization);
 
-    const { role } = await resolveAccess(actualKey, this.tokenService);
-    if (role === 'anonymous') {
-      throw new UnauthorizedException('Invalid or missing Ernest API key');
+    const access = await resolveAccess(actualKey, this.tokenService, { bearer, oidc: this.oidcService });
+    if (access.role === 'anonymous') {
+      throw new UnauthorizedException('Invalid or missing Ernest credential');
     }
 
+    // Expose the resolved identity for request-level audit binding (ADR-002 A4).
+    request.ernestAccess = access;
     return true;
   }
 }
