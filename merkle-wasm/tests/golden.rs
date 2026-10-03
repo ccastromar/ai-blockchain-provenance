@@ -138,3 +138,36 @@ fn signed_submission_tampered_data_fails() {
     let check = merkle_wasm::signing::check_embedded_signature(&data);
     assert!(check.present && !check.valid, "tampered data must fail signature verification");
 }
+
+// ADR-002 B2: the in-browser verifier must reproduce and verify the qualified-seal golden
+// fixture (qeseal-ecdsa-p256) in lockstep with the backend and the Go CLI.
+#[test]
+fn qualified_seal_golden_vectors_verify() {
+    let fixture = testdata("qualified-seal-golden.json");
+    for vector in fixture["vectors"].as_array().unwrap() {
+        let name = vector["name"].as_str().unwrap();
+        let data = &vector["blockData"];
+
+        let bytes = merkle_wasm::signing::signed_bytes(data).unwrap();
+        use base64::Engine;
+        assert_eq!(
+            base64::engine::general_purpose::STANDARD.encode(&bytes),
+            vector["paeBase64"].as_str().unwrap(),
+            "PAE mismatch in {}",
+            name
+        );
+
+        let check = merkle_wasm::signing::check_embedded_signature(data);
+        assert!(check.present && check.valid, "{}: golden qseal must verify ({:?})", name, check.error);
+        assert_eq!(check.key_id, fixture["keyId"].as_str().unwrap());
+    }
+}
+
+#[test]
+fn qualified_seal_tampered_data_fails() {
+    let fixture = testdata("qualified-seal-golden.json");
+    let mut data = fixture["vectors"][0]["blockData"].clone();
+    data["modelId"] = serde_json::json!("tampered");
+    let check = merkle_wasm::signing::check_embedded_signature(&data);
+    assert!(check.present && !check.valid, "tampered data must fail seal verification");
+}

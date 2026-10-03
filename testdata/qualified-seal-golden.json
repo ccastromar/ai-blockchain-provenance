@@ -1,0 +1,64 @@
+{
+  "$comment": "Cross-language golden fixture for ADR-002 B2 qualified electronic seals. Signature = ECDSA P-256 (SHA-256, IEEE P-1363) over DSSE PAE(\"application/vnd.ernest.provenance+json\", ernest-canonical(blockData minus signature minus serverAugmentedFields)), verified against the leaf certificate in x5c[0]. keyId = first 16 hex of sha256(leaf cert DER). Consumed by backend, Go CLI and merkle-wasm. TEST CERTIFICATES ONLY.",
+  "payloadType": "application/vnd.ernest.provenance+json",
+  "serverAugmentedFields": [
+    "executedAt"
+  ],
+  "alg": "qeseal-ecdsa-p256",
+  "keyId": "ece978aa8bc0cd63",
+  "leafCertBase64": "MIIBozCCAUmgAwIBAgIUN0mq1vXW2e8kITJtmgL/Lly5w28wCgYIKoZIzj0EAwIwMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMB4XDTI2MTAwMzE1MTUyM1oXDTI3MTAwMzE1MTUyM1owLTEXMBUGA1UEAwwOQWNtZSBCYW5rIFNlYWwxEjAQBgNVBAoMCUFjbWUgQmFuazBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABBG4JvvR3fYhgJCcnBmNN8/hxEqoYoIaeNRZOAtbgcBzzuBqVErd7vlqlfnBrySr4JQmq3lmQK0przO9p+xnmR6jQjBAMB0GA1UdDgQWBBQ5vVeduAqTYAAa37dKjXDVGqdUFzAfBgNVHSMEGDAWgBQLaim/PmdYG8yMkacGaxYgHlc1eDAKBggqhkjOPQQDAgNIADBFAiEA8udMjCnYPf2vCRcY28h7Cs6PWkgQldxonLTihBvK1UECICWtG/0wWwoNvq5HA9qNdV+WXAe8jfbXHr19yCVbVbL+",
+  "caCertBase64": "MIIBuTCCAV+gAwIBAgIUNiohCLWGYoVD9rY4Dbdnke5Xp1MwCgYIKoZIzj0EAwIwMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMB4XDTI2MTAwMzE1MTUyM1oXDTM2MDkzMDE1MTUyM1owMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuZiI1J8c/D9e7v2m3KMhPC4emFCaavfILAWG4XUg/xwp0N6+fbPHsI29fnuTjprDF6hdU7C7QQ3VGgJNwjzEeqNTMFEwHQYDVR0OBBYEFAtqKb8+Z1gbzIyRpwZrFiAeVzV4MB8GA1UdIwQYMBaAFAtqKb8+Z1gbzIyRpwZrFiAeVzV4MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhANIV9+CrT40RHiDRQNr0JlsluCf1GO8OwQPG1W5lD5xYAiApXNjRSezcuT+nGJw1cXmijglYRPTokASaq0GmlkVC1A==",
+  "vectors": [
+    {
+      "name": "model-registration-sealed",
+      "comment": "Flat registration block data, sealed with a qualified electronic seal.",
+      "blockData": {
+        "type": "model_registration",
+        "modelId": "credit-risk-v1",
+        "modelName": "Credit Risk",
+        "version": "1.0.0",
+        "modelHash": "3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d",
+        "gitCommit": "a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2",
+        "organizationId": "ernest-demo",
+        "signature": {
+          "alg": "qeseal-ecdsa-p256",
+          "keyId": "ece978aa8bc0cd63",
+          "x5c": [
+            "MIIBozCCAUmgAwIBAgIUN0mq1vXW2e8kITJtmgL/Lly5w28wCgYIKoZIzj0EAwIwMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMB4XDTI2MTAwMzE1MTUyM1oXDTI3MTAwMzE1MTUyM1owLTEXMBUGA1UEAwwOQWNtZSBCYW5rIFNlYWwxEjAQBgNVBAoMCUFjbWUgQmFuazBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABBG4JvvR3fYhgJCcnBmNN8/hxEqoYoIaeNRZOAtbgcBzzuBqVErd7vlqlfnBrySr4JQmq3lmQK0przO9p+xnmR6jQjBAMB0GA1UdDgQWBBQ5vVeduAqTYAAa37dKjXDVGqdUFzAfBgNVHSMEGDAWgBQLaim/PmdYG8yMkacGaxYgHlc1eDAKBggqhkjOPQQDAgNIADBFAiEA8udMjCnYPf2vCRcY28h7Cs6PWkgQldxonLTihBvK1UECICWtG/0wWwoNvq5HA9qNdV+WXAe8jfbXHr19yCVbVbL+",
+            "MIIBuTCCAV+gAwIBAgIUNiohCLWGYoVD9rY4Dbdnke5Xp1MwCgYIKoZIzj0EAwIwMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMB4XDTI2MTAwMzE1MTUyM1oXDTM2MDkzMDE1MTUyM1owMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuZiI1J8c/D9e7v2m3KMhPC4emFCaavfILAWG4XUg/xwp0N6+fbPHsI29fnuTjprDF6hdU7C7QQ3VGgJNwjzEeqNTMFEwHQYDVR0OBBYEFAtqKb8+Z1gbzIyRpwZrFiAeVzV4MB8GA1UdIwQYMBaAFAtqKb8+Z1gbzIyRpwZrFiAeVzV4MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhANIV9+CrT40RHiDRQNr0JlsluCf1GO8OwQPG1W5lD5xYAiApXNjRSezcuT+nGJw1cXmijglYRPTokASaq0GmlkVC1A=="
+          ],
+          "signedAt": "2026-10-03T12:00:00Z",
+          "sig": "2d13XkKD/IRslu3Dv55et9JxiobqTKnpO6+zc4BBH/o6s7nPuUSqmHgz7QIfi+0SS3SocmQkBxw6pB4YaSEjzg=="
+        }
+      },
+      "signedCanonical": "{\"gitCommit\":\"a3f9d12e6b4c8f72b6f2c1d0ef9a31fcb4dbe7b2\",\"modelHash\":\"3e23e8160039594a33894f6564e1b1348bbd7a0088d42c4acb73eeaed59c009d\",\"modelId\":\"credit-risk-v1\",\"modelName\":\"Credit Risk\",\"organizationId\":\"ernest-demo\",\"type\":\"model_registration\",\"version\":\"1.0.0\"}",
+      "paeBase64": "RFNTRXYxIDM4IGFwcGxpY2F0aW9uL3ZuZC5lcm5lc3QucHJvdmVuYW5jZStqc29uIDI2NSB7ImdpdENvbW1pdCI6ImEzZjlkMTJlNmI0YzhmNzJiNmYyYzFkMGVmOWEzMWZjYjRkYmU3YjIiLCJtb2RlbEhhc2giOiIzZTIzZTgxNjAwMzk1OTRhMzM4OTRmNjU2NGUxYjEzNDhiYmQ3YTAwODhkNDJjNGFjYjczZWVhZWQ1OWMwMDlkIiwibW9kZWxJZCI6ImNyZWRpdC1yaXNrLXYxIiwibW9kZWxOYW1lIjoiQ3JlZGl0IFJpc2siLCJvcmdhbml6YXRpb25JZCI6ImVybmVzdC1kZW1vIiwidHlwZSI6Im1vZGVsX3JlZ2lzdHJhdGlvbiIsInZlcnNpb24iOiIxLjAuMCJ9",
+      "signatureBase64": "2d13XkKD/IRslu3Dv55et9JxiobqTKnpO6+zc4BBH/o6s7nPuUSqmHgz7QIfi+0SS3SocmQkBxw6pB4YaSEjzg=="
+    },
+    {
+      "name": "inference-sealed-with-server-augmented-field",
+      "comment": "executedAt is stored but excluded from the sealed bytes.",
+      "blockData": {
+        "type": "inference",
+        "modelId": "credit-risk-v1",
+        "inferenceId": "inf-42",
+        "inputHash": "2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6",
+        "outputHash": "7791764a90b1cb513f1437384ce2336eac19110ef70fa123f144a66e3f735db1",
+        "executedAt": "2026-10-03T12:00:01.000Z",
+        "signature": {
+          "alg": "qeseal-ecdsa-p256",
+          "keyId": "ece978aa8bc0cd63",
+          "x5c": [
+            "MIIBozCCAUmgAwIBAgIUN0mq1vXW2e8kITJtmgL/Lly5w28wCgYIKoZIzj0EAwIwMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMB4XDTI2MTAwMzE1MTUyM1oXDTI3MTAwMzE1MTUyM1owLTEXMBUGA1UEAwwOQWNtZSBCYW5rIFNlYWwxEjAQBgNVBAoMCUFjbWUgQmFuazBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABBG4JvvR3fYhgJCcnBmNN8/hxEqoYoIaeNRZOAtbgcBzzuBqVErd7vlqlfnBrySr4JQmq3lmQK0przO9p+xnmR6jQjBAMB0GA1UdDgQWBBQ5vVeduAqTYAAa37dKjXDVGqdUFzAfBgNVHSMEGDAWgBQLaim/PmdYG8yMkacGaxYgHlc1eDAKBggqhkjOPQQDAgNIADBFAiEA8udMjCnYPf2vCRcY28h7Cs6PWkgQldxonLTihBvK1UECICWtG/0wWwoNvq5HA9qNdV+WXAe8jfbXHr19yCVbVbL+",
+            "MIIBuTCCAV+gAwIBAgIUNiohCLWGYoVD9rY4Dbdnke5Xp1MwCgYIKoZIzj0EAwIwMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMB4XDTI2MTAwMzE1MTUyM1oXDTM2MDkzMDE1MTUyM1owMjEcMBoGA1UEAwwTRXJuZXN0IFRlc3QgUVRTUCBDQTESMBAGA1UECgwJVGVzdCBRVFNQMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuZiI1J8c/D9e7v2m3KMhPC4emFCaavfILAWG4XUg/xwp0N6+fbPHsI29fnuTjprDF6hdU7C7QQ3VGgJNwjzEeqNTMFEwHQYDVR0OBBYEFAtqKb8+Z1gbzIyRpwZrFiAeVzV4MB8GA1UdIwQYMBaAFAtqKb8+Z1gbzIyRpwZrFiAeVzV4MA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDSAAwRQIhANIV9+CrT40RHiDRQNr0JlsluCf1GO8OwQPG1W5lD5xYAiApXNjRSezcuT+nGJw1cXmijglYRPTokASaq0GmlkVC1A=="
+          ],
+          "signedAt": "2026-10-03T12:00:00Z",
+          "sig": "SH8u/68LYJyCf9RQ6bAeDGhhxfTNm5YgyHPahdyt2cZhv5MAkTEpufihFHaUvcAwRW+ADEfjxF0JQ7nIB2uMmw=="
+        }
+      },
+      "signedCanonical": "{\"inferenceId\":\"inf-42\",\"inputHash\":\"2e7d2c03a9507ae265ecf5b5356885a53393a2029d241394997265a1a25aefc6\",\"modelId\":\"credit-risk-v1\",\"outputHash\":\"7791764a90b1cb513f1437384ce2336eac19110ef70fa123f144a66e3f735db1\",\"type\":\"inference\"}",
+      "paeBase64": "RFNTRXYxIDM4IGFwcGxpY2F0aW9uL3ZuZC5lcm5lc3QucHJvdmVuYW5jZStqc29uIDIyOSB7ImluZmVyZW5jZUlkIjoiaW5mLTQyIiwiaW5wdXRIYXNoIjoiMmU3ZDJjMDNhOTUwN2FlMjY1ZWNmNWI1MzU2ODg1YTUzMzkzYTIwMjlkMjQxMzk0OTk3MjY1YTFhMjVhZWZjNiIsIm1vZGVsSWQiOiJjcmVkaXQtcmlzay12MSIsIm91dHB1dEhhc2giOiI3NzkxNzY0YTkwYjFjYjUxM2YxNDM3Mzg0Y2UyMzM2ZWFjMTkxMTBlZjcwZmExMjNmMTQ0YTY2ZTNmNzM1ZGIxIiwidHlwZSI6ImluZmVyZW5jZSJ9",
+      "signatureBase64": "SH8u/68LYJyCf9RQ6bAeDGhhxfTNm5YgyHPahdyt2cZhv5MAkTEpufihFHaUvcAwRW+ADEfjxF0JQ7nIB2uMmw=="
+    }
+  ]
+}

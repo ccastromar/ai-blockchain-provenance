@@ -162,10 +162,13 @@ response (`certReq=true`), record the TSA `accuracy`, and fail **soft** — log 
 > ([merkle-wasm/src/signing.rs](../merkle-wasm/src/signing.rs)) verifies `qeseal-ecdsa-p256`
 > (RSA seals are delegated to the CLI to keep the bundle lean). Both verified via TS→Go and
 > TS→Rust interop against a real certificate chain.
+> The qeseal path is pinned cross-language by `testdata/qualified-seal-golden.json`
+> (generator: `scripts/generate-qualified-seal-vector.cjs`), verified in the backend, Go and
+> Rust/WASM golden suites in CI.
 > **What remains to go live:** (1) the client produces the seal via a QTSP remote-signing
 > API (CSC) — out of this process; (2) `QSEAL_TRUSTED_CA_PEM` is sourced/refreshed from the
 > EU List of Trusted Lists (LOTL) so "trusted" means "qualified"; (3) optionally, in-browser
-> RSA-seal verification and a pinned qeseal golden fixture across all four implementations.
+> RSA-seal verification.
 
 Add a **qualified seal** envelope as an *additional* signature type, exactly as ADR-001
 deferred sigstore to "an additional envelope type". Self-managed Ed25519 stays the default
