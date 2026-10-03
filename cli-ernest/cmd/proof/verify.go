@@ -85,12 +85,17 @@ var verifyCmd = &cobra.Command{
 		}
 		fmt.Printf("✓ block #%d data matches its hash %s…\n", r.Block.Index, r.Block.Hash[:16])
 
-		// ADR-001: embedded emitter signature, verified offline like everything else.
+		// Embedded emitter signature, verified offline like everything else: ADR-001
+		// Ed25519, or an ADR-002 B2 qualified electronic seal (qeseal-*).
 		if envelope, found := sigverify.FromBlockData(data); found {
 			if err := sigverify.Verify(data, envelope); err != nil {
 				return fmt.Errorf("TAMPERED: emitter signature invalid: %w", err)
 			}
-			fmt.Printf("✓ signed by emitter %s (ed25519)\n", envelope.KeyID)
+			if envelope.Alg == "ed25519" {
+				fmt.Printf("✓ signed by emitter %s (ed25519)\n", envelope.KeyID)
+			} else {
+				fmt.Printf("✓ sealed by emitter %s (%s qualified seal)\n", envelope.KeyID, envelope.Alg)
+			}
 		}
 
 		// 2. Hash must climb the proof path to the anchored root.

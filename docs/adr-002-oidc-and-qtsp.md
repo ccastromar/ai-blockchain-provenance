@@ -156,11 +156,16 @@ response (`certReq=true`), record the TSA `accuracy`, and fail **soft** — log 
 > trust anchor (validity window + issuer/signature at each link). `admitSignature` gates it
 > behind `SEAL_LEVEL=qualified`. Verified E2E against a real ECDSA P-256 CA→leaf chain
 > (valid seal accepted, tamper/wrong-CA/expired rejected); Ed25519 unchanged.
+> Offline cross-language verification of the seal is implemented too: the Go CLI
+> ([cli-ernest/internal/sigverify](../cli-ernest/internal/sigverify/sigverify.go)) verifies
+> both `qeseal-ecdsa-p256` and `qeseal-rsa-sha256`; the Rust/WASM in-browser verifier
+> ([merkle-wasm/src/signing.rs](../merkle-wasm/src/signing.rs)) verifies `qeseal-ecdsa-p256`
+> (RSA seals are delegated to the CLI to keep the bundle lean). Both verified via TS→Go and
+> TS→Rust interop against a real certificate chain.
 > **What remains to go live:** (1) the client produces the seal via a QTSP remote-signing
 > API (CSC) — out of this process; (2) `QSEAL_TRUSTED_CA_PEM` is sourced/refreshed from the
-> EU List of Trusted Lists (LOTL) so "trusted" means "qualified"; (3) the Go/Rust/WASM
-> verifiers gain the qeseal path for offline qualified-seal verification (today they verify
-> Ed25519 only).
+> EU List of Trusted Lists (LOTL) so "trusted" means "qualified"; (3) optionally, in-browser
+> RSA-seal verification and a pinned qeseal golden fixture across all four implementations.
 
 Add a **qualified seal** envelope as an *additional* signature type, exactly as ADR-001
 deferred sigstore to "an additional envelope type". Self-managed Ed25519 stays the default
