@@ -5,7 +5,7 @@ import { RegisterModelDto } from './dto/register-model.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AIModelService } from 'src/aimodels/aimodel.service';
 import { EmitterKeyService } from 'src/auth/emitter-key.service';
-import { SignatureEnvelope, verifyEnvelope } from '../common/signing.util';
+import { SignatureEnvelope, verifyEnvelope, isQsealAlg, validateSealTrustChain } from '../common/signing.util';
 
 @Injectable()
 export class ApiService {
@@ -52,7 +52,29 @@ export class ApiService {
     if ('reason' in cryptoCheck) {
       throw new UnauthorizedException(`signature rejected: ${cryptoCheck.reason}`);
     }
-    const admission = await this.emitterKeyService.isAdmissible(envelope.keyId, envelope.publicKey);
+
+    // ADR-002 B2: SEAL_LEVEL selects how authorship trust is established.
+    //  - 'self' (default): per-emitter Ed25519 admitted against Ernest's key registry.
+    //  - 'qualified': require a qualified electronic seal whose certificate chain validates
+    //    to an EU Trusted List anchor; trust derives from the QTSP, not Ernest's registry.
+    const sealLevel = (process.env.SEAL_LEVEL || 'self').toLowerCase();
+
+    if (isQsealAlg(envelope.alg)) {
+      if (sealLevel !== 'qualified') {
+        throw new UnauthorizedException('signature rejected: qualified_seal_not_enabled (set SEAL_LEVEL=qualified)');
+      }
+      const trust = validateSealTrustChain(envelope.x5c, envelope.signedAt);
+      if ('reason' in trust) {
+        throw new UnauthorizedException(`signature rejected: seal_${trust.reason}`);
+      }
+      return envelope; // authorship is attested by the qualified certificate chain
+    }
+
+    // Ed25519 path (ADR-001).
+    if (sealLevel === 'qualified') {
+      throw new UnauthorizedException('signature rejected: qualified_seal_required (this deployment requires an eIDAS qualified seal)');
+    }
+    const admission = await this.emitterKeyService.isAdmissible(envelope.keyId, envelope.publicKey!);
     if ('reason' in admission) {
       throw new UnauthorizedException(`signature rejected: ${admission.reason}`);
     }

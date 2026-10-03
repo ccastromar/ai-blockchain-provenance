@@ -1,8 +1,8 @@
 # ADR-002: Enterprise Identity (OIDC) and Qualified Trust Services (QTSP)
 
 **Status:** Decision A (OIDC) and Decision B1 (RFC 3161 timestamp) implemented;
-Decision B2 (qualified seal) proposed
-**Date:** 2026-09-30 (B1 added 2026-10-03)
+Decision B2 (qualified seal) scaffolding implemented, QTSP wiring pending
+**Date:** 2026-09-30 (B1 and B2 scaffolding added 2026-10-03)
 **Deciders:** project maintainers
 **Related:** [ADR-001](adr-001-signed-submissions.md) (per-emitter Ed25519 signing),
 [regulatory-mapping.md](regulatory-mapping.md) (eIDAS section), `ROADMAP.md`.
@@ -148,6 +148,19 @@ response (`certReq=true`), record the TSA `accuracy`, and fail **soft** — log 
 `WEBHOOK_URL` (`qts.timestamp.failed`) but let the batch anchor via OTS/EVM regardless.
 
 ### B2. Qualified electronic seal (emitter signatures)
+
+> **Scaffolding implemented.** The DSSE envelope now accepts a qualified seal: `alg`
+> `qeseal-ecdsa-p256` / `qeseal-rsa-sha256` with an X.509 chain in `x5c` (over the *same*
+> DSSE PAE bytes ADR-001 defines). `verifyEnvelope` cryptographically verifies the seal
+> against the leaf certificate; `validateSealTrustChain` walks the chain to a configured
+> trust anchor (validity window + issuer/signature at each link). `admitSignature` gates it
+> behind `SEAL_LEVEL=qualified`. Verified E2E against a real ECDSA P-256 CA→leaf chain
+> (valid seal accepted, tamper/wrong-CA/expired rejected); Ed25519 unchanged.
+> **What remains to go live:** (1) the client produces the seal via a QTSP remote-signing
+> API (CSC) — out of this process; (2) `QSEAL_TRUSTED_CA_PEM` is sourced/refreshed from the
+> EU List of Trusted Lists (LOTL) so "trusted" means "qualified"; (3) the Go/Rust/WASM
+> verifiers gain the qeseal path for offline qualified-seal verification (today they verify
+> Ed25519 only).
 
 Add a **qualified seal** envelope as an *additional* signature type, exactly as ADR-001
 deferred sigstore to "an additional envelope type". Self-managed Ed25519 stays the default
