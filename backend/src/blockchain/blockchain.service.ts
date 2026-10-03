@@ -16,6 +16,7 @@ import { Anchor, AnchorDocument } from './models/anchor.schema';
 import { canonicalizeEx } from 'json-canonicalize';
 import abiJson from '../abis/ErnestMerkleAnchor.json';
 import { OtsClient } from './ots.client';
+import { Rfc3161Client } from './rfc3161.client';
 import { buildCycloneDxMlBom } from './cyclonedx';
 
 const anchorAbi = abiJson.abi;
@@ -40,7 +41,51 @@ export class BlockchainService implements OnModuleInit {
         @InjectModel(Anchor.name)
         private anchorModel: Model<AnchorDocument>,
         private readonly otsClient: OtsClient,
+        private readonly rfc3161Client: Rfc3161Client,
     ) { }
+
+    /**
+     * ADR-002 B1: additively attach an RFC 3161 qualified timestamp to an anchor, over
+     * the same Merkle root. Fail-soft on purpose -- a TSA outage must never block an
+     * anchor that already succeeded via OTS/EVM, so failures are logged and alerted
+     * (WEBHOOK_URL, qts.timestamp.failed) but never thrown.
+     */
+    private async attachQualifiedTimestamp(anchorId: any, merkleRoot: string): Promise<void> {
+        if (!this.rfc3161Client?.enabled) return;
+        try {
+            const { token, tsaUrl, timestampedAt } = await this.rfc3161Client.timestamp(merkleRoot);
+            await this.anchorModel.updateOne(
+                { _id: anchorId },
+                { $set: { qtsToken: token.toString('base64'), qtsTsaUrl: tsaUrl, qtsTimestampedAt: timestampedAt } },
+            );
+            this.logger.log(`Qualified RFC 3161 timestamp attached to anchor ${anchorId} (TSA ${tsaUrl})`);
+        } catch (e: any) {
+            this.logger.warn(`Qualified timestamp for anchor ${anchorId} failed (anchor stands regardless): ${e.message}`);
+            await this.notifyQtsFailure(anchorId, merkleRoot, e.message);
+        }
+    }
+
+    private async notifyQtsFailure(anchorId: any, merkleRoot: string, error: string): Promise<void> {
+        const webhookUrl = process.env.WEBHOOK_URL;
+        if (!webhookUrl) return;
+        try {
+            await fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: 'qts.timestamp.failed', anchorId: String(anchorId), merkleRoot, error, at: new Date().toISOString() }),
+            });
+        } catch (e: any) {
+            this.logger.debug(`qts.timestamp.failed webhook post failed: ${e.message}`);
+        }
+    }
+
+    async getQtsToken(anchorId: string): Promise<{ token: Buffer; anchor: any } | null> {
+        const anchor = await this.anchorModel.findOne({ _id: anchorId }).lean();
+        if (!anchor?.qtsToken) {
+            return null;
+        }
+        return { token: Buffer.from(anchor.qtsToken, 'base64'), anchor };
+    }
 
     /**
      * Which anchoring backend is active. 'ots' (OpenTimestamps on Bitcoin: free,
@@ -398,6 +443,11 @@ export class BlockchainService implements OnModuleInit {
                 otsProofUrl: lastAnchor.provider === 'ots'
                     ? `/api/anchors/${lastAnchor._id}/ots`
                     : undefined,
+                qtsTokenUrl: lastAnchor.qtsToken
+                    ? `/api/anchors/${lastAnchor._id}/tst`
+                    : undefined,
+                qtsTsaUrl: lastAnchor.qtsTsaUrl,
+                qtsTimestampedAt: lastAnchor.qtsTimestampedAt,
                 otsRawUrl: lastAnchor.provider === 'ots'
                     ? `/api/anchors/${lastAnchor._id}/ots/raw`
                     : undefined,
@@ -677,6 +727,9 @@ export class BlockchainService implements OnModuleInit {
                         otsRawUrl: `/api/anchors/${anchor._id}/ots/raw`,
                     }
                     : {}),
+                ...(anchor.qtsToken
+                    ? { qtsTokenUrl: `/api/anchors/${anchor._id}/tst`, qtsTsaUrl: anchor.qtsTsaUrl }
+                    : {}),
             },
             generatedAt: new Date().toISOString(),
         };
@@ -755,6 +808,7 @@ export class BlockchainService implements OnModuleInit {
         });
 
         this.logger.log(`OTS anchor created (pending) for blocks 0..${lastBlock.index}, root ${merkleRoot}`);
+        await this.attachQualifiedTimestamp(anchor._id, merkleRoot);
         return {
             anchored: true,
             provider: 'ots',
@@ -860,6 +914,7 @@ export class BlockchainService implements OnModuleInit {
             status: 'confirmed',
         });
 
+        await this.attachQualifiedTimestamp(anchor._id, merkleRoot);
         return {
             anchored: true,
             merkleRoot,

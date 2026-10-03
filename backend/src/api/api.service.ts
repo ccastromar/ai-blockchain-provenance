@@ -351,6 +351,10 @@ export class ApiService {
     return await this.blockchainService.getBlockProof(index);
   }
 
+  async getQtsToken(anchorId: string) {
+    return await this.blockchainService.getQtsToken(anchorId);
+  }
+
   async getOtsProof(anchorId: string) {
     return await this.blockchainService.getOtsProof(anchorId);
   }

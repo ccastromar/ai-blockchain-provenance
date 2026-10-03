@@ -1,7 +1,8 @@
 # ADR-002: Enterprise Identity (OIDC) and Qualified Trust Services (QTSP)
 
-**Status:** Decision A (OIDC) implemented 2026-09-30; Decision B (QTSP) proposed
-**Date:** 2026-09-30
+**Status:** Decision A (OIDC) and Decision B1 (RFC 3161 timestamp) implemented;
+Decision B2 (qualified seal) proposed
+**Date:** 2026-09-30 (B1 added 2026-10-03)
 **Deciders:** project maintainers
 **Related:** [ADR-001](adr-001-signed-submissions.md) (per-emitter Ed25519 signing),
 [regulatory-mapping.md](regulatory-mapping.md) (eIDAS section), `ROADMAP.md`.
@@ -115,6 +116,15 @@ Both integrations below are **additive**: a QTSP outage or contract lapse must n
 anchoring or writes — OTS/Bitcoin and self-managed Ed25519 keep running underneath.
 
 ### B1. Qualified electronic timestamp (anchoring)
+
+> **Implemented.** `Rfc3161Client` ([backend/src/blockchain/rfc3161.client.ts](../backend/src/blockchain/rfc3161.client.ts))
+> builds the TimeStampReq (hand-rolled DER, no new dependency), requests a token over the
+> anchor's Merkle root, and `BlockchainService.attachQualifiedTimestamp` stores the DER
+> `.tsr` on the anchor — additively, after OTS/EVM, and fail-soft (logs + `qts.timestamp.failed`
+> webhook, never blocks the anchor). `GET /api/anchors/:id/tst` serves the token; stats and
+> block proofs expose `qtsTokenUrl`. Verified end-to-end against a live RFC 3161 TSA:
+> `openssl ts -verify` passes and tampered data fails. Opt-in via `ANCHOR_QTS_ENABLED` +
+> `QTS_TSA_URL`.
 
 Add a provider to the existing anchor dispatch (`ANCHOR_PROVIDER = ots | evm`), but as an
 **additional** stamp rather than an alternative:

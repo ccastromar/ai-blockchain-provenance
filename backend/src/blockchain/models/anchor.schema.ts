@@ -14,6 +14,12 @@ export class Anchor {
   // proof once the calendars aggregate into a Bitcoin block.
   @Prop() otsProof?: string;
   @Prop() bitcoinBlockHeight?: number;
+  // ADR-002 B1: optional, additive RFC 3161 qualified timestamp over the same Merkle
+  // root, requested alongside OTS/EVM. Base64 DER of the full TimeStampResp (the ".tsr"),
+  // verifiable offline with `openssl ts -verify` against the TSA's certificate chain.
+  @Prop() qtsToken?: string;
+  @Prop() qtsTsaUrl?: string;
+  @Prop() qtsTimestampedAt?: Date;
   @Prop() blockNumber: number;
   @Prop() chainId: number;
   @Prop() contractAddress: string;

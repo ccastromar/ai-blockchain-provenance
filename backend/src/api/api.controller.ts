@@ -170,6 +170,23 @@ export class ApiController {
     res.end(Buffer.from(result.anchor.merkleRoot.replace(/^0x/, ''), 'hex'));
   }
 
+  @Get('anchors/:id/tst')
+  @ApiOperation({ summary: 'Download the RFC 3161 qualified timestamp (.tsr) for an anchor. Verify offline: `openssl ts -verify -data ernest-anchor-<id> -in ernest-anchor-<id>.tsr -CAfile <tsa-chain>.pem`.' })
+  @ApiParam({ name: 'id', description: 'Anchor id' })
+  @ApiOkResponse({ description: 'The DER TimeStampResp (RFC 3161) over the anchored Merkle root.' })
+  @ApiNotFoundResponse({ description: 'No anchor with that id has a qualified timestamp.' })
+  async downloadQtsToken(@Param('id') id: string, @Res() res: any) {
+    const result = await this.apiService.getQtsToken(id).catch(() => null);
+    if (!result) {
+      res.status(404).json({ statusCode: 404, message: 'No qualified timestamp for that anchor' });
+      return;
+    }
+    // Full DER TimeStampResp; pairs with the raw root at /ots/raw for `openssl ts -verify`.
+    res.setHeader('Content-Type', 'application/timestamp-reply');
+    res.setHeader('Content-Disposition', `attachment; filename="ernest-anchor-${id}.tsr"`);
+    res.end(result.token);
+  }
+
   @Get('blocks/export')
   @ApiOperation({ summary: 'Export the full hashchain as a flat JSON bundle for offline verification (e.g. ernest CLI --file mode). Streamed with constant memory.' })
   @ApiOkResponse({ description: 'All blocks sorted by index, stripped of Mongo internals.' })

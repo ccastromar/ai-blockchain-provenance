@@ -67,7 +67,11 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 - 🕓 **in-toto / SLSA provenance attestations** as an export format over the same data
   (natural companion to the CycloneDX export).
 - 🕓 **Standards alignment**: W3C PROV, OpenLineage — speak the vocabularies GRC tools use.
-- 🕓 **eIDAS qualified trust services** — integrate a qualified electronic timestamp (RFC 3161 QTSP) for anchoring and/or qualified electronic seals for emitter signatures, so evidence carries legal presumption under EU eIDAS, not just cryptographic strength. Positioning more than code; strong EU regulated selling point. Design: [docs/adr-002-oidc-and-qtsp.md](docs/adr-002-oidc-and-qtsp.md) (Decision B); see also docs/regulatory-mapping.md.
+- 🕓 **eIDAS qualified trust services** — so evidence carries legal presumption under EU
+  eIDAS, not just cryptographic strength. ✅ **RFC 3161 qualified timestamp** for anchoring
+  is implemented (additive, fail-soft; point `QTS_TSA_URL` at an EU QTSP for presumption).
+  🔜 Qualified electronic **seals** for emitter signatures (remote sealing via the CSC API)
+  remain — needs a QTSP contract/sandbox. Design: [docs/adr-002-oidc-and-qtsp.md](docs/adr-002-oidc-and-qtsp.md) (Decision B); see also docs/regulatory-mapping.md.
 - 🕓 **Streaming CLI verification / export** for chains too large to buffer as one file
   (the server export already streams; the file format could go NDJSON).
 - ✅ **Testcontainers CLI integration tests in CI** — the CLI Mongo tests self-provision a container (they already used testcontainers); now run via `go test ./...` in CI and skip gracefully where Docker is absent. (This also pulled the sigverify golden tests into CI, which were silently excluded.)
