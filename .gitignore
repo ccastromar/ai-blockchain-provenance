@@ -138,3 +138,6 @@ pkg/
 
 # Local dev helper (not for the repo)
 scripts/dev-local.sh
+
+# Local eIDAS QTSP/TSA emulator (dev + demo only; emulates the shape, not legal status)
+scripts/dev-qtsp/
