@@ -102,7 +102,8 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 | Write clients can sign provenance submissions | ✅ ADR-001 (direct API); 🔜 ingestor path |
 | Authentication delegated to an enterprise identity provider | 🔜 OIDC/SSO on top of roles/tokens |
 | Backup and restore tested on the target deployment shape | ✅ scripts + runbook (test on the real target during the pilot) |
-| A pilot threat model reviewed with security stakeholders | 🔜 needs the design-partner conversation |
+| A pilot threat model reviewed with security stakeholders | 🔜 needs the design-partner conversation (checklist in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md)) |
+| Data lifecycle: retention, legal hold, GDPR erasure | 🔜 designed in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md); not yet implemented |
 
 The gating items left are **not more code** — they are a pilot and a security review with
 a real counterparty. That is the roadmap.
