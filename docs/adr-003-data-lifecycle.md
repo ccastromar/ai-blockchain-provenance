@@ -1,7 +1,8 @@
 # ADR-003: Data Lifecycle — Retention, Legal Hold, and GDPR Erasure
 
-**Status:** Proposed
-**Date:** 2026-10-04
+**Status:** Core implemented (retention floor, legal hold, non-destructive plan + archive);
+destructive prune deferred
+**Date:** 2026-10-04 (core implemented 2026-10-10)
 **Deciders:** project maintainers
 **Related:** [threat-model.md](threat-model.md) (N4, G1), [regulatory-mapping.md](regulatory-mapping.md)
 (AI Act Art. 19/26, GDPR note), [backup-recovery.md](backup-recovery.md).
@@ -34,6 +35,16 @@ Two facts make the reframing tractable:
 ## Decision
 
 Four mechanisms, each opt-in and each itself auditable.
+
+> **Implemented** (`backend/src/lifecycle/`): mechanisms 1–3 in their non-destructive form.
+> `RETENTION_MIN_DAYS` (default 180) is the floor; `GET /api/lifecycle/policy` and `/plan`
+> expose it; legal holds are created/listed/cleared via `/api/lifecycle/legal-holds`
+> (write-gated, audit-tracked) and exempt matching blocks from the plan; `/api/lifecycle/plan`
+> computes the contiguous eligible range (older than the floor, below the latest confirmed
+> anchor, not under hold) and `/api/lifecycle/archive?upto=<index>` streams the verifiable
+> cold archive. **The actual destructive delete is NOT wired** — it first needs
+> `buildMerkleTree`/`verifyChain` to respect a prune watermark, or `getBlockProof` and the
+> from-genesis re-scan would break. Mechanism 4 (crypto-shredding) is design-only (needs a KMS).
 
 ### 1. Retention policy (a floor, enforced)
 

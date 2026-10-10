@@ -12,6 +12,7 @@ import { AIModelController } from './aimodels/aimodel.controller';
 import { AnchorEventsService } from './api/anchor-events.service';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
+import { LifecycleModule } from './lifecycle/lifecycle.module';
 import { ApiKeyGuard } from './common/api-key.guard';
 import { ReadAccessGuard } from './common/read-access.guard';
 import { Anchor, AnchorSchema } from './blockchain/models/anchor.schema';
@@ -32,6 +33,7 @@ import { IngestionModule } from './ingestion/ingestion.module';
       { name: IntegrityCheck.name, schema: IntegrityCheckSchema },
     ]),
     BlockchainModule,
+    LifecycleModule,
     MlflowModule,
     AIModelModule,
     IngestionModule,
