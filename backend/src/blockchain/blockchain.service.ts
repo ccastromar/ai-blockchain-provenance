@@ -278,7 +278,7 @@ export class BlockchainService implements OnModuleInit {
     /**
      * Calculate SHA-256 hash
      */
-    private calculateHash(block: Partial<ProvenanceBlock>): string {
+    calculateHash(block: Partial<ProvenanceBlock>): string {
        // this.logger.debug(`Calculating hash for block raw data: ${JSON.stringify(block)}  `);
         const canonicalData = canonicalizeEx(block.data, { exclude: ['__v', '_id', 'createdAt', 'updatedAt', 'hash'] });
        // this.logger.debug(`Canonicalized block data: ${canonicalData}  `);

@@ -7,6 +7,7 @@ import { AIModelService } from 'src/aimodels/aimodel.service';
 import { EmitterKeyService } from 'src/auth/emitter-key.service';
 import { SignatureEnvelope, verifyEnvelope, isQsealAlg, validateSealTrustChain } from '../common/signing.util';
 import { EvidenceService } from '../blockchain/evidence.service';
+import { ChainIndexerService } from '../blockchain/chain-indexer.service';
 
 /** Caller preference for ADR-004 submissions; undefined = the mode's default. */
 export type SubmitOptions = { wait?: boolean };
@@ -23,6 +24,7 @@ export class ApiService {
     private readonly emitterKeyService: EmitterKeyService,
     // Last, so callers constructing the service positionally (tests) are unaffected.
     private readonly evidenceService?: EvidenceService,
+    private readonly chainIndexer?: ChainIndexerService,
   ) {}
 
   private batching(): boolean {
@@ -585,11 +587,20 @@ export class ApiService {
     return await this.blockchainService.getAllBlocks(page, limit, after);
   }
 
+  // ADR-006: counts come from the chain-derived read models when they are close to the tip;
+  // otherwise (indexer disabled, rebuilding) from the store, as before.
   async evidenceCountsByModel(modelIds: string[]) {
+    const tip = await this.chainIndexer?.readyTip();
+    if (tip) return await this.chainIndexer!.evidenceCounts(modelIds, tip.index);
     return await this.blockchainService.evidenceCountsByModel(modelIds);
   }
 
   async executionCountsBySystem(sinceIndex?: number) {
+    // An incremental window (`since`) is answered from the store, which is exact per range.
+    if (sinceIndex === undefined || sinceIndex < 0) {
+      const tip = await this.chainIndexer?.readyTip();
+      if (tip) return await this.chainIndexer!.executionCounts(tip.index);
+    }
     return await this.blockchainService.executionCountsBySystem(sinceIndex ?? -1);
   }
 
@@ -617,8 +628,13 @@ export class ApiService {
     return await this.modelService.findAll(page, limit);
   }
 
-  async verifyModelIntegrity(modelId: string) {
-    return await this.blockchainService.verifyModelIntegrity(modelId);
+  async verifyModelIntegrity(modelId: string, mode?: string) {
+    if (mode !== 'full') {
+      const tip = await this.chainIndexer?.readyTip();
+      if (tip) return await this.chainIndexer!.modelIntegrity(modelId, tip);
+    }
+    const full = await this.blockchainService.verifyModelIntegrity(modelId);
+    return { ...full, mode: 'full' as const };
   }
 
   async exportProvenance(modelId: string) {

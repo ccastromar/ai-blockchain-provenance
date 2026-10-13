@@ -178,7 +178,7 @@ export class ApiController {
   @Get('stats/models')
   @ApiOperation({
     summary: 'Count evidence blocks for several models in one call.',
-    description: 'Comma-separated `ids` (max 500). Indexed aggregation; chain integrity itself is GET /api/verify. Unknown ids are reported with 0.',
+    description: 'Comma-separated `ids` (max 500). Answered from the chain-derived read models (ADR-006; `indexedUpTo` = last block counted) — chained evidence only. Chain integrity itself is GET /api/verify. Unknown ids are reported with 0.',
   })
   @ApiQuery({ name: 'ids', required: true, type: String })
   @ApiOkResponse({ description: '{ counts: { [modelId]: n } }' })
@@ -384,11 +384,15 @@ export class ApiController {
   }
 
   @Get('models/:modelId/integrity')
-  @ApiOperation({ summary: 'Verify hashchain integrity for a specific model.' })
+  @ApiOperation({
+    summary: 'Verify hashchain integrity for a specific model.',
+    description: '`mode=indexed` (default, ADR-006): every block holding the model\'s evidence was validated when it was connected to the chain. `?mode=full` re-hashes every block and re-derives every batch root now.',
+  })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
+  @ApiQuery({ name: 'mode', required: false, enum: ['indexed', 'full'] })
   @ApiOkResponse({ description: 'Integrity check result for the model blocks.' })
-  async verifyModelIntegrity(@Param('modelId') modelId: string) {
-    return await this.apiService.verifyModelIntegrity(modelId);
+  async verifyModelIntegrity(@Param('modelId') modelId: string, @Query('mode') mode?: string) {
+    return await this.apiService.verifyModelIntegrity(modelId, mode);
   }
 
   @Get('models/ids')

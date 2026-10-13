@@ -21,6 +21,8 @@ export class IntegrityCheck {
   // Local clock offset vs NTP_CHECK_SERVER in ms (positive = local clock behind).
   // Only present when the opt-in drift check ran successfully.
   @Prop() clockDriftMs?: number;
+  /** Who recorded it: the scheduled check (unset) or the chain indexer (ADR-006, one upserted row). */
+  @Prop() source?: string;
 }
 export type IntegrityCheckDocument = IntegrityCheck & Document;
 export const IntegrityCheckSchema = SchemaFactory.createForClass(IntegrityCheck);

@@ -9,6 +9,7 @@ import { IntegrityCheck, IntegrityCheckDocument } from '../blockchain/models/int
 import { ethers } from 'ethers';
 import { rpcProvider } from '../blockchain/rpc-provider';
 import { ernestRoles } from '../common/ernest-role';
+import { ChainIndexerService } from '../blockchain/chain-indexer.service';
 
 @ApiTags('Health')
 @Controller('health')
@@ -18,26 +19,28 @@ export class HealthController {
     @InjectConnection() private readonly mongoConnection: Connection,
     @InjectModel(Anchor.name) private readonly anchorModel: Model<AnchorDocument>,
     @InjectModel(IntegrityCheck.name) private readonly integrityCheckModel: Model<IntegrityCheckDocument>,
+    private readonly chainIndexer: ChainIndexerService,
   ) {}
 
   @Get()
   @ApiOperation({ summary: 'Return detailed backend health status.' })
   @ApiOkResponse({ description: 'Health status for each subsystem.' })
   async check() {
-    const [mongo, ethereum, cron, integrity] = await Promise.all([
+    const [mongo, ethereum, cron, integrity, indexer] = await Promise.all([
       this.checkMongo(),
       this.checkEthereum(),
       this.checkCron(),
       this.checkIntegrity(),
+      this.chainIndexer.status().catch((e: any) => ({ status: 'error', detail: e.message })),
     ]);
 
-    const allOk = mongo.status === 'ok' && cron.status === 'ok' && integrity.status !== 'error';
+    const allOk = mongo.status === 'ok' && cron.status === 'ok' && integrity.status !== 'error' && indexer.status !== 'error';
 
     return {
       status: allOk ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
       roles: [...ernestRoles()],
-      subsystems: { mongo, ethereum, cron, integrity },
+      subsystems: { mongo, ethereum, cron, integrity, indexer },
     };
   }
 

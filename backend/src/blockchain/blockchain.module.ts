@@ -11,6 +11,10 @@ import { EvidenceService } from './evidence.service';
 import { EvidenceEvent, EvidenceEventSchema } from './models/evidence-event.schema';
 import { BatcherLease, BatcherLeaseSchema } from './models/batcher-lease.schema';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ChainIndexerService } from './chain-indexer.service';
+import {
+  ChainIndexState, ChainIndexStateSchema, ModelIndex, ModelIndexSchema, SystemIndex, SystemIndexSchema,
+} from './models/chain-index.schema';
 
 @Module({
   imports: [
@@ -20,10 +24,13 @@ import { ScheduleModule } from '@nestjs/schedule';
       { name: IntegrityCheck.name, schema: IntegrityCheckSchema },
       { name: EvidenceEvent.name, schema: EvidenceEventSchema },
       { name: BatcherLease.name, schema: BatcherLeaseSchema },
+      { name: ChainIndexState.name, schema: ChainIndexStateSchema },
+      { name: ModelIndex.name, schema: ModelIndexSchema },
+      { name: SystemIndex.name, schema: SystemIndexSchema },
     ]),
     ScheduleModule.forRoot(),
   ],
-  providers: [BlockchainService, EvidenceService, ScheduledBlockchainService, OtsClient, Rfc3161Client],
-  exports: [BlockchainService, EvidenceService]
+  providers: [BlockchainService, EvidenceService, ChainIndexerService, ScheduledBlockchainService, OtsClient, Rfc3161Client],
+  exports: [BlockchainService, EvidenceService, ChainIndexerService]
 })
 export class BlockchainModule {}
