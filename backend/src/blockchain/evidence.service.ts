@@ -129,15 +129,65 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
             return { event: created.toObject(), duplicate: false };
         } catch (err) {
             if (err?.code !== 11000) throw err;
-            const existing = await this.eventModel.findOne({ source: key.source, eventId: key.eventId }).lean();
-            if (!existing) throw err;
-            if (this.contentKey(existing.data) !== this.contentKey(cleaned)) {
-                throw new ConflictException(
-                    `Event '${key.eventId}' from '${key.source}' was already recorded with different content.`,
-                );
-            }
-            return { event: existing, duplicate: true };
+            return this.resolveDuplicate(cleaned, key, err);
         }
+    }
+
+    /**
+     * Bulk form of record() for a batch submission: one insertMany round trip instead of one
+     * insert per event, with the same per-item outcome — stored, duplicate (same content) or
+     * a ConflictException (different content). Items fail independently: an item's failure
+     * is returned as `{ error }`, never thrown for the whole batch.
+     */
+    async recordMany(items: Array<{ data: Record<string, any>; key: { source: string; eventId: string } }>):
+        Promise<Array<{ event: any; duplicate: boolean } | { error: unknown }>> {
+        if (items.length === 0) return [];
+        const now = new Date();
+        // Raw driver insert (no Mongoose document per item): the fields and defaults are the
+        // schema's, written out here — timestamps included, since the driver does not add them.
+        const docs = items.map(({ data, key }) => {
+            const cleaned = this.blockchainService.cleanObject(data);
+            return {
+                source: key.source,
+                eventId: key.eventId,
+                data: cleaned,
+                modelId: cleaned.modelId,
+                type: cleaned.type,
+                leafHash: leafHashOf(cleaned),
+                state: 'pending',
+                createdAt: now,
+                updatedAt: now,
+            };
+        });
+        const failed = new Map<number, any>();
+        try {
+            await this.eventModel.collection.insertMany(docs, { ordered: false });
+        } catch (err) {
+            const writeErrors = err?.writeErrors;
+            if (!writeErrors) throw err;
+            for (const we of [].concat(writeErrors)) failed.set(we.index, we);
+        }
+        return Promise.all(docs.map(async (doc, i) => {
+            const we = failed.get(i);
+            if (!we) return { event: doc, duplicate: false };
+            if (we.code !== 11000) return { error: new Error(we.errmsg ?? `insert failed (code ${we.code})`) };
+            try {
+                return await this.resolveDuplicate(doc.data, items[i].key, we);
+            } catch (error) {
+                return { error };
+            }
+        }));
+    }
+
+    private async resolveDuplicate(cleaned: Record<string, any>, key: { source: string; eventId: string }, cause: unknown) {
+        const existing = await this.eventModel.findOne({ source: key.source, eventId: key.eventId }).lean();
+        if (!existing) throw cause;
+        if (this.contentKey(existing.data) !== this.contentKey(cleaned)) {
+            throw new ConflictException(
+                `Event '${key.eventId}' from '${key.source}' was already recorded with different content.`,
+            );
+        }
+        return { event: existing, duplicate: true };
     }
 
     private contentKey(data: Record<string, any>): string {

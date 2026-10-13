@@ -64,7 +64,7 @@ func Load() Config {
 		ProviderHMACTolerance:       time.Duration(envInt64("PROVIDER_HMAC_TOLERANCE_SECONDS", 300)) * time.Second,
 		IngestorAPIKey:              os.Getenv("EVENT_INGESTOR_API_KEY"),
 		WorkerBlockMS:               envInt64("WORKER_BLOCK_MS", 5000),
-		WorkerBatchCount:            envInt64("WORKER_BATCH_COUNT", 10),
+		WorkerBatchCount:            envInt64("WORKER_BATCH_COUNT", 200),
 		WorkerReclaimIntervalMS:     envInt64("WORKER_RECLAIM_INTERVAL_MS", 30000),
 		WorkerReclaimMinIdleMS:      envInt64("WORKER_RECLAIM_MIN_IDLE_MS", 60000),
 		RateLimitRPS:                envFloat64("RATE_LIMIT_RPS", 20),

@@ -113,30 +113,165 @@ func (w MongoWriter) EnsureIndexes(ctx context.Context) error {
 	return nil
 }
 
+// eventData is what an ingested event stores (block data, or ADR-004 event data): its JSON
+// form with every number pinned to float64 before hashing AND storing, rejecting integers
+// beyond 2^53 (see NormalizeNumbers) — what gets hashed must be exactly what every verifier
+// reads back from BSON later.
+func eventData(event events.CanonicalEvent) (map[string]any, error) {
+	data := map[string]any{}
+	raw, err := json.Marshal(event)
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.UseNumber()
+	if err := decoder.Decode(&data); err != nil {
+		return nil, err
+	}
+	normalized, err := NormalizeNumbers(data)
+	if err != nil {
+		return nil, fmt.Errorf("event contains a non-portable number: %w", err)
+	}
+	return normalized.(map[string]any), nil
+}
+
+// RecordsEvents reports ADR-004 mode: events are recorded for the backend's batcher.
+func (w MongoWriter) RecordsEvents() bool { return w.recordEvents }
+
+// RecordEvents is the batch form of AppendEvent in ADR-004 mode. Every event gets exactly the
+// documents AppendEvent would write and the same outcome — nil, ErrDuplicateEvent or an error
+// of its own — but the batch costs a few round trips (two unordered inserts, one upsert per
+// distinct model, one bulk status update) instead of four per event.
+func (w MongoWriter) RecordEvents(ctx context.Context, batch []events.CanonicalEvent) []error {
+	errs := make([]error, len(batch))
+	if !w.recordEvents {
+		for i := range errs {
+			errs[i] = errors.New("RecordEvents requires EVIDENCE_BATCHING=events|on")
+		}
+		return errs
+	}
+	now := time.Now().UTC()
+	datas := make([]map[string]any, len(batch))
+	leaves := make([]string, len(batch))
+	for i, event := range batch {
+		data, err := eventData(event)
+		if err != nil {
+			errs[i] = err
+			continue
+		}
+		leaf, err := LeafHash(data)
+		if err != nil {
+			errs[i] = err
+			continue
+		}
+		datas[i], leaves[i] = data, leaf
+	}
+
+	opCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	idx := stillOK(errs)
+	docs := make([]any, len(idx))
+	for j, i := range idx {
+		docs[j] = ingestedEventDocument(batch[i], now)
+	}
+	insertMany(opCtx, w.db.Collection("ingested_events"), idx, docs, errs)
+
+	idx = stillOK(errs)
+	docs = make([]any, len(idx))
+	for j, i := range idx {
+		docs[j] = evidenceEventDocument(batch[i], datas[i], leaves[i], now)
+	}
+	insertMany(opCtx, w.db.Collection("evidence_events"), idx, docs, errs)
+
+	// Models: the sequential path upserts once per event, so the last event of a model wins;
+	// one upsert per (modelId, version) with that last event leaves the same final state.
+	idx = stillOK(errs)
+	last := map[string]int{}
+	var order []string
+	for _, i := range idx {
+		if batch[i].ModelID == "" {
+			continue
+		}
+		key := batch[i].ModelID + "\x00" + modelVersion(batch[i])
+		if _, seen := last[key]; !seen {
+			order = append(order, key)
+		}
+		last[key] = i
+	}
+	for _, key := range order {
+		_ = w.upsertAIModel(ctx, batch[last[key]])
+	}
+
+	if len(idx) > 0 {
+		updates := make([]mongo.WriteModel, 0, len(idx))
+		recordedAt := time.Now().UTC()
+		for _, i := range idx {
+			updates = append(updates, mongo.NewUpdateOneModel().
+				SetFilter(bson.M{
+					"source":        batch[i].Source,
+					"sourceEventId": batch[i].SourceEventID,
+					"eventType":     batch[i].Metadata["eventType"],
+				}).
+				SetUpdate(bson.M{"$set": bson.M{
+					"status":          "recorded",
+					"evidenceEventId": EvidenceEventID(batch[i]),
+					"recordedAt":      recordedAt,
+				}}))
+		}
+		_, _ = w.db.Collection("ingested_events").BulkWrite(opCtx, updates, options.BulkWrite().SetOrdered(false))
+	}
+	return errs
+}
+
+// stillOK lists the batch positions that have not failed yet.
+func stillOK(errs []error) []int {
+	idx := make([]int, 0, len(errs))
+	for i, err := range errs {
+		if err == nil {
+			idx = append(idx, i)
+		}
+	}
+	return idx
+}
+
+// insertMany inserts docs (batch positions idx) unordered, so one bad document never blocks
+// the rest, and records each position's outcome: a duplicate key is ErrDuplicateEvent.
+func insertMany(ctx context.Context, coll *mongo.Collection, idx []int, docs []any, errs []error) {
+	if len(docs) == 0 {
+		return
+	}
+	_, err := coll.InsertMany(ctx, docs, options.InsertMany().SetOrdered(false))
+	if err == nil {
+		return
+	}
+	var bulk mongo.BulkWriteException
+	if !errors.As(err, &bulk) || len(bulk.WriteErrors) == 0 {
+		// No per-document detail (network, write concern): nothing can be assumed stored.
+		for _, i := range idx {
+			errs[i] = err
+		}
+		return
+	}
+	for _, we := range bulk.WriteErrors {
+		i := idx[we.Index]
+		if we.Code == 11000 {
+			errs[i] = ErrDuplicateEvent
+		} else {
+			errs[i] = fmt.Errorf("insert into %s failed: %s", coll.Name(), we.Message)
+		}
+	}
+}
+
 func (w MongoWriter) AppendEvent(ctx context.Context, event events.CanonicalEvent) (Block, error) {
 	if err := w.markIngested(ctx, event); err != nil {
 		return Block{}, err
 	}
 
-	data := map[string]any{}
-	raw, err := json.Marshal(event)
+	data, err := eventData(event)
 	if err != nil {
 		return Block{}, err
 	}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.UseNumber()
-	if err := decoder.Decode(&data); err != nil {
-		return Block{}, err
-	}
-
-	// Pin all numbers to float64 before hashing AND storing, rejecting integers beyond
-	// 2^53 (see NormalizeNumbers): what gets hashed must be exactly what every verifier
-	// reads back from BSON later.
-	normalized, err := NormalizeNumbers(data)
-	if err != nil {
-		return Block{}, fmt.Errorf("event contains a non-portable number: %w", err)
-	}
-	data = normalized.(map[string]any)
 
 	if w.recordEvents {
 		if err := w.recordEvidenceEvent(ctx, event, data); err != nil {
@@ -265,7 +400,16 @@ func (w MongoWriter) recordEvidenceEvent(ctx context.Context, event events.Canon
 	}
 	opCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	now := time.Now().UTC()
+	doc := evidenceEventDocument(event, data, leaf, time.Now().UTC())
+	_, err = w.db.Collection("evidence_events").InsertOne(opCtx, doc)
+	if err != nil && isDuplicateKey(err) {
+		return ErrDuplicateEvent
+	}
+	return err
+}
+
+// evidenceEventDocument is the pending ADR-004 event: exactly the data a block would carry.
+func evidenceEventDocument(event events.CanonicalEvent, data map[string]any, leaf string, now time.Time) bson.M {
 	doc := bson.M{
 		"source":    event.Source,
 		"eventId":   EvidenceEventID(event),
@@ -281,11 +425,7 @@ func (w MongoWriter) recordEvidenceEvent(ctx context.Context, event events.Canon
 	if eventType, _ := data["type"].(string); eventType != "" {
 		doc["type"] = eventType
 	}
-	_, err = w.db.Collection("evidence_events").InsertOne(opCtx, doc)
-	if err != nil && isDuplicateKey(err) {
-		return ErrDuplicateEvent
-	}
-	return err
+	return doc
 }
 
 func (w MongoWriter) markRecorded(ctx context.Context, event events.CanonicalEvent) error {
@@ -313,10 +453,7 @@ func (w MongoWriter) upsertAIModel(ctx context.Context, event events.CanonicalEv
 	}
 
 	payload, _ := event.Metadata["payload"].(map[string]any)
-	version := event.Version
-	if version == "" {
-		version = "external"
-	}
+	version := modelVersion(event)
 
 	name := event.ModelName
 	if name == "" {
@@ -364,6 +501,14 @@ func (w MongoWriter) upsertAIModel(ctx context.Context, event events.CanonicalEv
 		options.Update().SetUpsert(true),
 	)
 	return err
+}
+
+// modelVersion is the aimodels version an event upserts ("external" when the source has none).
+func modelVersion(event events.CanonicalEvent) string {
+	if event.Version == "" {
+		return "external"
+	}
+	return event.Version
 }
 
 func stringValue(payload map[string]any, key string) string {

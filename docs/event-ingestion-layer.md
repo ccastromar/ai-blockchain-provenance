@@ -270,7 +270,7 @@ Implemented environment variables:
 | `REDIS_CONSUMER` | Writer | host-derived | Redis consumer name. |
 | `REDIS_DLQ_STREAM` | Writer | `ernest:events:deadletter` | Failed normalization/write stream. |
 | `REDIS_REJECTED_STREAM` | Ingestor, writer | `ernest:events:rejected` | Auth/provider verification rejection stream. |
-| `WORKER_BATCH_COUNT` | Writer | `10` | Max Redis messages read per worker cycle. |
+| `WORKER_BATCH_COUNT` | Writer | `200` | Max Redis messages read per worker cycle. With `EVIDENCE_BATCHING` on, a whole read is recorded together (two unordered inserts, one bulk status update, one XACK). |
 | `WORKER_BLOCK_MS` | Writer | `5000` | Redis blocking read timeout. |
 | `WORKER_RECLAIM_INTERVAL_MS` | Writer | `30000` | How often the worker checks for stale pending entries via `XAUTOCLAIM`. |
 | `WORKER_RECLAIM_MIN_IDLE_MS` | Writer | `60000` | Minimum idle time before a pending entry is reclaimed from a crashed/stalled consumer. |

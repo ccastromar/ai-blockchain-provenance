@@ -333,14 +333,12 @@ export class ApiService {
     };
   }
 
-  async logInference(dto: LogInferenceDto, opts: SubmitOptions = {}) {
-    this.logger.log(`Logging inference for model ID: ${dto.modelId}`);
-
-    const modelExists = await this.modelService.findOne(dto.modelId);
-    this.logger.log(`Model existence check for ID ${dto.modelId}: ${!!modelExists}`);
+  /** Model admission for an inference: the model exists and its registration is committed. */
+  private async assertModelAdmitted(modelId: string): Promise<void> {
+    const modelExists = await this.modelService.findOne(modelId);
     if (!modelExists) {
-      this.logger.error(`Model ID ${dto.modelId} does not exist`);
-      throw new NotFoundException(`Model ID ${dto.modelId} does not exist`);
+      this.logger.error(`Model ID ${modelId} does not exist`);
+      throw new NotFoundException(`Model ID ${modelId} does not exist`);
     }
 
     // The document existing isn't enough: it is created moments before the registration
@@ -350,13 +348,20 @@ export class ApiService {
     // model doesn't exist.
     // ADR-004: an admitted registration event is enough -- the batcher chains it no later
     // than (and, within a batch, ahead of) any inference admitted after it.
-    const registered = (this.batching() && await this.evidenceService!.hasRegistrationEvent(dto.modelId))
-      || await this.blockchainService.hasRegistrationBlock(dto.modelId);
+    const registered = (this.batching() && await this.evidenceService!.hasRegistrationEvent(modelId))
+      || await this.blockchainService.hasRegistrationBlock(modelId);
     if (!registered) {
       throw new ConflictException(
-        `Model '${dto.modelId}' registration is not yet committed to the chain. Retry shortly.`,
+        `Model '${modelId}' registration is not yet committed to the chain. Retry shortly.`,
       );
     }
+  }
+
+  async logInference(dto: LogInferenceDto, opts: SubmitOptions = {}) {
+    // Per-item logging is debug: at thousands of inferences/s, two info lines each were a
+    // measurable share of the write path (and most of the log volume).
+    this.logger.debug(`Logging inference for model ID: ${dto.modelId}`);
+    await this.assertModelAdmitted(dto.modelId);
 
     const signature = await this.admitSignature(
       {
@@ -450,16 +455,59 @@ export class ApiService {
    * Per-item status: 202 pending, 200 chained or duplicate, or the item's own error.
    */
   private async logInferenceBatchAsEvents(items: LogInferenceDto[], opts: SubmitOptions) {
-    const results: Array<Record<string, any>> = [];
-    for (const item of items) {
+    // Same admission as POST /api/inferences, item by item, but without the per-item round
+    // trips: the model check runs once per distinct model in the request, signatures are
+    // checked concurrently, and every admitted item is stored with ONE insertMany.
+    const modelChecks = new Map<string, Promise<void>>();
+    const admitted = await Promise.all(items.map(async (item) => {
       try {
-        const r = await this.logInference(item, { wait: false });
-        results.push({ inferenceId: item.inferenceId, ...r });
-      } catch (e: any) {
-        const status = typeof e?.getStatus === 'function' ? e.getStatus() : 500;
-        results.push({ inferenceId: item.inferenceId, status, error: e?.message ?? String(e) });
+        let check = modelChecks.get(item.modelId);
+        if (!check) {
+          check = this.assertModelAdmitted(item.modelId);
+          check.catch(() => undefined); // awaited per item below; avoid an unhandled rejection
+          modelChecks.set(item.modelId, check);
+        }
+        await check;
+        const signature = await this.admitSignature(
+          {
+            type: 'inference',
+            modelId: item.modelId,
+            inferenceId: item.inferenceId,
+            inputHash: item.inputHash,
+            outputHash: item.outputHash,
+            params: item.params,
+            metadata: item.metadata,
+          },
+          item.signature,
+        );
+        const data = this.blockchainService.inferenceData(
+          item.modelId, item.inferenceId, item.inputHash, item.outputHash, item.params, item.metadata, signature,
+        );
+        return { data, key: this.eventKey(data) };
+      } catch (error) {
+        return { error };
       }
-    }
+    }));
+
+    const toRecord = admitted.flatMap((a, i) => ('error' in a ? [] : [{ i, data: a.data, key: a.key }]));
+    const recorded = await this.evidenceService!.recordMany(toRecord.map(({ data, key }) => ({ data, key })));
+    const outcome: Array<{ error: any } | { key: { source: string; eventId: string }; event: any; duplicate: boolean }> =
+      admitted.map((a) => ('error' in a ? { error: a.error } : (undefined as any)));
+    toRecord.forEach(({ i, key }, j) => {
+      const r = recorded[j];
+      outcome[i] = 'error' in r ? { error: r.error } : { key, event: r.event, duplicate: r.duplicate };
+    });
+
+    const results: Array<Record<string, any>> = await Promise.all(items.map(async (item, i) => {
+      const o = outcome[i];
+      if ('error' in o) {
+        const e: any = o.error;
+        const status = typeof e?.getStatus === 'function' ? e.getStatus() : 500;
+        return { inferenceId: item.inferenceId, status, error: e?.message ?? String(e) };
+      }
+      const blockHash = o.event.blockIndex != null ? await this.evidenceService!.getBlockHash(o.event.blockIndex) : undefined;
+      return { inferenceId: item.inferenceId, ...this.eventView({ ...o.key, event: o.event, duplicate: o.duplicate, blockHash }) };
+    }));
     const accepted = results.filter(r => r.error === undefined);
     if (this.shouldWait(opts) && accepted.some(r => r.status === 'pending')) {
       const keys = accepted.map(r => ({ source: r.source, eventId: r.eventId }));

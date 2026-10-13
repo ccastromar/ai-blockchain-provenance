@@ -103,6 +103,15 @@ func (c *Client) XAck(ctx context.Context, stream string, group string, id strin
 	return err
 }
 
+// XAckMany acknowledges several entries of the group with a single XACK.
+func (c *Client) XAckMany(ctx context.Context, stream string, group string, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := c.command(ctx, append([]string{"XACK", stream, group}, ids...)...)
+	return err
+}
+
 // XAutoClaim reassigns pending entries idle longer than minIdleMS to consumer, so a
 // crashed consumer's unacknowledged messages get reprocessed instead of sitting in the
 // group's PEL forever. It returns the cursor to pass back in for the next page.

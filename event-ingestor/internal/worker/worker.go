@@ -35,6 +35,19 @@ type Writer interface {
 	MarkDuplicate(ctx context.Context, event events.CanonicalEvent) error
 }
 
+// BatchWriter is implemented by writers that record a whole read in a few round trips
+// (ADR-004 mode); RecordsEvents reports whether that mode is on. Per-event outcomes are the
+// same as AppendEvent's.
+type BatchWriter interface {
+	RecordsEvents() bool
+	RecordEvents(ctx context.Context, batch []events.CanonicalEvent) []error
+}
+
+// multiAcker acknowledges several entries with one XACK (optional on StreamClient).
+type multiAcker interface {
+	XAckMany(ctx context.Context, stream string, group string, ids []string) error
+}
+
 type Worker struct {
 	stream StreamClient
 	writer Writer
@@ -90,8 +103,71 @@ func (w Worker) Run(ctx context.Context) error {
 			time.Sleep(time.Second)
 			continue
 		}
+		w.handleMessages(ctx, messages)
+	}
+}
+
+// handleMessages processes one read. In ADR-004 mode the whole read is recorded together —
+// the same per-event outcome (recorded, duplicate, or failed to the DLQ) as handleMessage,
+// with a few round trips per read instead of several per event, and one ack.
+func (w Worker) handleMessages(ctx context.Context, messages []redisstream.Message) {
+	bw, ok := w.writer.(BatchWriter)
+	if !ok || !bw.RecordsEvents() || len(messages) < 2 {
 		for _, message := range messages {
 			w.handleMessage(ctx, message)
+		}
+		return
+	}
+	failures := map[int]error{}
+	batch := make([]events.CanonicalEvent, 0, len(messages))
+	positions := make([]int, 0, len(messages))
+	for i, message := range messages {
+		event, err := parseMessage(message)
+		if err != nil {
+			failures[i] = err
+			continue
+		}
+		batch = append(batch, events.Normalize(event))
+		positions = append(positions, i)
+	}
+	recorded, duplicates := 0, 0
+	for j, err := range bw.RecordEvents(ctx, batch) {
+		event := batch[j]
+		switch {
+		case err == nil:
+			recorded++
+			metrics.EventsRecorded.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
+		case errors.Is(err, hashchain.ErrDuplicateEvent):
+			duplicates++
+			if markErr := w.writer.MarkDuplicate(ctx, event); markErr != nil {
+				log.Printf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
+			}
+			metrics.EventsDuplicate.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
+		default:
+			failures[positions[j]] = err
+		}
+	}
+	for i, err := range failures {
+		w.fail(ctx, messages[i], err)
+	}
+	w.ackAll(ctx, messages)
+	log.Printf("recorded %d external events (pending chaining), %d duplicates, %d failed", recorded, duplicates, len(failures))
+}
+
+func (w Worker) ackAll(ctx context.Context, messages []redisstream.Message) {
+	ids := make([]string, len(messages))
+	for i, message := range messages {
+		ids[i] = message.ID
+	}
+	if acker, ok := w.stream.(multiAcker); ok {
+		if err := acker.XAckMany(ctx, w.cfg.RedisStream, w.cfg.RedisGroup, ids); err != nil {
+			log.Printf("ack of %d messages failed: %v", len(ids), err)
+		}
+		return
+	}
+	for _, id := range ids {
+		if err := w.stream.XAck(ctx, w.cfg.RedisStream, w.cfg.RedisGroup, id); err != nil {
+			log.Printf("ack %s failed: %v", id, err)
 		}
 	}
 }
@@ -144,16 +220,7 @@ func (w Worker) reclaimStale(ctx context.Context) error {
 // Shared by the main read loop and reclaimStale so both paths handle failures identically.
 func (w Worker) handleMessage(ctx context.Context, message redisstream.Message) {
 	if err := w.process(ctx, message); err != nil {
-		log.Printf("event %s failed: %v", message.ID, err)
-		metrics.EventsProcessingFailed.WithLabelValues(metrics.SafeSourceLabel(message.Fields["source"])).Inc()
-		if recordErr := w.writer.RecordFailure(ctx, message.ID, message.Fields, err); recordErr != nil {
-			log.Printf("record failure %s failed: %v", message.ID, recordErr)
-		}
-		_, _ = w.stream.XAdd(ctx, w.cfg.RedisDLQStream, w.cfg.RedisMaxLen, map[string]string{
-			"sourceStreamId": message.ID,
-			"error":          err.Error(),
-			"payload":        message.Fields["payload"],
-		})
+		w.fail(ctx, message, err)
 	}
 	if err := w.stream.XAck(ctx, w.cfg.RedisStream, w.cfg.RedisGroup, message.ID); err != nil {
 		log.Printf("ack %s failed: %v", message.ID, err)
@@ -177,11 +244,26 @@ func (w Worker) processRejected(ctx context.Context) error {
 	return nil
 }
 
-func (w Worker) process(ctx context.Context, message redisstream.Message) error {
+// fail records a message that could not be processed and sends it to the DLQ.
+func (w Worker) fail(ctx context.Context, message redisstream.Message, err error) {
+	log.Printf("event %s failed: %v", message.ID, err)
+	metrics.EventsProcessingFailed.WithLabelValues(metrics.SafeSourceLabel(message.Fields["source"])).Inc()
+	if recordErr := w.writer.RecordFailure(ctx, message.ID, message.Fields, err); recordErr != nil {
+		log.Printf("record failure %s failed: %v", message.ID, recordErr)
+	}
+	_, _ = w.stream.XAdd(ctx, w.cfg.RedisDLQStream, w.cfg.RedisMaxLen, map[string]string{
+		"sourceStreamId": message.ID,
+		"error":          err.Error(),
+		"payload":        message.Fields["payload"],
+	})
+}
+
+// parseMessage turns a stream entry into the ingested event it carries.
+func parseMessage(message redisstream.Message) (events.IngestedEvent, error) {
 	payload := map[string]any{}
 	if raw := message.Fields["payload"]; raw != "" {
 		if err := json.Unmarshal([]byte(raw), &payload); err != nil {
-			return err
+			return events.IngestedEvent{}, err
 		}
 	}
 
@@ -192,15 +274,21 @@ func (w Worker) process(ctx context.Context, message redisstream.Message) error 
 		}
 	}
 
-	event := events.IngestedEvent{
+	return events.IngestedEvent{
 		Source:        message.Fields["source"],
 		EventType:     message.Fields["eventType"],
 		SourceEventID: message.Fields["sourceEventId"],
 		RawEventHash:  message.Fields["rawEventHash"],
 		ReceivedAt:    receivedAt,
 		Payload:       payload,
-	}
+	}, nil
+}
 
+func (w Worker) process(ctx context.Context, message redisstream.Message) error {
+	event, err := parseMessage(message)
+	if err != nil {
+		return err
+	}
 	canonical := events.Normalize(event)
 	block, err := w.writer.AppendEvent(ctx, canonical)
 	if err != nil {
