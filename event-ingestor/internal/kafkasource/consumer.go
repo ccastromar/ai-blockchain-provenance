@@ -151,7 +151,13 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 		log.Printf("kafka source: WARNING clients are not authenticated (%s): events are recorded %q; use SASL_SSL in production",
 			firstNonEmpty(cfg.Security.Protocol, "PLAINTEXT"), UnverifiedStatus)
 	}
+	// The client's own context: cancelling it aborts in-flight group requests, which bounds a
+	// shutdown that would otherwise wait for a pending JoinGroup (e.g. while the broker waits
+	// out a dead member's session).
+	clientCtx, cancelClient := context.WithCancel(context.Background())
+	defer cancelClient()
 	client, err := kgo.NewClient(append(securityOpts,
+		kgo.WithContext(clientCtx),
 		kgo.SeedBrokers(cfg.Brokers...),
 		kgo.ConsumerGroup(cfg.Group),
 		kgo.ConsumeTopics(cfg.Topics...),
@@ -163,7 +169,24 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	// Shutdown: release the poll hold (BlockRebalanceOnPoll), then leave the group cleanly. If
+	// leaving does not finish in time, abort it: nothing is lost — offsets are committed only
+	// after records are recorded, and uncommitted ones replay to the next member and dedup.
+	defer func() {
+		client.AllowRebalance()
+		closed := make(chan struct{})
+		go func() {
+			client.Close()
+			close(closed)
+		}()
+		select {
+		case <-closed:
+		case <-time.After(10 * time.Second):
+			log.Printf("kafka source: leaving the group timed out; closing without waiting")
+			cancelClient()
+			<-closed
+		}
+	}()
 
 	if err := writer.EnsureIndexes(ctx); err != nil {
 		return err
