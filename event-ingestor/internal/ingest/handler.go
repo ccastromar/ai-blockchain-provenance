@@ -33,19 +33,23 @@ type Handler struct {
 	stream  *redisstream.Client
 	cfg     config.Config
 	limiter *ratelimit.Limiter
+	// authLimiter applies to callers with a valid ingestor API key, counted per key.
+	authLimiter *ratelimit.Limiter
 }
 
 func NewHandler(stream *redisstream.Client, cfg config.Config) Handler {
 	return Handler{
-		stream:  stream,
-		cfg:     cfg,
-		limiter: ratelimit.New(cfg.RateLimitRPS, cfg.RateLimitBurst),
+		stream:      stream,
+		cfg:         cfg,
+		limiter:     ratelimit.New(cfg.RateLimitRPS, cfg.RateLimitBurst),
+		authLimiter: ratelimit.New(cfg.RateLimitAuthenticatedRPS, cfg.RateLimitAuthenticatedBurst),
 	}
 }
 
 // RunRateLimitCleanup periodically evicts idle per-IP rate-limit buckets. Call it in a
 // goroutine alongside the server; it returns when ctx is canceled.
 func (h Handler) RunRateLimitCleanup(ctx context.Context) {
+	go h.authLimiter.Run(ctx, 5*time.Minute, 10*time.Minute)
 	h.limiter.Run(ctx, 5*time.Minute, 10*time.Minute)
 }
 
@@ -64,21 +68,36 @@ func (h Handler) Routes() http.Handler {
 	return h.rateLimited(mux)
 }
 
-// rateLimited enforces a per-client-IP request budget on every route. /health is exempt
-// so container/orchestrator liveness probes are never throttled.
+// rateLimited enforces a request budget on every route. /health is exempt so
+// container/orchestrator liveness probes are never throttled. Callers presenting the valid
+// ingestor API key are counted against their own (larger) budget; everyone else — provider
+// webhooks, anonymous or wrong-key callers — per client IP, as before.
 func (h Handler) rateLimited(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" || !h.limiter.Enabled() {
+		if r.URL.Path == "/health" {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if !h.limiter.Allow(ratelimit.ClientKey(r)) {
+		limiter, key := h.limiter, ratelimit.ClientKey(r)
+		if h.hasValidIngestKey(r) {
+			limiter, key = h.authLimiter, "ingest-key"
+		}
+		if limiter.Enabled() && !limiter.Allow(key) {
 			metrics.EventsRejected.WithLabelValues(providerFromPath(r.URL.Path), "rate_limited").Inc()
+			w.Header().Set("Retry-After", "1")
 			writeJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (h Handler) hasValidIngestKey(r *http.Request) bool {
+	if h.cfg.IngestorAPIKey == "" {
+		return false
+	}
+	provided := r.Header.Get("X-Ernest-Ingest-Key")
+	return provided != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(h.cfg.IngestorAPIKey)) == 1
 }
 
 // providerFromPath maps a route to a fixed, bounded provider label for metrics. It must
