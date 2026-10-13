@@ -111,6 +111,21 @@ export class ApiController {
     });
   }
 
+  @Get('stats/models')
+  @ApiOperation({
+    summary: 'Count evidence blocks for several models in one call.',
+    description: 'Comma-separated `ids` (max 500). Indexed aggregation; chain integrity itself is GET /api/verify. Unknown ids are reported with 0.',
+  })
+  @ApiQuery({ name: 'ids', required: true, type: String })
+  @ApiOkResponse({ description: '{ counts: { [modelId]: n } }' })
+  async getModelEvidenceCounts(@Query('ids') ids?: string) {
+    const list = (ids ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    if (list.length === 0 || list.length > 500) {
+      throw new BadRequestException('ids must list between 1 and 500 model ids');
+    }
+    return await this.apiService.evidenceCountsByModel([...new Set(list)]);
+  }
+
   @Get('stats/executions')
   @ApiOperation({
     summary: 'Count execution evidence per AI system (for policy-drift checks).',

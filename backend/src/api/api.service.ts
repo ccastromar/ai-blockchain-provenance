@@ -391,6 +391,10 @@ export class ApiService {
     return await this.blockchainService.getAllBlocks(page, limit, after);
   }
 
+  async evidenceCountsByModel(modelIds: string[]) {
+    return await this.blockchainService.evidenceCountsByModel(modelIds);
+  }
+
   async executionCountsBySystem(sinceIndex?: number) {
     return await this.blockchainService.executionCountsBySystem(sinceIndex ?? -1);
   }

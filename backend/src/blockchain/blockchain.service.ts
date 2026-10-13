@@ -604,6 +604,23 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
+     * Evidence blocks per model id, for several models in one indexed aggregation (the
+     * model_blocks index). Chain integrity is established by verifyChain/
+     * verifyChainFromCheckpoint over every block; callers that only need "does this model
+     * have evidence, and how much" use this instead of per-model integrity, which re-hashes
+     * all of that model's blocks. Ids with no blocks are reported with 0.
+     */
+    async evidenceCountsByModel(modelIds: string[]): Promise<{ counts: Record<string, number> }> {
+        const rows = await this.provenanceBlockModel.aggregate([
+            { $match: { 'data.modelId': { $in: modelIds } } },
+            { $group: { _id: '$data.modelId', count: { $sum: 1 } } },
+        ]);
+        const counts: Record<string, number> = Object.fromEntries(modelIds.map(id => [id, 0]));
+        for (const r of rows) counts[r._id] = r.count;
+        return { counts };
+    }
+
+    /**
      * Execution evidence per AI system, counted server-side over the stage_system_blocks
      * index. Bounded to the current tip so a caller can resume incrementally from
      * `upToIndex` next time (`since` is exclusive). Replaces paging the whole chain.
