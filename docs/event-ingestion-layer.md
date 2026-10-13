@@ -397,9 +397,14 @@ EVIDENCE_BATCHING=on MONGODB_URI=mongodb://127.0.0.1:27017/ernest event-ingestor
 | `KAFKA_TOPICS` | `prudence.decisions` | Topics to record (comma list). |
 | `KAFKA_GROUP` | `ernest-ingestor` | Consumer group; run up to one process per partition. |
 | `KAFKA_MAX_POLL_RECORDS` | `1000` | Records recorded per batch. |
+| `KAFKA_SECURITY_PROTOCOL` | `PLAINTEXT` | `PLAINTEXT`, `SSL`, `SASL_PLAINTEXT` or `SASL_SSL` (production: `SASL_SSL`). |
+| `KAFKA_SASL_MECHANISM` | `SCRAM-SHA-512` | `SCRAM-SHA-512`, `SCRAM-SHA-256` or `PLAIN`. |
+| `KAFKA_SASL_USERNAME` / `KAFKA_SASL_PASSWORD` | — | Ernest's principal (needs Read on the topic and the group). |
+| `KAFKA_TLS_CA_FILE` | — | PEM bundle of a private CA (system roots otherwise). |
 
 Record contract: headers `source`, `eventType`, `sourceEventId` (else the record key), value =
-the JSON body `POST /events` would carry. Events are stored with `verificationStatus=kafka_acl`.
+the JSON body `POST /events` would carry. Events are stored with `verificationStatus=kafka_acl`
+when the consumer connects with SASL, `unverified` otherwise (a warning is logged at start).
 A record that cannot be parsed goes to `event_failures` (`sourceStreamId = kafka:<topic>/<partition>@<offset>`)
 and is committed past; a MongoDB outage retries the same poll without committing.
 

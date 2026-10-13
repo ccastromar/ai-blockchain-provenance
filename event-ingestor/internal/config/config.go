@@ -45,6 +45,13 @@ type Config struct {
 	KafkaTopics         string
 	KafkaGroup          string
 	KafkaMaxPollRecords int
+	// Kafka security: PLAINTEXT, SSL, SASL_PLAINTEXT or SASL_SSL; SASL via SCRAM-SHA-512 (default),
+	// SCRAM-SHA-256 or PLAIN; KafkaTLSCAFile trusts a private CA (PEM).
+	KafkaSecurityProtocol string
+	KafkaSASLMechanism    string
+	KafkaSASLUsername     string
+	KafkaSASLPassword     string
+	KafkaTLSCAFile        string
 }
 
 func Load() Config {
@@ -82,6 +89,11 @@ func Load() Config {
 		KafkaTopics:                 env("KAFKA_TOPICS", "prudence.decisions"),
 		KafkaGroup:                  env("KAFKA_GROUP", "ernest-ingestor"),
 		KafkaMaxPollRecords:         int(envInt64("KAFKA_MAX_POLL_RECORDS", 1000)),
+		KafkaSecurityProtocol:       env("KAFKA_SECURITY_PROTOCOL", "PLAINTEXT"),
+		KafkaSASLMechanism:          env("KAFKA_SASL_MECHANISM", "SCRAM-SHA-512"),
+		KafkaSASLUsername:           env("KAFKA_SASL_USERNAME", ""),
+		KafkaSASLPassword:           env("KAFKA_SASL_PASSWORD", ""),
+		KafkaTLSCAFile:              env("KAFKA_TLS_CA_FILE", ""),
 	}
 }
 

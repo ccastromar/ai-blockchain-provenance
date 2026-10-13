@@ -125,6 +125,13 @@ func runKafka(ctx context.Context, cfg config.Config) {
 		Topics:         splitList(cfg.KafkaTopics),
 		Group:          cfg.KafkaGroup,
 		MaxPollRecords: cfg.KafkaMaxPollRecords,
+		Security: kafkasource.Security{
+			Protocol:     cfg.KafkaSecurityProtocol,
+			SASLMech:     cfg.KafkaSASLMechanism,
+			SASLUsername: cfg.KafkaSASLUsername,
+			SASLPassword: cfg.KafkaSASLPassword,
+			TLSCAFile:    cfg.KafkaTLSCAFile,
+		},
 	}, writer)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Fatalf("kafka source failed: %v", err)

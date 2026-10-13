@@ -11,11 +11,14 @@ package kafkasource
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -26,12 +29,19 @@ import (
 	"event-ingestor/internal/metrics"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // VerificationStatus marks events whose origin rests on the broker's authentication and the
-// topic's write ACL (the HTTP path's equivalent is "shared_secret").
+// topic's write ACL (the HTTP path's equivalent is "shared_secret"). It is recorded only when
+// Ernest itself connects with SASL — i.e. the cluster authenticates its clients; otherwise the
+// events are recorded "unverified", as HTTP events are when no ingestor key is configured.
 const VerificationStatus = "kafka_acl"
+
+// UnverifiedStatus is recorded for events read over a connection without client authentication.
+const UnverifiedStatus = "unverified"
 
 // Record headers carrying the POST /events headers (ADR-005 record contract).
 const (
@@ -45,6 +55,68 @@ type Config struct {
 	Topics         []string
 	Group          string
 	MaxPollRecords int
+	Security       Security
+}
+
+// Security is how the consumer connects to the brokers (ADR-005).
+type Security struct {
+	Protocol     string // PLAINTEXT | SSL | SASL_PLAINTEXT | SASL_SSL
+	SASLMech     string // SCRAM-SHA-512 (default) | SCRAM-SHA-256 | PLAIN
+	SASLUsername string
+	SASLPassword string
+	TLSCAFile    string // PEM bundle of a private CA; system roots otherwise
+}
+
+// options turns Security into client options, and reports whether clients are authenticated.
+func (s Security) options() ([]kgo.Opt, bool, error) {
+	protocol := strings.ToUpper(strings.TrimSpace(s.Protocol))
+	if protocol == "" {
+		protocol = "PLAINTEXT"
+	}
+	var opts []kgo.Opt
+	useTLS, useSASL := false, false
+	switch protocol {
+	case "PLAINTEXT":
+	case "SSL":
+		useTLS = true
+	case "SASL_PLAINTEXT":
+		useSASL = true
+	case "SASL_SSL":
+		useTLS, useSASL = true, true
+	default:
+		return nil, false, fmt.Errorf("KAFKA_SECURITY_PROTOCOL must be PLAINTEXT, SSL, SASL_PLAINTEXT or SASL_SSL (was %q)", s.Protocol)
+	}
+	if useTLS {
+		tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
+		if s.TLSCAFile != "" {
+			pem, err := os.ReadFile(s.TLSCAFile)
+			if err != nil {
+				return nil, false, fmt.Errorf("KAFKA_TLS_CA_FILE: %w", err)
+			}
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM(pem) {
+				return nil, false, fmt.Errorf("KAFKA_TLS_CA_FILE: no PEM certificate in %s", s.TLSCAFile)
+			}
+			tlsCfg.RootCAs = pool
+		}
+		opts = append(opts, kgo.DialTLSConfig(tlsCfg))
+	}
+	if useSASL {
+		if s.SASLUsername == "" || s.SASLPassword == "" {
+			return nil, false, errors.New("SASL needs KAFKA_SASL_USERNAME and KAFKA_SASL_PASSWORD")
+		}
+		switch strings.ToUpper(strings.TrimSpace(firstNonEmpty(s.SASLMech, "SCRAM-SHA-512"))) {
+		case "SCRAM-SHA-512":
+			opts = append(opts, kgo.SASL(scram.Auth{User: s.SASLUsername, Pass: s.SASLPassword}.AsSha512Mechanism()))
+		case "SCRAM-SHA-256":
+			opts = append(opts, kgo.SASL(scram.Auth{User: s.SASLUsername, Pass: s.SASLPassword}.AsSha256Mechanism()))
+		case "PLAIN":
+			opts = append(opts, kgo.SASL(plain.Auth{User: s.SASLUsername, Pass: s.SASLPassword}.AsMechanism()))
+		default:
+			return nil, false, fmt.Errorf("KAFKA_SASL_MECHANISM must be SCRAM-SHA-512, SCRAM-SHA-256 or PLAIN (was %q)", s.SASLMech)
+		}
+	}
+	return opts, useSASL, nil
 }
 
 // Writer is the subset of hashchain.MongoWriter the source depends on.
@@ -68,7 +140,18 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 	if cfg.MaxPollRecords <= 0 {
 		cfg.MaxPollRecords = 1000
 	}
-	client, err := kgo.NewClient(
+	securityOpts, authenticated, err := cfg.Security.options()
+	if err != nil {
+		return err
+	}
+	status := UnverifiedStatus
+	if authenticated {
+		status = VerificationStatus
+	} else {
+		log.Printf("kafka source: WARNING clients are not authenticated (%s): events are recorded %q; use SASL_SSL in production",
+			firstNonEmpty(cfg.Security.Protocol, "PLAINTEXT"), UnverifiedStatus)
+	}
+	client, err := kgo.NewClient(append(securityOpts,
 		kgo.SeedBrokers(cfg.Brokers...),
 		kgo.ConsumerGroup(cfg.Group),
 		kgo.ConsumeTopics(cfg.Topics...),
@@ -76,7 +159,7 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 		kgo.DisableAutoCommit(),
 		// Partitions are not revoked between a poll and its commit.
 		kgo.BlockRebalanceOnPoll(),
-	)
+	)...)
 	if err != nil {
 		return err
 	}
@@ -85,7 +168,7 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 	if err := writer.EnsureIndexes(ctx); err != nil {
 		return err
 	}
-	log.Printf("kafka source: brokers=%s topics=%s group=%s", strings.Join(cfg.Brokers, ","), strings.Join(cfg.Topics, ","), cfg.Group)
+	log.Printf("kafka source: brokers=%s topics=%s group=%s security=%s", strings.Join(cfg.Brokers, ","), strings.Join(cfg.Topics, ","), cfg.Group, firstNonEmpty(cfg.Security.Protocol, "PLAINTEXT"))
 
 	for {
 		fetches := client.PollRecords(ctx, cfg.MaxPollRecords)
@@ -103,7 +186,7 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 
 		backoff := 500 * time.Millisecond
 		for {
-			err := record(ctx, writer, records)
+			err := record(ctx, writer, records, status)
 			if err == nil {
 				break
 			}
@@ -128,11 +211,11 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 
 // record stores one poll. It returns an error only for failures that may succeed on retry
 // (infrastructure); a bad record is recorded as a failure and does not stop the rest.
-func record(ctx context.Context, writer Writer, records []*kgo.Record) error {
+func record(ctx context.Context, writer Writer, records []*kgo.Record, status string) error {
 	batch := make([]events.CanonicalEvent, 0, len(records))
 	positions := make([]int, 0, len(records))
 	for i, rec := range records {
-		event, err := ingestedEvent(rec)
+		event, err := ingestedEvent(rec, status)
 		if err != nil {
 			if err := recordFailure(ctx, writer, rec, err); err != nil {
 				return err
@@ -189,7 +272,7 @@ func record(ctx context.Context, writer Writer, records []*kgo.Record) error {
 }
 
 // ingestedEvent maps a record onto the event POST /events would have received (ADR-005).
-func ingestedEvent(rec *kgo.Record) (events.IngestedEvent, error) {
+func ingestedEvent(rec *kgo.Record, status string) (events.IngestedEvent, error) {
 	headers := map[string]string{}
 	for _, h := range rec.Headers {
 		headers[h.Key] = string(h.Value)
@@ -198,7 +281,7 @@ func ingestedEvent(rec *kgo.Record) (events.IngestedEvent, error) {
 	if err := json.Unmarshal(rec.Value, &payload); err != nil || payload == nil {
 		return events.IngestedEvent{}, errors.New("invalid json payload")
 	}
-	ingest.AttachVerification(payload, VerificationStatus)
+	ingest.AttachVerification(payload, status)
 	sum := sha256.Sum256(rec.Value)
 	rawHash := hex.EncodeToString(sum[:])
 	return events.IngestedEvent{

@@ -53,8 +53,27 @@ One Kafka record per event, the same event the HTTP `POST /events` carries:
 
 Events are stored exactly as the HTTP path stores them (`ingested_events`, `evidence_events`,
 the model record) and deduplicated the same way, by `(source, sourceEventId, eventType)`. Their
-`verificationStatus` is `kafka_acl`: authenticity rests on the broker's authentication and the
-topic's write ACL, as it rests on the shared key for HTTP.
+`verificationStatus` is `kafka_acl` when Ernest connects with SASL — the cluster authenticates its
+clients, and the topic's write ACL decides who may emit, as the shared key does for HTTP. Over a
+connection without client authentication (PLAINTEXT, SSL without SASL) events are recorded
+`unverified`, exactly like HTTP events when no ingestor key is configured.
+
+### Security
+
+Production runs `SASL_SSL` (SCRAM-SHA-512 by default; SCRAM-SHA-256 and PLAIN supported),
+optionally with a private CA. Each side gets its own principal and only the ACLs it needs:
+
+| Principal | ACLs |
+|---|---|
+| Prudence (producer) | `Write`, `Describe` on topic `prudence.decisions` |
+| Ernest (consumer) | `Read`, `Describe` on the topic; `Read` on group `ernest-ingestor` |
+
+Prudence refuses to start outside dev/test with `decision-transport=kafka` over anything but
+`SASL_SSL` or `SSL`. A producer the broker rejects (bad credentials, no ACL) is a configuration
+failure: decisions stay queued in Prudence's outbox, one error and one alert are raised, nothing
+is dead-lettered. Verified against a local SCRAM + ACL broker: the authorized pair delivers and
+records `kafka_acl`; an authenticated principal without ACLs and a wrong password both stay
+queued with a single configuration error.
 
 ### Delivery semantics
 
