@@ -7,6 +7,7 @@ import { Model } from 'mongoose';
 import { Anchor, AnchorDocument } from '../blockchain/models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckDocument } from '../blockchain/models/integrity-check.schema';
 import { ethers } from 'ethers';
+import { rpcProvider } from '../blockchain/rpc-provider';
 
 @ApiTags('Health')
 @Controller('health')
@@ -55,7 +56,7 @@ export class HealthController {
       return { status: 'not_configured' };
     }
     try {
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const provider = rpcProvider(rpcUrl);
       const network = await Promise.race([
         provider.getNetwork(),
         new Promise<never>((_, reject) =>

@@ -261,7 +261,10 @@ Implemented environment variables:
 | `PROVIDER_HMAC_TOLERANCE_SECONDS` | Ingestor | `300` | Max allowed clock skew between `X-Ernest-Provider-Timestamp` and the ingestor's clock before a signed request is rejected as stale. |
 | `REDIS_ADDR` | Ingestor, writer | `redis:6379` | Redis connection address. |
 | `REDIS_STREAM` | Ingestor, writer | `ernest:events:incoming` | Incoming accepted event stream. |
-| `REDIS_STREAM_MAXLEN` | Ingestor | `10000` | Approximate max length for accepted events. |
+| `REDIS_STREAM_MAXLEN` | Writer | `10000` | Approximate max length of the **dead-letter** stream only (its entries are also recorded in Mongo `event_failures`). The incoming and rejected streams are never trimmed by length. |
+| `REDIS_STREAM_MAX_BACKLOG` | Ingestor | `100000` | Backpressure: when the incoming stream already holds this many entries, new events get `503` with `Retry-After: 1` instead of being accepted. `<= 0` disables the check. |
+| `REDIS_POOL_SIZE` | Ingestor, writer | `32` | Idle Redis connections kept for reuse (connections are persistent; one per command exhausted ephemeral ports under load). |
+| `WORKER_TRIM_INTERVAL_MS` | Writer | `5000` | How often the worker removes **acknowledged** entries (`XTRIM MINID` up to the oldest pending entry) from the incoming and rejected streams. `<= 0` disables trimming. |
 | `REDIS_GROUP` | Writer | `provenance-writers` | Redis consumer group. |
 | `REDIS_CONSUMER` | Writer | host-derived | Redis consumer name. |
 | `REDIS_DLQ_STREAM` | Writer | `ernest:events:deadletter` | Failed normalization/write stream. |
@@ -388,6 +391,14 @@ External platforms
 ```
 
 Use Redis Streams instead of Redis Pub/Sub because streams provide persistence, consumer groups, retry handling, and backlog inspection.
+
+Accepted events are never trimmed before they are processed. Producers `XADD` without `MAXLEN`;
+the worker periodically trims only what the consumer group has acknowledged (`XTRIM MINID` up to
+the oldest pending entry, or the group's last-delivered id when nothing is pending). When the
+backlog reaches `REDIS_STREAM_MAX_BACKLOG` the receiver refuses new events with `503` and
+`Retry-After`, so a burst becomes client-side retries instead of silent loss. (An earlier
+`MAXLEN ~10000` on `XADD` dropped about a third of accepted events in a load test once the worker
+fell behind.)
 
 Suggested streams:
 

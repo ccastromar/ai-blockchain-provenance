@@ -15,7 +15,10 @@ type Config struct {
 	RedisConsumer           string
 	RedisDLQStream          string
 	RedisRejectedStream     string
-	RedisMaxLen             int64
+	RedisMaxLen             int64 // cap for the dead-letter stream only (its entries are also in Mongo)
+	RedisMaxBacklog         int64 // above this many queued events, new events get 503 + Retry-After
+	RedisPoolSize           int
+	WorkerTrimIntervalMS    int64
 	MongoURI                string
 	MongoDatabase           string
 	MaxPayloadBytes         int64
@@ -43,6 +46,9 @@ func Load() Config {
 		RedisDLQStream:          env("REDIS_DLQ_STREAM", "ernest:events:deadletter"),
 		RedisRejectedStream:     env("REDIS_REJECTED_STREAM", "ernest:events:rejected"),
 		RedisMaxLen:             envInt64("REDIS_STREAM_MAXLEN", 10000),
+		RedisMaxBacklog:         envInt64("REDIS_STREAM_MAX_BACKLOG", 100000),
+		RedisPoolSize:           int(envInt64("REDIS_POOL_SIZE", 32)),
+		WorkerTrimIntervalMS:    envInt64("WORKER_TRIM_INTERVAL_MS", 5000),
 		MongoURI:                env("MONGODB_URI", env("MONGO_URI", "mongodb://mongodb:27017/ernest")),
 		MongoDatabase:           env("MONGO_DB_NAME", "ernest"),
 		MaxPayloadBytes:         envInt64("MAX_PAYLOAD_BYTES", 1024*1024),

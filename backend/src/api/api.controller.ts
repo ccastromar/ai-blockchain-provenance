@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, Res, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, Res, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiAcceptedResponse, ApiCreatedResponse, ApiHeader, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { OrgId } from '../common/org-id.decorator';
 import { ApiService } from './api.service';
 import { RegisterModelDto } from './dto/register-model.dto';
+import { LogInferenceBatchDto } from './dto/log-inference-batch.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AnchorEventsService } from './anchor-events.service';
 import { ApiKeyGuard } from '../common/api-key.guard';
@@ -38,6 +39,19 @@ export class ApiController {
   async logInference(@Body() dto: LogInferenceDto) {
     this.logger.log(`Received logInference request for model ID: ${dto.modelId}`);
     return await this.apiService.logInference(dto);
+  }
+
+  @Post('inferences/batch')
+  @UseGuards(ApiKeyGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiSecurity('ernest-api-key')
+  @ApiOperation({
+    summary: 'Log up to 500 inferences in one request.',
+    description: 'Each item is validated and admitted exactly as POST /api/inferences. Items fail independently; `results[i].status` is the status that item alone would have received.',
+  })
+  @ApiOkResponse({ description: '{ appended, failed, results: [{ inferenceId, status, blockIndex?, blockHash?, error? }] }' })
+  async logInferenceBatch(@Body() dto: LogInferenceBatchDto) {
+    return await this.apiService.logInferenceBatch(dto.items);
   }
 
   @Post('demo/seed')
@@ -97,6 +111,21 @@ export class ApiController {
     });
   }
 
+  @Get('stats/executions')
+  @ApiOperation({
+    summary: 'Count execution evidence per AI system (for policy-drift checks).',
+    description: 'Server-side aggregation over an index. `since` is an exclusive block index; pass the returned `upToIndex` to continue incrementally.',
+  })
+  @ApiQuery({ name: 'since', required: false, type: Number })
+  @ApiOkResponse({ description: '{ counts: { [aiSystemId]: n }, sinceIndex, upToIndex }' })
+  async getExecutionCounts(@Query('since') since?: string) {
+    const parsed = since === undefined || since === '' ? undefined : Number(since);
+    if (parsed !== undefined && (!Number.isInteger(parsed) || parsed < -1)) {
+      throw new BadRequestException('since must be an integer >= -1');
+    }
+    return await this.apiService.executionCountsBySystem(parsed);
+  }
+
   @Get('stats')
   @ApiOperation({ summary: 'Return hashchain statistics and latest anchor metadata.' })
   @ApiOkResponse({ description: 'Hashchain block count, model count, last block, verification status, and latest anchor if available.' })
@@ -105,10 +134,14 @@ export class ApiController {
   }
 
   @Get('verify')
-  @ApiOperation({ summary: 'Verify hashchain integrity.' })
+  @ApiOperation({
+    summary: 'Verify hashchain integrity.',
+    description: 'Incremental by default: verifies the blocks appended since the last trusted checkpoint (whose hash is pinned), so the cost does not grow with the chain. `?mode=full` re-hashes the whole chain.',
+  })
+  @ApiQuery({ name: 'mode', required: false, enum: ['incremental', 'full'] })
   @ApiOkResponse({ description: 'Chain verification result and any integrity errors.' })
-  async verifyChain() {
-    return await this.apiService.verifyChain();
+  async verifyChain(@Query('mode') mode?: string) {
+    return await this.apiService.verifyChain(mode);
   }
 
   @Post('anchors')
@@ -132,7 +165,7 @@ export class ApiController {
   @ApiOperation({ summary: 'Return raw hashchain blocks (paginated).' })
   @ApiOkResponse({ description: 'Paginated raw hashchain blocks.' })
   async getAllBlocks(@Query() pagination: PaginationDto) {
-    return await this.apiService.getAllBlocks(pagination.page, pagination.limit);
+    return await this.apiService.getAllBlocks(pagination.page, pagination.limit, pagination.after);
   }
 
   // Declared before blocks/:index so "export" is not captured by the ParseIntPipe param.

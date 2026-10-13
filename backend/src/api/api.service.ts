@@ -330,6 +330,28 @@ export class ApiService {
     };
   }
 
+  /**
+   * Batch form of logInference for high-volume emitters: one HTTP round trip (one auth,
+   * one rate-limit slot) for many records. Each item goes through logInference unchanged —
+   * same model checks, same signature admission — and is appended in order. Items fail
+   * independently: the result reports each one's outcome with the HTTP status it would
+   * have received on its own, so a caller can retry only what is retryable.
+   */
+  async logInferenceBatch(items: LogInferenceDto[]) {
+    const results: Array<Record<string, any>> = [];
+    for (const item of items) {
+      try {
+        const r = await this.logInference(item);
+        results.push({ inferenceId: item.inferenceId, status: 200, blockIndex: r.blockIndex, blockHash: r.blockHash });
+      } catch (e: any) {
+        const status = typeof e?.getStatus === 'function' ? e.getStatus() : 500;
+        results.push({ inferenceId: item.inferenceId, status, error: e?.message ?? String(e) });
+      }
+    }
+    const appended = results.filter(r => r.status === 200).length;
+    return { appended, failed: results.length - appended, results };
+  }
+
   async getProvenance(modelId: string, filters?: { type?: string; from?: number; to?: number; organizationId?: string }) {
     return await this.blockchainService.getProvenance(modelId, filters);
   }
@@ -338,8 +360,12 @@ export class ApiService {
     return await this.blockchainService.getChainStats();
   }
 
-  async verifyChain() {
-    return await this.blockchainService.verifyChain();
+  async verifyChain(mode?: string) {
+    if (mode === 'full') {
+      const full = await this.blockchainService.verifyChain();
+      return { ...full, mode: 'full' as const, fromIndex: 0 };
+    }
+    return await this.blockchainService.verifyChainFromCheckpoint();
   }
 
   async anchorMerkleRoot() {
@@ -361,8 +387,12 @@ export class ApiService {
     return await this.blockchainService.getAnchorStatus();
   }
 
-  async getAllBlocks(page = 1, limit = 20) {
-    return await this.blockchainService.getAllBlocks(page, limit);
+  async getAllBlocks(page = 1, limit = 20, after?: number) {
+    return await this.blockchainService.getAllBlocks(page, limit, after);
+  }
+
+  async executionCountsBySystem(sinceIndex?: number) {
+    return await this.blockchainService.executionCountsBySystem(sinceIndex ?? -1);
   }
 
   async exportAllBlocksCursor() {

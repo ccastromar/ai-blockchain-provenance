@@ -12,7 +12,9 @@ import * as crypto from 'crypto';
 import MerkleTree from 'merkletreejs';
 import keccak256 from 'keccak256';
 import { ethers } from 'ethers';
+import { rpcProvider } from './rpc-provider';
 import { Anchor, AnchorDocument } from './models/anchor.schema';
+import { IntegrityCheck, IntegrityCheckDocument } from './models/integrity-check.schema';
 import { canonicalizeEx } from 'json-canonicalize';
 import abiJson from '../abis/ErnestMerkleAnchor.json';
 import { OtsClient } from './ots.client';
@@ -42,6 +44,9 @@ export class BlockchainService implements OnModuleInit {
         private anchorModel: Model<AnchorDocument>,
         private readonly otsClient: OtsClient,
         private readonly rfc3161Client: Rfc3161Client,
+        // Last, so callers constructing the service positionally (tests) are unaffected.
+        @InjectModel(IntegrityCheck.name)
+        private integrityCheckModel: Model<IntegrityCheckDocument>,
     ) { }
 
     /**
@@ -121,6 +126,19 @@ export class BlockchainService implements OnModuleInit {
         // at the first error in the batch.
         await this.createIndexTolerant({ index: 1 }, 'unique_block_index');
         await this.createIndexTolerant({ hash: 1 }, 'unique_block_hash');
+        // Read paths that used to scan the whole collection: per-model integrity and
+        // provenance (data.modelId), and execution counts per AI system for drift checks.
+        await this.createSecondaryIndex({ 'data.modelId': 1, index: 1 }, 'model_blocks');
+        await this.createSecondaryIndex({ 'data.metadata.stage': 1, 'data.metadata.aiSystemId': 1, index: 1 }, 'stage_system_blocks');
+    }
+
+    private async createSecondaryIndex(key: Record<string, 1 | -1>, name: string): Promise<void> {
+        try {
+            await this.provenanceBlockModel.collection.createIndex(key, { name });
+        } catch (err) {
+            if (err?.code === 85 || err?.code === 86) return; // an equivalent index already exists
+            throw err;
+        }
     }
 
     private async createIndexTolerant(key: Record<string, 1 | -1>, name: string): Promise<void> {
@@ -321,6 +339,63 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
+     * Checkpoint this process has verified up to on behalf of API callers. In memory only:
+     * a read endpoint never writes integrity records; the hourly scheduled check (and its
+     * daily full scan) remains the source of persisted checkpoints.
+     */
+    private apiCheckpoint: { index: number; hash: string } | null = null;
+
+    /**
+     * Incremental chain verification for API callers: start from the newest trusted
+     * checkpoint (this process's, or the scheduled check's persisted one), pin that block's
+     * hash to what was verified then — so rewritten history before it still trips — and
+     * verify only the blocks appended since. Cost grows with new blocks, not chain length;
+     * a full re-scan stays available as `verifyChain()` (GET /api/verify?mode=full).
+     */
+    async verifyChainFromCheckpoint() {
+        const persisted = await this.integrityCheckModel
+            .findOne({ isValid: true, lastVerifiedIndex: { $gte: 0 } })
+            .sort({ checkedAt: -1 })
+            .lean();
+        const candidates = [
+            this.apiCheckpoint,
+            persisted?.lastVerifiedHash ? { index: persisted.lastVerifiedIndex!, hash: persisted.lastVerifiedHash } : null,
+        ].filter((c): c is { index: number; hash: string } => !!c);
+        const checkpoint = candidates.sort((a, b) => b.index - a.index)[0];
+        const chainLength = await this.provenanceBlockModel.estimatedDocumentCount();
+
+        if (!checkpoint) {
+            const full = await this.verifyChain();
+            if (full.isValid && full.lastVerifiedIndex !== null) {
+                this.apiCheckpoint = { index: full.lastVerifiedIndex, hash: full.lastVerifiedHash! };
+            }
+            return { ...full, mode: 'full' as const, fromIndex: 0, chainLength };
+        }
+
+        const errors: string[] = [];
+        const pinned = await this.getBlockByIndex(checkpoint.index);
+        if (!pinned) {
+            errors.push(`Checkpoint block ${checkpoint.index} has disappeared`);
+        } else if (pinned.hash !== checkpoint.hash) {
+            errors.push(`Checkpoint mismatch at block ${checkpoint.index}: verified as ${checkpoint.hash}, now ${pinned.hash} — history before the checkpoint appears rewritten`);
+        }
+        const result = await this.verifyChain(checkpoint.index + 1);
+        errors.push(...result.errors);
+        const isValid = errors.length === 0;
+        if (isValid && result.lastVerifiedIndex !== null) {
+            this.apiCheckpoint = { index: result.lastVerifiedIndex, hash: result.lastVerifiedHash! };
+        }
+        return {
+            ...result,
+            isValid,
+            errors,
+            mode: 'incremental' as const,
+            fromIndex: checkpoint.index + 1,
+            chainLength,
+        };
+    }
+
+    /**
      * Checks that the latest confirmed anchor's Merkle root is still reproducible from
      * the local chain. This is the only check with EXTERNAL teeth: the root lives on a
      * public chain, so a recompute-forward rewrite of anchored history cannot fool it
@@ -405,9 +480,11 @@ export class BlockchainService implements OnModuleInit {
      * Get hashchain statistics 
      */
     async getChainStats() {
-        const totalBlocks = await this.provenanceBlockModel.countDocuments();
+        // Incremental verification and an O(1) count: a dashboard poll must not re-hash
+        // the whole chain (see verifyChainFromCheckpoint).
+        const totalBlocks = await this.provenanceBlockModel.estimatedDocumentCount();
         const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
-        const verification = await this.verifyChain();
+        const verification = await this.verifyChainFromCheckpoint();
         const modelCount = await this.provenanceBlockModel.distinct('data.modelId');
         const lastAnchor = await this.anchorModel.findOne().sort({ lastBlockIndex: -1 }).lean();
 
@@ -527,9 +604,36 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
+     * Execution evidence per AI system, counted server-side over the stage_system_blocks
+     * index. Bounded to the current tip so a caller can resume incrementally from
+     * `upToIndex` next time (`since` is exclusive). Replaces paging the whole chain.
+     */
+    async executionCountsBySystem(sinceIndex = -1): Promise<{ counts: Record<string, number>; sinceIndex: number; upToIndex: number }> {
+        const tip = await this.provenanceBlockModel.findOne({}, { index: 1 }).sort({ index: -1 }).lean();
+        const upToIndex = tip?.index ?? 0;
+        const rows = await this.provenanceBlockModel.aggregate([
+            { $match: {
+                'data.metadata.stage': 'execution',
+                'data.metadata.aiSystemId': { $type: 'string', $ne: '' },
+                index: { $gt: sinceIndex, $lte: upToIndex },
+            } },
+            { $group: { _id: '$data.metadata.aiSystemId', count: { $sum: 1 } } },
+        ]);
+        return { counts: Object.fromEntries(rows.map((r: any) => [r._id, r.count])), sinceIndex, upToIndex };
+    }
+
+    /**
      * Get all blocks (paginated)
      */
-    async getAllBlocks(page = 1, limit = 20): Promise<any> {
+    async getAllBlocks(page = 1, limit = 20, after?: number): Promise<any> {
+        if (after !== undefined) {
+            // Keyset pagination over the unique index: constant cost per page at any depth,
+            // unlike skip(), which walks every earlier block.
+            const items = await this.provenanceBlockModel.find({ index: { $gt: after } }).sort({ index: 1 }).limit(limit).lean();
+            const total = await this.provenanceBlockModel.estimatedDocumentCount();
+            const nextAfter = items.length === limit ? items[items.length - 1].index : null;
+            return { items, total, limit, after, nextAfter };
+        }
         const skip = (page - 1) * limit;
         const [items, total] = await Promise.all([
             this.provenanceBlockModel.find().sort({ index: 1 }).skip(skip).limit(limit).lean(),
@@ -592,34 +696,46 @@ export class BlockchainService implements OnModuleInit {
      * Verify integrity only for blocks belonging to a specific model
      */
     async verifyModelIntegrity(modelId: string): Promise<{ modelId: string; isValid: boolean; valid: boolean; totalBlocks: number; errors: string[] }> {
-        const modelBlocks = await this.provenanceBlockModel
+        // Streamed over the model_blocks index (constant memory), with each chunk's links to
+        // the previous global block checked in ONE query instead of one query per block.
+        const cursor = this.provenanceBlockModel
             .find({ 'data.modelId': modelId })
             .sort({ index: 1 })
-            .lean();
-
-        if (modelBlocks.length === 0) {
-            return { modelId, isValid: false, valid: false, totalBlocks: 0, errors: [`No blocks found for model ${modelId}`] };
-        }
+            .lean()
+            .cursor();
 
         const errors: string[] = [];
-
-        for (let i = 0; i < modelBlocks.length; i++) {
-            const block = modelBlocks[i];
-            const calculatedHash = this.calculateHash(block);
-
-            if (block.hash !== calculatedHash) {
-                errors.push(`Block ${block.index}: hash mismatch`);
+        let totalBlocks = 0;
+        let chunk: any[] = [];
+        const checkChunk = async () => {
+            if (chunk.length === 0) return;
+            const previous = await this.provenanceBlockModel
+                .find({ index: { $in: chunk.map(b => b.index - 1) } }, { index: 1, hash: 1 })
+                .lean();
+            const hashByIndex = new Map(previous.map((p: any) => [p.index, p.hash]));
+            for (const block of chunk) {
+                if (block.hash !== this.calculateHash(block)) {
+                    errors.push(`Block ${block.index}: hash mismatch`);
+                }
+                const prevHash = hashByIndex.get(block.index - 1);
+                if (prevHash !== undefined && block.previousHash !== prevHash) {
+                    errors.push(`Block ${block.index}: broken link to previous block ${block.index - 1}`);
+                }
             }
-
-            // Verify chain link to previous block in the global chain
-            const prevBlock = await this.provenanceBlockModel.findOne({ index: block.index - 1 }).lean();
-            if (prevBlock && block.previousHash !== prevBlock.hash) {
-                errors.push(`Block ${block.index}: broken link to previous block ${block.index - 1}`);
-            }
+            chunk = [];
+        };
+        for await (const block of cursor as any) {
+            totalBlocks += 1;
+            chunk.push(block);
+            if (chunk.length >= 1000) await checkChunk();
         }
+        await checkChunk();
 
+        if (totalBlocks === 0) {
+            return { modelId, isValid: false, valid: false, totalBlocks: 0, errors: [`No blocks found for model ${modelId}`] };
+        }
         const isValid = errors.length === 0;
-        return { modelId, isValid, valid: isValid, totalBlocks: modelBlocks.length, errors };
+        return { modelId, isValid, valid: isValid, totalBlocks, errors };
     }
 
     /**
@@ -751,6 +867,13 @@ export class BlockchainService implements OnModuleInit {
      * Check last anchor and decides to anchor a new one
      */
     async maybeAnchorNew() {
+        // Called after every append. Without this guard, a burst of appends made many
+        // concurrent calls all see "enough new blocks" before the first anchor was stored,
+        // each sending its own anchor transaction (duplicate on-chain cost, nonce clashes,
+        // and a request flood against the RPC provider).
+        if (this.anchorInFlight) {
+            return { anchored: false, reason: 'Anchoring already in progress.' };
+        }
         const provider = this.getAnchorProvider();
         if (!provider) {
             return { anchored: false, reason: 'Anchoring is not configured.' };
@@ -774,9 +897,15 @@ export class BlockchainService implements OnModuleInit {
             return { anchored: false, reason: `Not enough new blocks (${newBlocks}), wait for ${anchorEveryNBlocks}.` };
         }
 
-        return provider === 'ots'
-            ? await this.anchorMerkleRootToOts()
-            : await this.anchorMerkleRootToEthereum();
+        try {
+            return provider === 'ots'
+                ? await this.anchorMerkleRootToOts()
+                : await this.anchorMerkleRootToEthereum();
+        } catch (e) {
+            // Another append won the race to start the anchor: nothing to do.
+            if (e instanceof ConflictException) return { anchored: false, reason: 'Anchoring already in progress.' };
+            throw e;
+        }
     }
 
     /**
@@ -785,7 +914,30 @@ export class BlockchainService implements OnModuleInit {
      * upgrade cycle completes it once the calendars aggregate into a mined Bitcoin
      * block (typically hours). No wallet, no keys, no cost.
      */
+    /** Anchors run one at a time per process; a second request while one is in flight is refused. */
+    private anchorInFlight = false;
+
+    private async exclusiveAnchor<T>(run: () => Promise<T>): Promise<T> {
+        if (this.anchorInFlight) {
+            throw new ConflictException('An anchor is already in progress; retry once it completes.');
+        }
+        this.anchorInFlight = true;
+        try {
+            return await run();
+        } finally {
+            this.anchorInFlight = false;
+        }
+    }
+
     async anchorMerkleRootToOts(): Promise<any> {
+        return this.exclusiveAnchor(() => this.doAnchorMerkleRootToOts());
+    }
+
+    async anchorMerkleRootToEthereum(): Promise<any> {
+        return this.exclusiveAnchor(() => this.doAnchorMerkleRootToEthereum());
+    }
+
+    private async doAnchorMerkleRootToOts(): Promise<any> {
         const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
         if (!lastBlock) {
             throw new Error('No blocks found to anchor');
@@ -869,7 +1021,7 @@ export class BlockchainService implements OnModuleInit {
     /**
      * Anchor Merkle root in Ethereum testnet
      */
-    async anchorMerkleRootToEthereum(): Promise<any> {
+    private async doAnchorMerkleRootToEthereum(): Promise<any> {
         const config = this.getAnchorConfig(true)!;
         const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
         if (!lastBlock) {
@@ -880,7 +1032,7 @@ export class BlockchainService implements OnModuleInit {
         // transaction is in flight would make the stored root cover more blocks than
         // lastBlockIndex records, and no inclusion proof could ever reproduce it.
         const merkleRoot = await this.getMerkleRoot(lastBlock.index);
-        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+        const provider = rpcProvider(config.rpcUrl);
         const wallet = new ethers.Wallet(config.privateKey, provider);
         const contract = new ethers.Contract(config.contractAddress, anchorAbi, wallet);
 
@@ -964,7 +1116,7 @@ export class BlockchainService implements OnModuleInit {
         let error: string | undefined;
 
         try {
-            const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+            const provider = rpcProvider(config.rpcUrl);
             const [network, blockNumber] = await Promise.all([
                 provider.getNetwork(),
                 provider.getBlockNumber(),

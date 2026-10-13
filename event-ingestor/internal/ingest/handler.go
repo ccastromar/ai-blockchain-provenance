@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -107,6 +108,31 @@ func providerFromPath(path string) string {
 	}
 }
 
+var errBacklogFull = errors.New("event backlog full")
+
+// enqueue adds an event to the incoming stream without trimming it: entries are only
+// removed once the worker has processed them (see Worker.trimAcknowledged). When the
+// backlog is already at RedisMaxBacklog the event is refused (503, Retry-After) rather than
+// accepted and later dropped — a sender with a retrying outbox (Prudence) just tries again.
+func (h Handler) enqueue(ctx context.Context, fields map[string]string) (string, error) {
+	if h.cfg.RedisMaxBacklog > 0 {
+		if n, err := h.stream.XLen(ctx, h.cfg.RedisStream); err == nil && n >= h.cfg.RedisMaxBacklog {
+			return "", errBacklogFull
+		}
+	}
+	return h.stream.XAdd(ctx, h.cfg.RedisStream, 0, fields)
+}
+
+func writeEnqueueError(w http.ResponseWriter, err error, message string) {
+	if errors.Is(err, errBacklogFull) {
+		metrics.EventsRejected.WithLabelValues("any", "backpressure").Inc()
+		w.Header().Set("Retry-After", "1")
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "event backlog full, retry later"})
+		return
+	}
+	writeJSON(w, http.StatusBadGateway, map[string]string{"error": message})
+}
+
 func (h Handler) health(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
@@ -161,7 +187,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		Headers:       selectedHeaders(r),
 	}
 
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        event.Source,
 		"eventType":     event.EventType,
 		"sourceEventId": event.SourceEventID,
@@ -170,7 +196,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		"payload":       string(normalizedBody),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue event"})
+		writeEnqueueError(w, err, "could not enqueue event")
 		return
 	}
 
@@ -230,7 +256,7 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -239,7 +265,7 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue CloudEvents event"})
+		writeEnqueueError(w, err, "could not enqueue CloudEvents event")
 		return
 	}
 
@@ -308,7 +334,7 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 	if verificationStatus == "provider_secret" {
 		attachTransportAuth(adapted.Payload, transportStatus)
 	}
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -317,7 +343,7 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue Hugging Face event"})
+		writeEnqueueError(w, err, "could not enqueue Hugging Face event")
 		return
 	}
 
@@ -373,7 +399,7 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 
 	adapted := sagemaker.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -382,7 +408,7 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue SageMaker event"})
+		writeEnqueueError(w, err, "could not enqueue SageMaker event")
 		return
 	}
 
@@ -438,7 +464,7 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 
 	adapted := azureml.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -447,7 +473,7 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue Azure ML event"})
+		writeEnqueueError(w, err, "could not enqueue Azure ML event")
 		return
 	}
 
@@ -503,7 +529,7 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 
 	adapted := databricks.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -512,7 +538,7 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue Databricks event"})
+		writeEnqueueError(w, err, "could not enqueue Databricks event")
 		return
 	}
 
@@ -568,7 +594,7 @@ func (h Handler) vertexAI(w http.ResponseWriter, r *http.Request) {
 
 	adapted := vertexai.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -577,7 +603,7 @@ func (h Handler) vertexAI(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue Vertex AI event"})
+		writeEnqueueError(w, err, "could not enqueue Vertex AI event")
 		return
 	}
 
@@ -633,7 +659,7 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 
 	adapted := openlineage.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -642,7 +668,7 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 		"payload":       mustJSON(adapted.Payload),
 	})
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue OpenLineage event"})
+		writeEnqueueError(w, err, "could not enqueue OpenLineage event")
 		return
 	}
 
@@ -705,7 +731,7 @@ func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
 	streamIDs := make([]string, 0, len(adaptedEvents))
 	for _, adapted := range adaptedEvents {
 		attachVerification(adapted.Payload, verificationStatus)
-		id, err := h.stream.XAdd(context.Background(), h.cfg.RedisStream, h.cfg.RedisMaxLen, map[string]string{
+		id, err := h.enqueue(context.Background(), map[string]string{
 			"source":        adapted.Source,
 			"eventType":     adapted.EventType,
 			"sourceEventId": adapted.SourceEventID,
@@ -714,7 +740,7 @@ func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
 			"payload":       mustJSON(adapted.Payload),
 		})
 		if err != nil {
-			writeJSON(w, http.StatusBadGateway, map[string]string{"error": "could not enqueue OpenTelemetry log event"})
+			writeEnqueueError(w, err, "could not enqueue OpenTelemetry log event")
 			return
 		}
 		streamIDs = append(streamIDs, id)
@@ -863,7 +889,7 @@ func (h Handler) recordRejected(r *http.Request, source string, eventType string
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second)
 	defer cancel()
-	_, _ = h.stream.XAdd(ctx, h.cfg.RedisRejectedStream, h.cfg.RedisMaxLen, map[string]string{
+	_, _ = h.stream.XAdd(ctx, h.cfg.RedisRejectedStream, 0, map[string]string{
 		"source":          source,
 		"eventType":       eventType,
 		"error":           reason,
@@ -883,7 +909,7 @@ func (h Handler) recordValidationRejected(r *http.Request, source string, eventT
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), time.Second)
 	defer cancel()
-	_, _ = h.stream.XAdd(ctx, h.cfg.RedisRejectedStream, h.cfg.RedisMaxLen, map[string]string{
+	_, _ = h.stream.XAdd(ctx, h.cfg.RedisRejectedStream, 0, map[string]string{
 		"source":        source,
 		"eventType":     firstNonEmpty(eventType, "unknown"),
 		"sourceEventId": hash(body),

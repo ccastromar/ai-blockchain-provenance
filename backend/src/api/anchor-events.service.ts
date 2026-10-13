@@ -1,6 +1,7 @@
 // src/anchor-events/anchor-events.service.ts
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ethers } from 'ethers';
+import { rpcProvider } from '../blockchain/rpc-provider';
 import abiJson from '../abis/ErnestMerkleAnchor.json'; // Usa el ABI generado por Hardhat
 const abi = abiJson.abi;
 
@@ -19,7 +20,7 @@ export class AnchorEventsService {
             return;
         }
 
-        this.provider = new ethers.JsonRpcProvider(sepoliaUrl);
+        this.provider = rpcProvider(sepoliaUrl);
         this.contract = new ethers.Contract(contractAddress, abi, this.provider);
     }
 

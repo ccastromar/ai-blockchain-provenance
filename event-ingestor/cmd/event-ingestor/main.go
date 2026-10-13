@@ -39,7 +39,7 @@ func main() {
 }
 
 func runServer(ctx context.Context, cfg config.Config) {
-	stream := redisstream.NewClient(cfg.RedisAddr, cfg.RedisPassword)
+	stream := redisstream.NewClientWithPool(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisPoolSize)
 	handler := ingest.NewHandler(stream, cfg)
 
 	go handler.RunRateLimitCleanup(ctx)
@@ -87,7 +87,7 @@ func runWorker(ctx context.Context, cfg config.Config) {
 		}
 	}()
 
-	stream := redisstream.NewClient(cfg.RedisAddr, cfg.RedisPassword)
+	stream := redisstream.NewClientWithPool(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisPoolSize)
 	writer := hashchain.NewMongoWriter(client.Database(cfg.MongoDatabase))
 	runner := worker.New(stream, writer, cfg)
 

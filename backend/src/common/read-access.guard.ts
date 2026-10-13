@@ -37,7 +37,9 @@ export class ReadAccessGuard implements CanActivate {
     const actualKey = Array.isArray(headerValue) ? headerValue[0] : headerValue;
     const bearer = bearerFrom(request.headers.authorization);
 
-    const access = await resolveAccess(actualKey, this.tokenService, { bearer, oidc: this.oidcService });
+    // Already resolved by AccessResolutionMiddleware for this request; resolve here only if
+    // the middleware did not run (e.g. a guard used outside the HTTP pipeline).
+    const access = request.ernestAccess ?? await resolveAccess(actualKey, this.tokenService, { bearer, oidc: this.oidcService });
     if (access.role === 'anonymous') {
       throw new UnauthorizedException('Invalid or missing Ernest credential');
     }

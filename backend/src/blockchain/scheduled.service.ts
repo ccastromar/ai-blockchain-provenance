@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ethers } from 'ethers';
+import { rpcProvider } from './rpc-provider';
 import { Anchor, AnchorDocument } from './models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckDocument } from './models/integrity-check.schema';
 import { Model } from 'mongoose';
@@ -211,7 +212,7 @@ export class ScheduledBlockchainService implements OnModuleInit {
       return;
     }
 
-    const provider = new ethers.JsonRpcProvider(process.env.INFURA_URL!);
+    const provider = rpcProvider(process.env.INFURA_URL!);
     this.logger.debug(`Checking ${pending.length} pending anchors...`);
 
     for (const anchor of pending) {

@@ -59,6 +59,8 @@ func (w Worker) Run(ctx context.Context) error {
 	log.Printf("worker reading stream=%s rejectedStream=%s group=%s consumer=%s", w.cfg.RedisStream, w.cfg.RedisRejectedStream, w.cfg.RedisGroup, w.cfg.RedisConsumer)
 	reclaimInterval := time.Duration(w.cfg.WorkerReclaimIntervalMS) * time.Millisecond
 	lastReclaim := time.Now()
+	trimInterval := time.Duration(w.cfg.WorkerTrimIntervalMS) * time.Millisecond
+	lastTrim := time.Now()
 	for {
 		select {
 		case <-ctx.Done():
@@ -77,6 +79,11 @@ func (w Worker) Run(ctx context.Context) error {
 			lastReclaim = time.Now()
 		}
 
+		if trimInterval > 0 && time.Since(lastTrim) >= trimInterval {
+			w.trimAcknowledged(ctx)
+			lastTrim = time.Now()
+		}
+
 		messages, err := w.stream.XReadGroup(ctx, w.cfg.RedisGroup, w.cfg.RedisConsumer, w.cfg.RedisStream, w.cfg.WorkerBatchCount, w.cfg.WorkerBlockMS)
 		if err != nil {
 			log.Printf("redis read failed: %v", err)
@@ -85,6 +92,26 @@ func (w Worker) Run(ctx context.Context) error {
 		}
 		for _, message := range messages {
 			w.handleMessage(ctx, message)
+		}
+	}
+}
+
+// trimmer is implemented by the Redis client; kept optional so test doubles of
+// StreamClient need not implement it.
+type trimmer interface {
+	TrimAcknowledged(ctx context.Context, stream string, group string) (int64, error)
+}
+
+// trimAcknowledged keeps the incoming and rejected streams bounded by removing only what
+// the group has processed. Producers no longer trim (MAXLEN dropped unprocessed events).
+func (w Worker) trimAcknowledged(ctx context.Context) {
+	t, ok := w.stream.(trimmer)
+	if !ok {
+		return
+	}
+	for _, stream := range []string{w.cfg.RedisStream, w.cfg.RedisRejectedStream} {
+		if _, err := t.TrimAcknowledged(ctx, stream, w.cfg.RedisGroup); err != nil {
+			log.Printf("trim of acknowledged entries in %s failed: %v", stream, err)
 		}
 	}
 }

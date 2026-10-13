@@ -12,10 +12,28 @@ import (
 	"time"
 )
 
+// Client speaks RESP over a small pool of persistent connections. It used to dial a new
+// TCP connection per command; at a few thousand events/s that exhausted the host's
+// ephemeral ports (connections pile up in TIME_WAIT) and the ingestor answered 502.
 type Client struct {
 	addr     string
 	password string
+	idle     chan *conn
 }
+
+type conn struct {
+	net.Conn
+	reader *bufio.Reader
+}
+
+// ServerError is an error reply from Redis (a "-ERR ..." line). The connection that
+// carried it is still healthy and goes back to the pool; transport errors do not.
+type ServerError string
+
+func (e ServerError) Error() string { return string(e) }
+
+// DefaultPoolSize is how many idle connections the client keeps for reuse.
+const DefaultPoolSize = 32
 
 type Message struct {
 	ID     string
@@ -23,7 +41,14 @@ type Message struct {
 }
 
 func NewClient(addr string, password string) *Client {
-	return &Client{addr: addr, password: password}
+	return NewClientWithPool(addr, password, DefaultPoolSize)
+}
+
+func NewClientWithPool(addr string, password string, poolSize int) *Client {
+	if poolSize < 1 {
+		poolSize = 1
+	}
+	return &Client{addr: addr, password: password, idle: make(chan *conn, poolSize)}
 }
 
 func (c *Client) XAdd(ctx context.Context, stream string, maxLen int64, fields map[string]string) (string, error) {
@@ -94,37 +119,144 @@ func (c *Client) XAutoClaim(ctx context.Context, stream string, group string, co
 }
 
 func (c *Client) command(ctx context.Context, args ...string) (any, error) {
-	var dialer net.Dialer
-	conn, err := dialer.DialContext(ctx, "tcp", c.addr)
+	cn, reused, err := c.get(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer conn.Close()
-
-	deadline, ok := ctx.Deadline()
-	if ok {
-		_ = conn.SetDeadline(deadline)
-	} else {
-		_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
-	}
-
-	reader := bufio.NewReader(conn)
-	if c.password != "" {
-		if err := writeCommand(conn, []string{"AUTH", c.password}); err != nil {
+	reply, err := c.roundTrip(ctx, cn, args)
+	if err != nil && reused && !isServerError(err) {
+		// An idle connection the server had already closed fails on first use: retry once
+		// on a fresh one. (A duplicated XADD in that narrow window is harmless: the worker
+		// deduplicates by source event id.)
+		cn.Close()
+		if cn, _, err = c.dial(ctx); err != nil {
 			return nil, err
 		}
-		if _, err := readRESP(reader); err != nil {
-			return nil, err
-		}
+		reply, err = c.roundTrip(ctx, cn, args)
 	}
-
-	if err := writeCommand(conn, args); err != nil {
+	if err != nil && !isServerError(err) {
+		cn.Close()
 		return nil, err
 	}
-	return readRESP(reader)
+	c.put(cn)
+	return reply, err
 }
 
-func writeCommand(conn net.Conn, args []string) error {
+func (c *Client) roundTrip(ctx context.Context, cn *conn, args []string) (any, error) {
+	deadline, ok := ctx.Deadline()
+	if !ok {
+		deadline = time.Now().Add(30 * time.Second)
+	}
+	_ = cn.SetDeadline(deadline)
+	if err := writeCommand(cn, args); err != nil {
+		return nil, err
+	}
+	reply, err := readRESP(cn.reader)
+	_ = cn.SetDeadline(time.Time{})
+	return reply, err
+}
+
+func (c *Client) get(ctx context.Context) (*conn, bool, error) {
+	select {
+	case cn := <-c.idle:
+		return cn, true, nil
+	default:
+	}
+	cn, _, err := c.dial(ctx)
+	return cn, false, err
+}
+
+func (c *Client) put(cn *conn) {
+	select {
+	case c.idle <- cn:
+	default:
+		cn.Close() // pool full
+	}
+}
+
+func (c *Client) dial(ctx context.Context) (*conn, bool, error) {
+	var dialer net.Dialer
+	nc, err := dialer.DialContext(ctx, "tcp", c.addr)
+	if err != nil {
+		return nil, false, err
+	}
+	cn := &conn{Conn: nc, reader: bufio.NewReader(nc)}
+	if c.password != "" {
+		if _, err := c.roundTrip(ctx, cn, []string{"AUTH", c.password}); err != nil {
+			nc.Close()
+			return nil, false, err
+		}
+	}
+	return cn, false, nil
+}
+
+func isServerError(err error) bool {
+	var se ServerError
+	return errors.As(err, &se)
+}
+
+// XLen returns the number of entries in the stream (0 if it does not exist).
+func (c *Client) XLen(ctx context.Context, stream string) (int64, error) {
+	reply, err := c.command(ctx, "XLEN", stream)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := reply.(int64)
+	return n, nil
+}
+
+// TrimAcknowledged removes the entries of a stream that the consumer group has already
+// processed — everything older than the oldest pending entry, or than the group's last
+// delivered entry when nothing is pending — and nothing else. It replaces MAXLEN trimming,
+// which dropped events nobody had processed yet once the stream outgrew the cap.
+func (c *Client) TrimAcknowledged(ctx context.Context, stream string, group string) (int64, error) {
+	minID, err := c.oldestUnacknowledged(ctx, stream, group)
+	if err != nil || minID == "" || minID == "0-0" {
+		return 0, err
+	}
+	reply, err := c.command(ctx, "XTRIM", stream, "MINID", minID)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := reply.(int64)
+	return n, nil
+}
+
+func (c *Client) oldestUnacknowledged(ctx context.Context, stream string, group string) (string, error) {
+	// XPENDING summary: [count, smallest-id, greatest-id, consumers]
+	pending, err := c.command(ctx, "XPENDING", stream, group)
+	if err != nil {
+		return "", err
+	}
+	if items, ok := pending.([]any); ok && len(items) >= 2 {
+		if count, _ := items[0].(int64); count > 0 {
+			if smallest, _ := items[1].(string); smallest != "" {
+				return smallest, nil
+			}
+		}
+	}
+	// Nothing pending: everything up to the group's last delivered id has been acknowledged.
+	groups, err := c.command(ctx, "XINFO", "GROUPS", stream)
+	if err != nil {
+		return "", err
+	}
+	list, _ := groups.([]any)
+	for _, g := range list {
+		fields, _ := g.([]any)
+		info := map[string]any{}
+		for i := 0; i+1 < len(fields); i += 2 {
+			key, _ := fields[i].(string)
+			info[key] = fields[i+1]
+		}
+		if name, _ := info["name"].(string); name == group {
+			last, _ := info["last-delivered-id"].(string)
+			return last, nil
+		}
+	}
+	return "", nil
+}
+
+func writeCommand(conn io.Writer, args []string) error {
 	var builder strings.Builder
 	builder.WriteString("*")
 	builder.WriteString(strconv.Itoa(len(args)))
@@ -155,7 +287,7 @@ func readRESP(reader *bufio.Reader) (any, error) {
 	case '+':
 		return line, nil
 	case '-':
-		return nil, errors.New(line)
+		return nil, ServerError(line)
 	case ':':
 		return strconv.ParseInt(line, 10, 64)
 	case '$':

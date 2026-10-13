@@ -17,4 +17,11 @@ export class PaginationDto {
   @Min(1)
   @Max(200)
   limit: number = 20;
+
+  @ApiPropertyOptional({ description: 'Keyset cursor: return blocks with index > after (use `nextAfter` from the previous page). Constant cost at any depth; `page` is ignored when set.', example: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(-1)
+  after?: number;
 }
