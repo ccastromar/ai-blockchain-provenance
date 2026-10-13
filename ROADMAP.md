@@ -45,6 +45,13 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 
 ## Next — engineering a pilot would pull
 
+- ✅ **Scale fixes, phase 0** (load-tested with Prudence): per-credential throttling, crash-safe
+  anchoring, incremental verify, indexed reads, batch submissions, lossless ingestor with
+  backpressure. Evidence delivery from one client went from 1.6/s to ~1,400/s.
+- 🔜 **Merkle-batched evidence** — one chain block per batch, every event still individually
+  provable; lifts the serialized-append ceiling and adds idempotent submission.
+  Design: [docs/adr-004-merkle-batched-evidence.md](docs/adr-004-merkle-batched-evidence.md) (Proposed).
+
 - 🔜 **Signed submissions v1.1 — the ingestor path.** ADR-001 covers direct API writes;
   events coming through the Go ingestor (HF/SageMaker/…) still use the HMAC channel
   ladder. Needs its own "signed subset" contract because adapters enrich payloads.
