@@ -29,6 +29,7 @@ var (
 	verifyAPIURL string
 	verifyAPIKey string
 	verifyFile   string
+	verifyEvents string
 )
 
 var verifyCmd = &cobra.Command{
@@ -76,6 +77,22 @@ credentials involved.`,
 				numErrors++
 			}
 		}
+
+		if hasBatchBlocks(blocks) {
+			events, err := loadEvents()
+			if err != nil {
+				return err
+			}
+			batchErrs := verifyBatches(blocks, events)
+			for _, err := range batchErrs {
+				fmt.Printf("Error verificación: %v\n", err)
+			}
+			numErrors += len(batchErrs)
+			if len(batchErrs) == 0 {
+				fmt.Printf("Batches ADR-004: raíces re-derivadas de %d eventos\n", len(events))
+			}
+		}
+
 		if numErrors > 0 {
 			return fmt.Errorf("%d bloques inválidos detectados", numErrors)
 		}
@@ -119,6 +136,28 @@ func loadBlocks() ([]map[string]interface{}, error) {
 		return nil, fmt.Errorf("error obteniendo bloques desde repo: %w", err)
 	}
 	return results, nil
+}
+
+// loadEvents fetches ADR-004 batched events from the same kind of source as the blocks.
+func loadEvents() ([]batchEvent, error) {
+	if verifyFile != "" {
+		if verifyEvents == "" {
+			return nil, fmt.Errorf("la cadena contiene bloques batch (ADR-004): pase también --events con el export de GET /api/events/export")
+		}
+		return loadEventsFromFile(verifyEvents)
+	}
+	apiURL := verifyAPIURL
+	if apiURL == "" {
+		apiURL = os.Getenv("ERNEST_URL")
+	}
+	if apiURL != "" {
+		apiKey := verifyAPIKey
+		if apiKey == "" {
+			apiKey = os.Getenv("ERNEST_API_KEY")
+		}
+		return loadEventsFromAPI(strings.TrimRight(apiURL, "/"), apiKey)
+	}
+	return loadEventsFromMongo()
 }
 
 func verifyBlock(blocks []Block, i int) error {
@@ -210,5 +249,6 @@ func init() {
 	verifyCmd.Flags().StringVar(&verifyAPIURL, "api", "", "Ernest API base URL (e.g. http://localhost:3001); defaults to $ERNEST_URL")
 	verifyCmd.Flags().StringVar(&verifyAPIKey, "key", "", "Ernest API key for --api mode (read-only key suffices); defaults to $ERNEST_API_KEY")
 	verifyCmd.Flags().StringVar(&verifyFile, "file", "", "verify an offline export bundle (GET /api/blocks/export) instead of a live source")
+	verifyCmd.Flags().StringVar(&verifyEvents, "events", "", "with --file: events export (GET /api/events/export), required when the chain has ADR-004 batch blocks")
 	HashchainCmd.AddCommand(verifyCmd)
 }

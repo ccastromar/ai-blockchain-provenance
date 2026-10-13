@@ -2,7 +2,9 @@ use wasm_bindgen::prelude::*;
 use sha2::{Sha256, Digest};
 
 pub mod canonical;
+pub mod event_proof;
 pub mod receipt;
+pub mod rfc6962;
 pub mod signing;
 
 /// Verify an Ernest evidence receipt (GET /api/blocks/:index/proof) fully
@@ -13,6 +15,17 @@ pub mod signing;
 #[wasm_bindgen]
 pub fn verify_receipt(receipt_json: &str) -> String {
     let verification = receipt::verify_receipt_json(receipt_json);
+    serde_json::to_string(&verification)
+        .unwrap_or_else(|e| format!("{{\"valid\":false,\"error\":\"serialize: {}\"}}", e))
+}
+
+/// Verify an ADR-004 event proof (GET /api/events/{source}/{eventId}/proof) fully
+/// offline: event data → RFC 6962 leaf → audit path → batch root in the block
+/// (pinned by testdata/rfc6962-golden.json), the block hash, and the anchor path
+/// when present. Returns a JSON verdict object.
+#[wasm_bindgen]
+pub fn verify_event_proof(proof_json: &str) -> String {
+    let verification = event_proof::verify_event_proof_json(proof_json);
     serde_json::to_string(&verification)
         .unwrap_or_else(|e| format!("{{\"valid\":false,\"error\":\"serialize: {}\"}}", e))
 }

@@ -23,6 +23,8 @@ var ErrDuplicateEvent = errors.New("duplicate ingested event")
 
 type MongoWriter struct {
 	db *mongo.Database
+	// ADR-004: record events for the backend's batcher instead of appending blocks.
+	recordEvents bool
 }
 
 type Block struct {
@@ -35,6 +37,18 @@ type Block struct {
 
 func NewMongoWriter(db *mongo.Database) MongoWriter {
 	return MongoWriter{db: db}
+}
+
+// WithEvidenceBatching switches the writer to the ADR-004 event store when mode is
+// "events" or "on" (the backend's EVIDENCE_BATCHING): AppendEvent then inserts into
+// evidence_events and returns a Block with Index -1, and the backend's leased batcher
+// chains it -- one serialized writer for the whole chain instead of one per process.
+func (w MongoWriter) WithEvidenceBatching(mode string) MongoWriter {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "events", "on":
+		w.recordEvents = true
+	}
+	return w
 }
 
 func (w MongoWriter) EnsureIndexes(ctx context.Context) error {
@@ -124,6 +138,15 @@ func (w MongoWriter) AppendEvent(ctx context.Context, event events.CanonicalEven
 	}
 	data = normalized.(map[string]any)
 
+	if w.recordEvents {
+		if err := w.recordEvidenceEvent(ctx, event, data); err != nil {
+			return Block{}, err
+		}
+		_ = w.upsertAIModel(ctx, event)
+		_ = w.markRecorded(ctx, event)
+		return Block{Index: -1}, nil
+	}
+
 	for attempt := 1; attempt <= maxAppendRetries; attempt++ {
 		block, err := w.appendOnce(ctx, data)
 		if err == nil {
@@ -209,6 +232,77 @@ func (w MongoWriter) markAppended(ctx context.Context, event events.CanonicalEve
 				"appendedAt": time.Now().UTC(),
 			},
 		},
+	)
+	return err
+}
+
+// EvidenceEventID is the ADR-004 eventId of an ingested event: unique per source together
+// with the event type, mirroring the (source, sourceEventId, eventType) dedup key.
+func EvidenceEventID(event events.CanonicalEvent) string {
+	if eventType, _ := event.Metadata["eventType"].(string); eventType != "" {
+		return eventType + ":" + event.SourceEventID
+	}
+	return event.SourceEventID
+}
+
+// LeafHash is the ADR-004 RFC 6962 leaf: SHA-256(0x00 || JCS(data)), hex. Must match
+// backend/src/blockchain/merkle-rfc6962.ts (pinned by testdata/rfc6962-golden.json).
+func LeafHash(data map[string]any) (string, error) {
+	canonical, err := CanonicalJSON(data)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(append([]byte{0x00}, canonical...))
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// recordEvidenceEvent stores the event pending, with exactly the data a block would
+// carry. The backend's batcher assigns its seq and chains it.
+func (w MongoWriter) recordEvidenceEvent(ctx context.Context, event events.CanonicalEvent, data map[string]any) error {
+	leaf, err := LeafHash(data)
+	if err != nil {
+		return err
+	}
+	opCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	now := time.Now().UTC()
+	doc := bson.M{
+		"source":    event.Source,
+		"eventId":   EvidenceEventID(event),
+		"data":      data,
+		"leafHash":  leaf,
+		"state":     "pending",
+		"createdAt": now,
+		"updatedAt": now,
+	}
+	if modelID, _ := data["modelId"].(string); modelID != "" {
+		doc["modelId"] = modelID
+	}
+	if eventType, _ := data["type"].(string); eventType != "" {
+		doc["type"] = eventType
+	}
+	_, err = w.db.Collection("evidence_events").InsertOne(opCtx, doc)
+	if err != nil && isDuplicateKey(err) {
+		return ErrDuplicateEvent
+	}
+	return err
+}
+
+func (w MongoWriter) markRecorded(ctx context.Context, event events.CanonicalEvent) error {
+	opCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := w.db.Collection("ingested_events").UpdateOne(
+		opCtx,
+		bson.M{
+			"source":        event.Source,
+			"sourceEventId": event.SourceEventID,
+			"eventType":     event.Metadata["eventType"],
+		},
+		bson.M{"$set": bson.M{
+			"status":          "recorded",
+			"evidenceEventId": EvidenceEventID(event),
+			"recordedAt":      time.Now().UTC(),
+		}},
 	)
 	return err
 }

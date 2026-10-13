@@ -509,14 +509,12 @@ export class BlockchainService implements OnModuleInit {
             .sort({ index: 1 })
             .lean();
 
-        const verification = await this.verifyChain();
+        // Incremental from the trusted checkpoint: a provenance read must not re-hash the
+        // whole chain (the full scan stays available as GET /api/verify?mode=full).
+        const verification = await this.verifyChainFromCheckpoint();
+        const events = await this.batchedEventHistory(modelId, filters);
 
-        return {
-            modelId,
-            totalBlocks: blocks.length,
-            chainValid: verification.isValid,
-            verificationErrors: verification.errors,
-            history: blocks.map(b => ({
+        const blockHistory = blocks.map(b => ({
                 blockIndex: b.index,
                 timestamp: new Date(b.timestamp * 1000).toISOString(),
                 timestampUnix: b.timestamp,
@@ -534,8 +532,81 @@ export class BlockchainService implements OnModuleInit {
                 organizationId: b.data.organizationId,
                 blockHash: b.hash,
                 previousHash: b.previousHash
-            }))
+            }));
+        const history = [...blockHistory, ...events].sort((a: any, b: any) =>
+            (a.blockIndex ?? Infinity) - (b.blockIndex ?? Infinity) || (a.leafIndex ?? 0) - (b.leafIndex ?? 0));
+
+        return {
+            modelId,
+            totalBlocks: history.length,
+            chainValid: verification.isValid,
+            verificationErrors: verification.errors,
+            history,
         };
+    }
+
+    /**
+     * ADR-004: events that do not have a block of their own -- chained inside a batch
+     * block, or not chained yet. Events chained one-per-block (EVIDENCE_BATCHING=events)
+     * are excluded: the block itself already represents them.
+     */
+    private notOwnBlock(extra: Record<string, any> = {}): Record<string, any> {
+        return { ...extra, $or: [{ state: { $ne: 'chained' } }, { 'chain.kind': 'batch' }] };
+    }
+
+    /**
+     * Provenance entries for a model's batched and pending events, in the same shape as
+     * block entries (the batch block's index/timestamp/hash) plus seq, leafIndex and a
+     * proof URL. Pending events carry no block fields and sort last.
+     */
+    private async batchedEventHistory(modelId: string, filters?: { type?: string; from?: number; to?: number; organizationId?: string }) {
+        if (!this.evidenceEventModel) return [];
+        const query: any = this.notOwnBlock({ modelId });
+        if (filters?.type) query.type = filters.type;
+        if (filters?.organizationId) query['data.organizationId'] = filters.organizationId;
+        const events = await this.evidenceEventModel.find(query).sort({ seq: 1 }).lean();
+        if (events.length === 0) return [];
+
+        const blockIndexes = [...new Set(events.map((e: any) => e.blockIndex).filter((i: any) => i !== undefined))];
+        const blocks = await this.provenanceBlockModel
+            .find({ index: { $in: blockIndexes } }, { index: 1, timestamp: 1, hash: 1, previousHash: 1 })
+            .lean();
+        const byIndex = new Map(blocks.map((b: any) => [b.index, b]));
+
+        return events
+            .map((e: any) => {
+                const block: any = e.state === 'chained' ? byIndex.get(e.blockIndex) : undefined;
+                const d = e.data;
+                return {
+                    blockIndex: block?.index,
+                    timestamp: block ? new Date(block.timestamp * 1000).toISOString() : undefined,
+                    timestampUnix: block?.timestamp,
+                    type: d.type,
+                    modelId: d.modelId,
+                    modelName: d.modelName,
+                    version: d.version,
+                    modelHash: d.modelHash,
+                    gitCommit: d.gitCommit,
+                    inputHash: d.inputHash,
+                    outputHash: d.outputHash,
+                    params: d.params,
+                    metrics: d.metrics,
+                    metadata: d.metadata,
+                    organizationId: d.organizationId,
+                    blockHash: block?.hash,
+                    previousHash: block?.previousHash,
+                    status: block ? 'chained' : 'pending',
+                    seq: e.seq,
+                    leafIndex: block ? e.leafIndex : undefined,
+                    leafHash: e.leafHash,
+                    proofUrl: `/api/events/${encodeURIComponent(e.source)}/${encodeURIComponent(e.eventId)}/proof`,
+                };
+            })
+            .filter((h: any) => {
+                if (!filters?.from && !filters?.to) return true;
+                if (h.timestampUnix === undefined) return false;
+                return (!filters.from || h.timestampUnix >= filters.from) && (!filters.to || h.timestampUnix <= filters.to);
+            });
     }
 
     /**
@@ -547,7 +618,12 @@ export class BlockchainService implements OnModuleInit {
         const totalBlocks = await this.provenanceBlockModel.estimatedDocumentCount();
         const lastBlock = await this.provenanceBlockModel.findOne().sort({ index: -1 }).lean();
         const verification = await this.verifyChainFromCheckpoint();
-        const modelCount = await this.provenanceBlockModel.distinct('data.modelId');
+        const modelIds = new Set<string>(await this.provenanceBlockModel.distinct('data.modelId'));
+        if (this.evidenceEventModel) {
+            for (const id of await this.evidenceEventModel.distinct('modelId')) modelIds.add(id);
+        }
+        // Batch blocks carry no modelId; distinct reports that as null.
+        const modelCount = [...modelIds].filter(id => id !== null && id !== undefined);
         const lastAnchor = await this.anchorModel.findOne().sort({ lastBlockIndex: -1 }).lean();
 
         return {
@@ -708,6 +784,13 @@ export class BlockchainService implements OnModuleInit {
         ]);
         const counts: Record<string, number> = Object.fromEntries(modelIds.map(id => [id, 0]));
         for (const r of rows) counts[r._id] = r.count;
+        if (this.evidenceEventModel) {
+            const eventRows = await this.evidenceEventModel.aggregate([
+                { $match: this.notOwnBlock({ modelId: { $in: modelIds } }) },
+                { $group: { _id: '$modelId', count: { $sum: 1 } } },
+            ]);
+            for (const r of eventRows) counts[r._id] = (counts[r._id] ?? 0) + r.count;
+        }
         return { counts };
     }
 
@@ -727,7 +810,23 @@ export class BlockchainService implements OnModuleInit {
             } },
             { $group: { _id: '$data.metadata.aiSystemId', count: { $sum: 1 } } },
         ]);
-        return { counts: Object.fromEntries(rows.map((r: any) => [r._id, r.count])), sinceIndex, upToIndex };
+        const counts: Record<string, number> = Object.fromEntries(rows.map((r: any) => [r._id, r.count]));
+        if (this.evidenceEventModel) {
+            // Batched executions count by their batch block's index, so the same
+            // (since, upTo] window stays exact; pending ones are counted once chained.
+            const eventRows = await this.evidenceEventModel.aggregate([
+                { $match: {
+                    'chain.kind': 'batch',
+                    state: 'chained',
+                    'data.metadata.stage': 'execution',
+                    'data.metadata.aiSystemId': { $type: 'string', $ne: '' },
+                    blockIndex: { $gt: sinceIndex, $lte: upToIndex },
+                } },
+                { $group: { _id: '$data.metadata.aiSystemId', count: { $sum: 1 } } },
+            ]);
+            for (const r of eventRows) counts[r._id] = (counts[r._id] ?? 0) + r.count;
+        }
+        return { counts, sinceIndex, upToIndex };
     }
 
     /**
@@ -839,6 +938,36 @@ export class BlockchainService implements OnModuleInit {
         }
         await checkChunk();
 
+        // ADR-004: the model's batched events. Each leaf is recomputed from the event data,
+        // and each batch block they belong to has its root re-derived once.
+        let totalEvents = 0;
+        if (this.evidenceEventModel) {
+            const eventCursor = this.evidenceEventModel
+                .find({ modelId, 'chain.kind': 'batch', state: 'chained' })
+                .sort({ seq: 1 })
+                .lean()
+                .cursor();
+            const checkedBatches = new Set<number>();
+            for await (const e of eventCursor as any) {
+                totalEvents += 1;
+                if (leafHashOf(e.data) !== e.leafHash) {
+                    errors.push(`Event seq ${e.seq}: data does not match its leaf hash`);
+                }
+                if (!checkedBatches.has(e.blockIndex)) {
+                    checkedBatches.add(e.blockIndex);
+                    const block = await this.getBlockByIndex(e.blockIndex);
+                    if (!block || block.data?.type !== 'batch') {
+                        errors.push(`Event seq ${e.seq}: batch block ${e.blockIndex} is missing`);
+                    } else {
+                        const hashOk = block.hash === this.calculateHash(block);
+                        if (!hashOk) errors.push(`Block ${block.index}: hash mismatch`);
+                        errors.push(...await this.verifyBatchBlock(block));
+                    }
+                }
+            }
+        }
+
+        totalBlocks += totalEvents;
         if (totalBlocks === 0) {
             return { modelId, isValid: false, valid: false, totalBlocks: 0, errors: [`No blocks found for model ${modelId}`] };
         }

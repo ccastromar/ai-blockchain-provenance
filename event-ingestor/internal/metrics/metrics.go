@@ -27,6 +27,12 @@ var (
 		Help:      "Events rejected by the ingestor HTTP receiver, labeled by provider and reason.",
 	}, []string{"provider", "reason"})
 
+	EventsRecorded = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "ernest",
+		Subsystem: "writer",
+		Name:      "events_recorded_total",
+		Help:      "Events recorded in evidence_events for the backend batcher to chain (EVIDENCE_BATCHING), labeled by source.",
+	}, []string{"source"})
 	BlocksAppended = promauto.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "ernest",
 		Subsystem: "writer",

@@ -7,18 +7,23 @@
   let wasmReady = $state(false);
   let wasmError = $state('');
   let verifyReceipt: ((json: string) => string) | null = null;
+  let verifyEventProof: ((json: string) => string) | null = null;
 
   let receiptText = $state('');
   let fileName = $state('');
   let result = $state<any>(null);
   let anchorInfo = $state<any>(null);
   let blockInfo = $state<any>(null);
+  // ADR-004 event proof (GET /api/events/{source}/{eventId}/proof) rather than a block receipt.
+  let eventInfo = $state<any>(null);
+  let anchoredRoot = $state<string | null>(null);
 
   onMount(async () => {
     try {
       const wasm = await import('$lib/merkle-wasm/merkle_wasm.js');
       await wasm.default();
       verifyReceipt = wasm.verify_receipt;
+      verifyEventProof = wasm.verify_event_proof;
       wasmReady = true;
     } catch (e: any) {
       wasmError = e?.message ?? 'Could not load the WebAssembly verifier.';
@@ -37,15 +42,27 @@
     result = null;
     anchorInfo = null;
     blockInfo = null;
-    if (!verifyReceipt || !receiptText.trim()) return;
+    eventInfo = null;
+    anchoredRoot = null;
+    if (!verifyReceipt || !verifyEventProof || !receiptText.trim()) return;
 
-    result = JSON.parse(verifyReceipt(receiptText));
+    let parsed: any = null;
     try {
-      const receipt = JSON.parse(receiptText);
-      anchorInfo = receipt.anchor ?? null;
-      blockInfo = receipt.block ?? null;
+      parsed = JSON.parse(receiptText);
     } catch {
-      /* verdict already reports the parse error */
+      /* the verifier reports the parse error */
+    }
+    if (parsed?.inclusion) {
+      result = JSON.parse(verifyEventProof(receiptText));
+      eventInfo = parsed.event ?? null;
+      blockInfo = parsed.block ?? null;
+      anchorInfo = parsed.anchor?.anchor ?? null;
+      anchoredRoot = parsed.anchor?.merkleRoot ?? null;
+    } else {
+      result = JSON.parse(verifyReceipt(receiptText));
+      anchorInfo = parsed?.anchor ?? null;
+      blockInfo = parsed?.block ?? null;
+      anchoredRoot = parsed?.merkleRoot ?? null;
     }
   }
 </script>
@@ -63,7 +80,8 @@
       <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Offline verification</h2>
       <p class="text-sm text-slate-600 mb-4">
         Drop an inclusion receipt (downloaded from a block's <em>⬇ Receipt</em> button or
-        <code class="text-xs bg-slate-100 px-1 rounded">GET /api/blocks/:index/proof</code>).
+        <code class="text-xs bg-slate-100 px-1 rounded">GET /api/blocks/:index/proof</code>), or an event proof
+        (<code class="text-xs bg-slate-100 px-1 rounded">GET /api/events/:source/:eventId/proof</code>).
         Verification runs entirely in your browser via WebAssembly — nothing is sent anywhere:
         the block data must reproduce its hash, and the hash must climb the Merkle proof to the anchored root.
       </p>
@@ -100,18 +118,36 @@
           </div>
 
           <ul class="text-sm space-y-2">
+            {#if eventInfo}
+              <li class={result.leafMatchesData ? 'text-emerald-700' : 'text-red-700'}>
+                {result.leafMatchesData ? '✓' : '✗'} Event data reproduces its {result.kind === 'batch' ? 'leaf hash' : 'block data'}
+              </li>
+              {#if result.kind === 'batch'}
+                <li class={result.inclusionReachesBlock ? 'text-emerald-700' : 'text-red-700'}>
+                  {result.inclusionReachesBlock ? '✓' : '✗'} RFC 6962 audit path ({result.auditPathLength} hashes) reaches the batch root committed in the block
+                </li>
+              {/if}
+            {/if}
             <li class={result.dataMatchesHash ? 'text-emerald-700' : 'text-red-700'}>
               {result.dataMatchesHash ? '✓' : '✗'} Block data reproduces its hash
               {#if !result.dataMatchesHash && result.computedHash}
                 <div class="font-mono text-xs text-slate-500 mt-1">computed: {result.computedHash}</div>
               {/if}
             </li>
-            <li class={result.proofReachesRoot ? 'text-emerald-700' : 'text-red-700'}>
-              {result.proofReachesRoot ? '✓' : '✗'} Merkle proof ({result.proofLength} hashes) reaches the anchored root
-            </li>
+            {#if !eventInfo}
+              <li class={result.proofReachesRoot ? 'text-emerald-700' : 'text-red-700'}>
+                {result.proofReachesRoot ? '✓' : '✗'} Merkle proof ({result.proofLength} hashes) reaches the anchored root
+              </li>
+            {:else if result.anchored}
+              <li class={result.anchorProofReachesRoot ? 'text-emerald-700' : 'text-red-700'}>
+                {result.anchorProofReachesRoot ? '✓' : '✗'} Anchor proof reaches the anchored root
+              </li>
+            {:else}
+              <li class="text-slate-500">○ Block not covered by an anchor yet — fetch the proof again once it is</li>
+            {/if}
             {#if result.signaturePresent}
               <li class={result.signatureValid ? 'text-emerald-700' : 'text-red-700'}>
-                {result.signatureValid ? '✓' : '✗'} Emitter signature (ed25519) — signed by <span class="font-mono">{result.signedBy}</span>
+                {result.signatureValid ? '✓' : '✗'} Emitter signature — signed by <span class="font-mono">{result.signedBy}</span>
                 {#if !result.signatureValid && result.error}
                   <div class="text-xs text-slate-500 mt-1">{result.error}</div>
                 {/if}
@@ -121,8 +157,11 @@
 
           {#if result.valid && blockInfo && anchorInfo}
             <div class="border-t border-slate-100 pt-3 text-sm text-slate-600 space-y-1">
-              <div>Block <span class="font-mono text-blue-700">#{blockInfo.index}</span> · {blockInfo.data?.type ?? '—'} · model <span class="font-mono">{blockInfo.data?.modelId ?? '—'}</span></div>
-              <div class="text-xs text-slate-500">Anchored root: <span class="font-mono break-all">{anchorInfo && result ? (JSON.parse(receiptText).merkleRoot ?? '—') : '—'}</span></div>
+              {#if eventInfo}
+                <div>Event <span class="font-mono">{eventInfo.source} / {eventInfo.eventId}</span> · seq {eventInfo.seq} · {eventInfo.data?.type ?? '—'}</div>
+              {/if}
+              <div>Block <span class="font-mono text-blue-700">#{blockInfo.index}</span> · {blockInfo.data?.type ?? '—'}{#if blockInfo.data?.modelId} · model <span class="font-mono">{blockInfo.data.modelId}</span>{/if}</div>
+              <div class="text-xs text-slate-500">Anchored root: <span class="font-mono break-all">{anchoredRoot ?? '—'}</span></div>
               {#if anchorInfo.provider === 'ots'}
                 <div class="text-xs text-slate-500">Anchoring: OpenTimestamps (Bitcoin){anchorInfo.bitcoinBlockHeight ? `, attested at block ${anchorInfo.bitcoinBlockHeight}` : ' — pending aggregation'}</div>
                 <div class="text-xs text-slate-500">Anchored at {anchorInfo.anchoredAt} · covers blocks 0..{anchorInfo.lastBlockIndex}</div>

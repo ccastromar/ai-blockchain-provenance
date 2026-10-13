@@ -2,6 +2,7 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const verify_receipt: (a: number, b: number) => [number, number];
+export const verify_event_proof: (a: number, b: number) => [number, number];
 export const calculate_merkle_root: (a: number, b: number) => [number, number, number, number];
 export const hash_data: (a: number, b: number) => [number, number];
 export const __wbindgen_malloc: (a: number, b: number) => number;

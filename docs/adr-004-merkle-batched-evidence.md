@@ -1,7 +1,8 @@
 # ADR-004: Merkle-Batched Evidence (one block per batch, not per event)
 
-**Status:** Proposed — rollout steps 1–2 implemented in the backend behind `EVIDENCE_BATCHING`
-(default `off`); see [Implementation status](#implementation-status).
+**Status:** Proposed — all five rollout steps and the verifiers implemented behind
+`EVIDENCE_BATCHING` (default `off`); see [Implementation status](#implementation-status). The
+open questions below still gate switching it on in production.
 **Date:** 2026-10-13
 **Deciders:** project maintainers
 **Related:** [ADR-001](adr-001-signed-submissions.md) (emitter signatures),
@@ -194,8 +195,9 @@ Behind `EVIDENCE_BATCHING=off|on` (default `off`):
 
 ## Implementation status
 
-Steps 1 and 2 are implemented in the NestJS backend (`backend/src/blockchain/evidence.service.ts`,
-`merkle-rfc6962.ts`), switchable with `EVIDENCE_BATCHING=off|events|on`:
+All rollout steps are implemented, switchable with `EVIDENCE_BATCHING=off|events|on` (set the
+same value on the backend and the event-ingestor). Steps 1–2 live in the NestJS backend
+(`backend/src/blockchain/evidence.service.ts`, `merkle-rfc6962.ts`):
 
 - `events` = rollout step 1: events go through `evidence_events` (idempotent), and the batcher
   appends **one ordinary block per event** with exactly the data a direct append stores — chain
@@ -226,10 +228,35 @@ Decisions taken while implementing, refining §1–§3:
   (sources contain `/`). It refuses (409) when the store cannot reproduce the batch root, and
   `verifyChain` re-derives every batch root from its events' data.
 
-Still to do before `on` is usable in production: step 3 (ingestor writes events), step 4 (reads —
-provenance, per-model integrity, stats — over `evidence_events`; today they only see per-event
-blocks), step 5 (Prudence lazy receipts), and the verifiers: RFC 6962 in the Go CLI and the WASM
-verifier, pinned by a golden vector file in `testdata/`.
+- **Step 3 — ingestor.** With `EVIDENCE_BATCHING=events|on` the Go worker inserts into
+  `evidence_events` (`source` = provider source, `eventId` = `<eventType>:<sourceEventId>`, leaf
+  hashed in Go) instead of appending blocks, and marks the ingested event `recorded`. The backend's
+  batcher is then the only chain writer. Metric `ernest_writer_events_recorded_total`.
+- **Step 4 — reads.** Provenance (`history` entries for batched events carry `seq`, `leafIndex`,
+  `status` and `proofUrl`; pending ones have no block yet), per-model integrity (leaves recomputed,
+  batch roots re-derived), `/api/stats/models`, `/api/stats/executions` (batched executions count
+  by their batch block's index, so the `since`/`upToIndex` window stays exact) and `/api/stats`
+  read `evidence_events` alongside blocks. Provenance now verifies the chain incrementally instead
+  of re-hashing it on every read. `GET /api/events/export` streams the batched events for offline
+  verification.
+- **Step 5 — Prudence.** Deliveries treat 202 as delivered (`blockIndex` stays empty: "chaining
+  pending"). Attestation verification fetches the event proof lazily and verifies it in Java
+  (block hash + RFC 6962 path — not taken on trust), reports `PENDING` while the event awaits its
+  batch, and falls back to the provenance scan when Ernest answers 404 (batching off). A 409
+  "already recorded with different content" is classified PERMANENT. Prudence's JCS canonicalizer
+  gained RFC 8785 number serialization for this.
+- **Verifiers.** `testdata/rfc6962-golden.json` (from `scripts/generate-rfc6962-vector.cjs`) pins
+  leaves, roots, every audit path and a tampered case, and includes the Certificate
+  Transparency reference tree, so the construction is pinned to the standard and not just to
+  itself. Reproduced exactly by the backend, the Go CLI (`internal/rfc6962`), merkle-wasm
+  (`rfc6962.rs`) and Prudence (`ErnestEventProof`). `ernest proof verify` and the
+  `/verify-receipt` page accept event proofs; `ernest hashchain verify` re-derives every batch
+  root (`--events` with `--file`; fetched automatically in `--api` and Mongo modes).
+- **Duplicates** ignore `signature` as well as `executedAt` when comparing content: a retrying
+  emitter re-signs (new `signedAt`, non-deterministic ECDSA) over the same payload.
+
+Not done: golden-test consumers for the new fixture in each language's test suite (verified
+with throwaway programs instead), and the emitter-side batch manifests of §6 (follow-up by design).
 
 ## Open questions
 

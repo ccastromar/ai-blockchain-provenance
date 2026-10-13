@@ -28,26 +28,35 @@ type receipt struct {
 		Hash         string          `json:"hash"`
 		Data         json.RawMessage `json:"data"`
 	} `json:"block"`
-	Proof      []string `json:"proof"`
-	MerkleRoot string   `json:"merkleRoot"`
-	Anchor     struct {
-		Provider           string `json:"provider"`
-		TxHash             string `json:"txHash"`
-		ChainID            int64  `json:"chainId"`
-		ContractAddress    string `json:"contractAddress"`
-		OrganizationID     string `json:"organizationId"`
-		LastBlockIndex     int64  `json:"lastBlockIndex"`
-		AnchoredAt         string `json:"anchoredAt"`
-		BitcoinBlockHeight int64  `json:"bitcoinBlockHeight"`
-		OtsProofURL        string `json:"otsProofUrl"`
-		OtsRawURL          string `json:"otsRawUrl"`
-	} `json:"anchor"`
+	Proof      []string   `json:"proof"`
+	MerkleRoot string     `json:"merkleRoot"`
+	Anchor     anchorInfo `json:"anchor"`
+}
+
+type anchorInfo struct {
+	Provider           string `json:"provider"`
+	TxHash             string `json:"txHash"`
+	ChainID            int64  `json:"chainId"`
+	ContractAddress    string `json:"contractAddress"`
+	OrganizationID     string `json:"organizationId"`
+	LastBlockIndex     int64  `json:"lastBlockIndex"`
+	AnchoredAt         string `json:"anchoredAt"`
+	BitcoinBlockHeight int64  `json:"bitcoinBlockHeight"`
+	OtsProofURL        string `json:"otsProofUrl"`
+	OtsRawURL          string `json:"otsRawUrl"`
 }
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify <receipt.json>",
-	Short: "Verify an inclusion receipt offline: block hash + Merkle path to the anchored root",
-	Long: `Verifies an evidence receipt with no access to Ernest or its database:
+	Short: "Verify an inclusion receipt or an event proof offline",
+	Long: `Verifies an evidence receipt with no access to Ernest or its database.
+
+Event proofs (GET /api/events/{source}/{eventId}/proof, ADR-004) are detected
+automatically: the event's leaf is recomputed from its data and walked up the RFC 6962
+audit path to the batch root committed in the block (pinned by
+testdata/rfc6962-golden.json), then the block is checked as below.
+
+Block receipts (GET /api/blocks/:index/proof):
 
   1. Recomputes the block hash from the receipt's block data (shared canonicalization,
      pinned by testdata/hash-golden-vectors.json) -- proves the data matches the hash.
@@ -60,6 +69,13 @@ var verifyCmd = &cobra.Command{
 		raw, err := os.ReadFile(args[0])
 		if err != nil {
 			return fmt.Errorf("cannot read receipt: %w", err)
+		}
+
+		var probe map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &probe); err == nil {
+			if _, isEventProof := probe["inclusion"]; isEventProof {
+				return verifyEventProof(raw)
+			}
 		}
 
 		var r receipt
@@ -110,23 +126,27 @@ var verifyCmd = &cobra.Command{
 
 		// 3. Point at the public-chain fact that makes it evidence.
 		fmt.Println("✓ receipt verified offline")
-		fmt.Printf("\nAnchored root: %s\n", r.MerkleRoot)
-		if r.Anchor.Provider == "ots" {
-			fmt.Printf("Anchoring:     OpenTimestamps (Bitcoin)")
-			if r.Anchor.BitcoinBlockHeight > 0 {
-				fmt.Printf(", attested at block %d", r.Anchor.BitcoinBlockHeight)
-			}
-			fmt.Println()
-			fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", r.Anchor.AnchoredAt, r.Anchor.OrganizationID, r.Anchor.LastBlockIndex)
-			fmt.Printf("\nTo complete the chain of trust, download BOTH the proof (%s)\nand the root file (%s), then verify with the official client:\n  ots verify -f ernest-anchor-<id> ernest-anchor-<id>.ots\n", r.Anchor.OtsProofURL, r.Anchor.OtsRawURL)
-		} else {
-			fmt.Printf("Anchor tx:     %s (chainId %d)\n", r.Anchor.TxHash, r.Anchor.ChainID)
-			fmt.Printf("Contract:      %s\n", r.Anchor.ContractAddress)
-			fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", r.Anchor.AnchoredAt, r.Anchor.OrganizationID, r.Anchor.LastBlockIndex)
-			fmt.Println("\nTo complete the chain of trust, confirm that transaction records this root on the public chain.")
-		}
+		printAnchor(r.MerkleRoot, r.Anchor)
 		return nil
 	},
+}
+
+func printAnchor(merkleRoot string, anchor anchorInfo) {
+	fmt.Printf("\nAnchored root: %s\n", merkleRoot)
+	if anchor.Provider == "ots" {
+		fmt.Printf("Anchoring:     OpenTimestamps (Bitcoin)")
+		if anchor.BitcoinBlockHeight > 0 {
+			fmt.Printf(", attested at block %d", anchor.BitcoinBlockHeight)
+		}
+		fmt.Println()
+		fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", anchor.AnchoredAt, anchor.OrganizationID, anchor.LastBlockIndex)
+		fmt.Printf("\nTo complete the chain of trust, download BOTH the proof (%s)\nand the root file (%s), then verify with the official client:\n  ots verify -f ernest-anchor-<id> ernest-anchor-<id>.ots\n", anchor.OtsProofURL, anchor.OtsRawURL)
+		return
+	}
+	fmt.Printf("Anchor tx:     %s (chainId %d)\n", anchor.TxHash, anchor.ChainID)
+	fmt.Printf("Contract:      %s\n", anchor.ContractAddress)
+	fmt.Printf("Anchored at:   %s (org %s, covers blocks 0..%d)\n", anchor.AnchoredAt, anchor.OrganizationID, anchor.LastBlockIndex)
+	fmt.Println("\nTo complete the chain of trust, confirm that transaction records this root on the public chain.")
 }
 
 func init() {

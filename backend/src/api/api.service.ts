@@ -486,6 +486,13 @@ export class ApiService {
     return { appended, failed: out.length - appended, results: out };
   }
 
+  async exportBatchedEventsCursor() {
+    if (!this.evidenceService) {
+      return { exportedAt: new Date().toISOString(), totalEvents: 0, cursor: (async function* () {})() };
+    }
+    return await this.evidenceService.exportBatchedEventsCursor();
+  }
+
   async getEventProof(source: string, eventId: string) {
     if (!this.evidenceService) return null;
     return await this.evidenceService.getProof(source, eventId);

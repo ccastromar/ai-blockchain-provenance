@@ -214,6 +214,11 @@ func (w Worker) process(ctx context.Context, message redisstream.Message) error 
 		}
 		return err
 	}
+	if block.Index < 0 {
+		metrics.EventsRecorded.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
+		log.Printf("recorded external event %s (pending chaining)", event.SourceEventID)
+		return nil
+	}
 	metrics.BlocksAppended.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
 	log.Printf("appended external event %s as block %d", event.SourceEventID, block.Index)
 	return nil

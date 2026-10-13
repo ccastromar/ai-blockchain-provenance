@@ -37,6 +37,9 @@ type Config struct {
 	RateLimitAuthenticatedRPS   float64
 	RateLimitAuthenticatedBurst int
 	MetricsPort                 string
+	// ADR-004: "events" or "on" makes the worker record events in evidence_events for the
+	// backend's batcher to chain, instead of appending one block per event itself.
+	EvidenceBatching string
 }
 
 func Load() Config {
@@ -69,6 +72,7 @@ func Load() Config {
 		RateLimitAuthenticatedRPS:   envFloat64("RATE_LIMIT_AUTHENTICATED_RPS", 5000),
 		RateLimitAuthenticatedBurst: int(envInt64("RATE_LIMIT_AUTHENTICATED_BURST", 10000)),
 		MetricsPort:                 env("METRICS_PORT", "9102"),
+		EvidenceBatching:            env("EVIDENCE_BATCHING", "off"),
 	}
 }
 

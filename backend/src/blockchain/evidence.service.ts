@@ -31,9 +31,10 @@ const LEASE_ID = 'evidence';
 const LEASE_TTL_MS = 15_000;
 const SEQ_COUNTER_ID = 'evidence_seq';
 const WAIT_POLL_MS = 50;
-// Server-augmented, so it differs on every re-send of the same event: ignored when
-// deciding whether a duplicate carries the same content.
-const VOLATILE_FIELDS = ['executedAt'];
+// Ignored when deciding whether a duplicate carries the same content: executedAt is
+// server-augmented, and a retrying emitter re-signs (new signedAt, and a non-deterministic
+// ECDSA seal) over the same payload. The first stored record, signature included, stands.
+const VOLATILE_FIELDS = ['executedAt', 'signature'];
 
 type ChainKind = 'block' | 'batch';
 
@@ -98,7 +99,7 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
         await create({ state: 1, _id: 1 }, { name: 'state_pending' });
         await create({ state: 1, seq: 1 }, { name: 'state_seq' });
         await create({ modelId: 1, seq: 1 }, { name: 'model_seq' });
-        await create({ 'data.metadata.stage': 1, 'data.metadata.aiSystemId': 1, seq: 1 }, { name: 'stage_system_seq' });
+        await create({ 'data.metadata.stage': 1, 'data.metadata.aiSystemId': 1, blockIndex: 1 }, { name: 'stage_system_block' });
         await create({ blockIndex: 1 }, { name: 'event_block' });
     }
 
@@ -325,6 +326,22 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
     }
 
     // ── Proofs ───────────────────────────────────────────────────────────────
+
+    /**
+     * Every event chained inside a batch block, in seq order, for offline verification
+     * next to GET /api/blocks/export (`ernest hashchain verify --file ... --events ...`).
+     * A cursor, so the controller streams it with constant memory.
+     */
+    async exportBatchedEventsCursor(): Promise<{ exportedAt: string; totalEvents: number; cursor: AsyncIterable<any> }> {
+        const filter = { 'chain.kind': 'batch', state: 'chained' };
+        const totalEvents = await this.eventModel.countDocuments(filter);
+        const cursor = this.eventModel
+            .find(filter, { _id: 0, seq: 1, source: 1, eventId: 1, data: 1, leafHash: 1, blockIndex: 1, leafIndex: 1 })
+            .sort({ seq: 1 })
+            .lean()
+            .cursor();
+        return { exportedAt: new Date().toISOString(), totalEvents, cursor };
+    }
 
     async findEvent(source: string, eventId: string): Promise<any | null> {
         return this.eventModel.findOne({ source, eventId }).lean();

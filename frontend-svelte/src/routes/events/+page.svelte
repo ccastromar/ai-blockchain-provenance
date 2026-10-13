@@ -162,6 +162,7 @@
 
   const STATUS_STYLES: Record<string, string> = {
     appended: 'bg-emerald-100 text-emerald-700',
+    recorded: 'bg-emerald-100 text-emerald-700',
     processing: 'bg-blue-100 text-blue-700',
     failed: 'bg-red-100 text-red-700',
     duplicate: 'bg-slate-100 text-slate-600'
@@ -247,6 +248,7 @@
         <select class="input-field" bind:value={statusFilter}>
           <option value="">All statuses</option>
           <option value="appended">appended</option>
+          <option value="recorded">recorded (batched)</option>
           <option value="processing">processing</option>
           <option value="failed">failed</option>
           <option value="duplicate">duplicate</option>

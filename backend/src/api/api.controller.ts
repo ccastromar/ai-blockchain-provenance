@@ -79,6 +79,28 @@ export class ApiController {
     return await this.apiService.logInferenceBatch(dto.items, { wait: parseWait(wait) });
   }
 
+  @Get('events/export')
+  @ApiOperation({ summary: 'ADR-004: export every batched evidence event (seq order) for offline verification of batch roots, next to /api/blocks/export. Streamed with constant memory.' })
+  @ApiOkResponse({ description: '{ exportedAt, totalEvents, events: [{ seq, source, eventId, data, leafHash, blockIndex, leafIndex }] }' })
+  async exportEvents(@Res() res: any) {
+    const { exportedAt, totalEvents, cursor } = await this.apiService.exportBatchedEventsCursor();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="ernest-events-export.json"');
+    res.write(`{"exportedAt":${JSON.stringify(exportedAt)},"totalEvents":${totalEvents},"events":[`);
+    try {
+      let first = true;
+      for await (const event of cursor) {
+        res.write((first ? '' : ',') + JSON.stringify(event));
+        first = false;
+      }
+      res.end(']}');
+    } catch (error) {
+      // Same rule as the block export: a truncated stream must look truncated.
+      this.logger.error(`Events export stream failed: ${(error as Error).message}`);
+      res.destroy(error as Error);
+    }
+  }
+
   @Get('events/:source/:eventId/proof')
   @ApiOperation({
     summary: 'ADR-004 inclusion proof for one evidence event, verifiable offline.',

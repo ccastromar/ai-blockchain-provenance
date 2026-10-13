@@ -9,6 +9,13 @@
  */
 export function verify_receipt(receipt_json: string): string;
 /**
+ * Verify an ADR-004 event proof (GET /api/events/{source}/{eventId}/proof) fully
+ * offline: event data → RFC 6962 leaf → audit path → batch root in the block
+ * (pinned by testdata/rfc6962-golden.json), the block hash, and the anchor path
+ * when present. Returns a JSON verdict object.
+ */
+export function verify_event_proof(proof_json: string): string;
+/**
  * Calculate the Merkle root from an array of hash strings
  * 
  * # Arguments
@@ -34,6 +41,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
   readonly memory: WebAssembly.Memory;
   readonly verify_receipt: (a: number, b: number) => [number, number];
+  readonly verify_event_proof: (a: number, b: number) => [number, number];
   readonly calculate_merkle_root: (a: number, b: number) => [number, number, number, number];
   readonly hash_data: (a: number, b: number) => [number, number];
   readonly __wbindgen_malloc: (a: number, b: number) => number;

@@ -120,6 +120,29 @@ export function verify_receipt(receipt_json) {
     }
 }
 
+/**
+ * Verify an ADR-004 event proof (GET /api/events/{source}/{eventId}/proof) fully
+ * offline: event data → RFC 6962 leaf → audit path → batch root in the block
+ * (pinned by testdata/rfc6962-golden.json), the block hash, and the anchor path
+ * when present. Returns a JSON verdict object.
+ * @param {string} proof_json
+ * @returns {string}
+ */
+export function verify_event_proof(proof_json) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(proof_json, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.verify_event_proof(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
 function addToExternrefTable0(obj) {
     const idx = wasm.__externref_table_alloc();
     wasm.__wbindgen_export_2.set(idx, obj);

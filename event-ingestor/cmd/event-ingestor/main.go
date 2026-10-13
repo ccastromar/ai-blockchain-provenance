@@ -88,7 +88,7 @@ func runWorker(ctx context.Context, cfg config.Config) {
 	}()
 
 	stream := redisstream.NewClientWithPool(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisPoolSize)
-	writer := hashchain.NewMongoWriter(client.Database(cfg.MongoDatabase))
+	writer := hashchain.NewMongoWriter(client.Database(cfg.MongoDatabase)).WithEvidenceBatching(cfg.EvidenceBatching)
 	runner := worker.New(stream, writer, cfg)
 
 	if err := runner.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {

@@ -51,9 +51,10 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 - 🔜 **Merkle-batched evidence** — one chain block per batch, every event still individually
   provable; lifts the serialized-append ceiling and adds idempotent submission.
   Design: [docs/adr-004-merkle-batched-evidence.md](docs/adr-004-merkle-batched-evidence.md) (Proposed).
-  Steps 1–2 in the backend behind `EVIDENCE_BATCHING=events|on` (event store, idempotency,
-  batcher, `/api/events/{source}/{eventId}/proof`). Next: ingestor writes events, reads over
-  events, RFC 6962 in the CLI/WASM verifiers + golden vectors, Prudence lazy receipts.
+  All rollout steps implemented behind `EVIDENCE_BATCHING=events|on`: event store + idempotency,
+  batcher, event proofs, ingestor writing events, reads over events, RFC 6962 in the CLI/WASM/
+  Prudence verifiers pinned by `testdata/rfc6962-golden.json`. Before switching it on: the ADR's
+  open questions (eIDAS, defaults via load test, ordering) and golden-test consumers.
 
 - 🔜 **Signed submissions v1.1 — the ingestor path.** ADR-001 covers direct API writes;
   events coming through the Go ingestor (HF/SageMaker/…) still use the HMAC channel
