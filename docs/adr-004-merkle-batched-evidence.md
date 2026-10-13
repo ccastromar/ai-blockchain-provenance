@@ -1,6 +1,7 @@
 # ADR-004: Merkle-Batched Evidence (one block per batch, not per event)
 
-**Status:** Proposed
+**Status:** Proposed — rollout steps 1–2 implemented in the backend behind `EVIDENCE_BATCHING`
+(default `off`); see [Implementation status](#implementation-status).
 **Date:** 2026-10-13
 **Deciders:** project maintainers
 **Related:** [ADR-001](adr-001-signed-submissions.md) (emitter signatures),
@@ -190,6 +191,45 @@ Behind `EVIDENCE_BATCHING=off|on` (default `off`):
   reference to evaluate if Ernest outgrows MongoDB storage.
 - **Kafka (or another broker) in front.** Smooths bursts, which Redis Streams already does; it
   does not lift the chain's append ceiling.
+
+## Implementation status
+
+Steps 1 and 2 are implemented in the NestJS backend (`backend/src/blockchain/evidence.service.ts`,
+`merkle-rfc6962.ts`), switchable with `EVIDENCE_BATCHING=off|events|on`:
+
+- `events` = rollout step 1: events go through `evidence_events` (idempotent), and the batcher
+  appends **one ordinary block per event** with exactly the data a direct append stores — chain
+  shape unchanged. Submissions wait for their block by default, so responses still carry
+  `blockIndex`/`blockHash`.
+- `on` = rollout step 2: one `type: "batch"` block per pass. Submissions answer 202 `pending`
+  unless `?wait=true`.
+
+Decisions taken while implementing, refining §1–§3:
+
+- **`seq` is assigned by the batcher, not at insert.** Allocating at insert lets a slow insert
+  (seq 5) land after a faster one (seq 6) was already chained, leaving a hole inside a chained
+  range. The batcher takes pending events in admission (`_id`) order, allocates a seq range from a
+  counter (`counters.evidence_seq`, `$inc` — ranges never overlap, even across a lease handover)
+  and stamps it. A batch is "the events whose seq is in `[firstSeq, lastSeq]`"; `size` is
+  checked against them.
+- **Event states** `pending → assigned → chained`, plus `chain: { kind, firstSeq }` on assigned
+  events, so a new leader can finish a crashed one's work.
+- **`eventSeq` on the block** (top-level, outside the hashed fields) with a unique partial index:
+  chaining a seq range is idempotent — a second leader's append fails on the index and adopts the
+  existing block. Crash-before-append and crash-after-append were both exercised.
+- **Within a batch, registrations precede inferences** (stable), so causal order never depends on
+  ObjectIds from different replicas being ordered.
+- **Duplicates:** same `(source, eventId)` and same content (ignoring the server-set
+  `executedAt`) → 200 with the stored record; different content → 409. API submissions use
+  `source = "api/<modelId>"`, `eventId = inferenceId` (or `model_registration@<version>`).
+- **Proof endpoint** is `GET /api/events/{source}/{eventId}/proof` with URL-encoded segments
+  (sources contain `/`). It refuses (409) when the store cannot reproduce the batch root, and
+  `verifyChain` re-derives every batch root from its events' data.
+
+Still to do before `on` is usable in production: step 3 (ingestor writes events), step 4 (reads —
+provenance, per-model integrity, stats — over `evidence_events`; today they only see per-event
+blocks), step 5 (Prudence lazy receipts), and the verifiers: RFC 6962 in the Go CLI and the WASM
+verifier, pinned by a golden vector file in `testdata/`.
 
 ## Open questions
 

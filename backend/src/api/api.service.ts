@@ -6,6 +6,10 @@ import { LogInferenceDto } from './dto/log-inference.dto';
 import { AIModelService } from 'src/aimodels/aimodel.service';
 import { EmitterKeyService } from 'src/auth/emitter-key.service';
 import { SignatureEnvelope, verifyEnvelope, isQsealAlg, validateSealTrustChain } from '../common/signing.util';
+import { EvidenceService } from '../blockchain/evidence.service';
+
+/** Caller preference for ADR-004 submissions; undefined = the mode's default. */
+export type SubmitOptions = { wait?: boolean };
 
 @Injectable()
 export class ApiService {
@@ -17,7 +21,54 @@ export class ApiService {
     private readonly mlflowService: MlflowService,
     private readonly modelService: AIModelService,
     private readonly emitterKeyService: EmitterKeyService,
+    // Last, so callers constructing the service positionally (tests) are unaffected.
+    private readonly evidenceService?: EvidenceService,
   ) {}
+
+  private batching(): boolean {
+    return !!this.evidenceService?.enabled();
+  }
+
+  /**
+   * ADR-004 identity of an API submission: idempotent by (source, eventId). Scoped per
+   * model, since inference ids are client-generated and only unique per emitter/model.
+   */
+  private eventKey(data: Record<string, any>) {
+    return data.type === 'model_registration'
+      ? { source: `api/${data.modelId}`, eventId: `model_registration@${data.version}` }
+      : { source: `api/${data.modelId}`, eventId: data.inferenceId };
+  }
+
+  /** Step 1 (`events`) keeps the synchronous contract by default; step 2 (`on`) does not. */
+  private shouldWait(opts: SubmitOptions): boolean {
+    return opts.wait ?? this.evidenceService!.mode() === 'events';
+  }
+
+  /** Records one event and, when asked to, holds until it is chained. */
+  private async submitEvent(data: Record<string, any>, opts: SubmitOptions) {
+    const key = this.eventKey(data);
+    let { event, duplicate } = await this.evidenceService!.record(data, key);
+    if (event.state !== 'chained' && this.shouldWait(opts)) {
+      [event] = await this.evidenceService!.waitForChained([event._id]);
+    }
+    return { ...key, event, duplicate, blockHash: await this.evidenceService!.getBlockHash(event.blockIndex) };
+  }
+
+  /** Response fields common to every ADR-004 submission. */
+  private eventView(r: { source: string; eventId: string; event: any; duplicate: boolean; blockHash?: string }) {
+    const chained = r.event.state === 'chained';
+    return {
+      status: chained ? 'chained' as const : 'pending' as const,
+      duplicate: r.duplicate,
+      source: r.source,
+      eventId: r.eventId,
+      seq: r.event.seq,
+      blockIndex: r.event.blockIndex,
+      blockHash: r.blockHash,
+      leafIndex: r.event.leafIndex,
+      proofUrl: `/api/events/${encodeURIComponent(r.source)}/${encodeURIComponent(r.eventId)}/proof`,
+    };
+  }
 
   /**
    * ADR-001 admission control. Returns the envelope to embed in the block (or
@@ -81,7 +132,7 @@ export class ApiService {
     return envelope;
   }
 
-  async registerModel(dto: RegisterModelDto) {
+  async registerModel(dto: RegisterModelDto, opts: SubmitOptions = {}) {
     this.logger.log(`Registering model: ${dto.modelName} with version: ${dto.version}`);
     if (!dto.mlflow?.modelHash || !dto.mlflow?.gitCommit) {
       throw new BadRequestException('mlflow.modelHash and mlflow.gitCommit are required.');
@@ -138,6 +189,27 @@ export class ApiService {
         throw new BadRequestException(`Model '${dto.modelId}' version '${dto.version}' already exists.`);
       }
       throw error;
+    }
+
+    if (this.batching()) {
+      let submitted;
+      try {
+        submitted = await this.submitEvent(this.blockchainService.registrationData(
+          dto.modelId, dto.modelName, dto.version, dto.mlflow.modelHash, dto.mlflow.gitCommit,
+          dto.params, dto.metrics, dto.metadata, dto.organizationId, signature,
+        ), opts);
+      } catch (error) {
+        await this.modelService.remove(dto.modelId, dto.version).catch(() => undefined);
+        throw error;
+      }
+      return {
+        success: true,
+        modelId: dto.modelId,
+        modelName: dto.modelName,
+        version: dto.version,
+        mlflow: { modelHash: dto.mlflow.modelHash, gitCommit: dto.mlflow.gitCommit },
+        ...this.eventView(submitted),
+      };
     }
 
     let blockchainResult;
@@ -261,7 +333,7 @@ export class ApiService {
     };
   }
 
-  async logInference(dto: LogInferenceDto) {
+  async logInference(dto: LogInferenceDto, opts: SubmitOptions = {}) {
     this.logger.log(`Logging inference for model ID: ${dto.modelId}`);
 
     const modelExists = await this.modelService.findOne(dto.modelId);
@@ -276,7 +348,11 @@ export class ApiService {
     // otherwise land in the chain BEFORE its model's registration block -- a causal
     // inversion an auditor would flag. 409 tells the caller to retry, not that the
     // model doesn't exist.
-    if (!(await this.blockchainService.hasRegistrationBlock(dto.modelId))) {
+    // ADR-004: an admitted registration event is enough -- the batcher chains it no later
+    // than (and, within a batch, ahead of) any inference admitted after it.
+    const registered = (this.batching() && await this.evidenceService!.hasRegistrationEvent(dto.modelId))
+      || await this.blockchainService.hasRegistrationBlock(dto.modelId);
+    if (!registered) {
       throw new ConflictException(
         `Model '${dto.modelId}' registration is not yet committed to the chain. Retry shortly.`,
       );
@@ -301,6 +377,19 @@ export class ApiService {
     //   dto.params,
     //   dto.metadata
     // );
+
+    if (this.batching()) {
+      const submitted = await this.submitEvent(this.blockchainService.inferenceData(
+        dto.modelId, dto.inferenceId, dto.inputHash, dto.outputHash, dto.params, dto.metadata, signature,
+      ), opts);
+      return {
+        success: true,
+        inferenceId: dto.inferenceId,
+        modelId: dto.modelId,
+        hashes: { input: dto.inputHash, output: dto.outputHash },
+        ...this.eventView(submitted),
+      };
+    }
 
     const blockchainResult = await this.blockchainService.logInference(
       dto.modelId,
@@ -337,7 +426,10 @@ export class ApiService {
    * independently: the result reports each one's outcome with the HTTP status it would
    * have received on its own, so a caller can retry only what is retryable.
    */
-  async logInferenceBatch(items: LogInferenceDto[]) {
+  async logInferenceBatch(items: LogInferenceDto[], opts: SubmitOptions = {}) {
+    if (this.batching()) {
+      return this.logInferenceBatchAsEvents(items, opts);
+    }
     const results: Array<Record<string, any>> = [];
     for (const item of items) {
       try {
@@ -350,6 +442,53 @@ export class ApiService {
     }
     const appended = results.filter(r => r.status === 200).length;
     return { appended, failed: results.length - appended, results };
+  }
+
+  /**
+   * ADR-004 batch submission: every item is admitted and recorded first, then (if waiting)
+   * all of them are awaited together -- one batcher pass usually chains the whole request.
+   * Per-item status: 202 pending, 200 chained or duplicate, or the item's own error.
+   */
+  private async logInferenceBatchAsEvents(items: LogInferenceDto[], opts: SubmitOptions) {
+    const results: Array<Record<string, any>> = [];
+    for (const item of items) {
+      try {
+        const r = await this.logInference(item, { wait: false });
+        results.push({ inferenceId: item.inferenceId, ...r });
+      } catch (e: any) {
+        const status = typeof e?.getStatus === 'function' ? e.getStatus() : 500;
+        results.push({ inferenceId: item.inferenceId, status, error: e?.message ?? String(e) });
+      }
+    }
+    const accepted = results.filter(r => r.error === undefined);
+    if (this.shouldWait(opts) && accepted.some(r => r.status === 'pending')) {
+      const keys = accepted.map(r => ({ source: r.source, eventId: r.eventId }));
+      const stored = await Promise.all(keys.map(k => this.evidenceService!.findEvent(k.source, k.eventId)));
+      const chained = await this.evidenceService!.waitForChained(stored.map(e => e._id));
+      for (let i = 0; i < accepted.length; i++) {
+        Object.assign(accepted[i], this.eventView({
+          ...keys[i], event: chained[i], duplicate: accepted[i].duplicate,
+          blockHash: await this.evidenceService!.getBlockHash(chained[i].blockIndex),
+        }));
+      }
+    }
+    const out = results.map(r => r.error !== undefined ? r : {
+      inferenceId: r.inferenceId,
+      status: r.status === 'pending' && !r.duplicate ? 202 : 200,
+      state: r.status,
+      duplicate: r.duplicate,
+      seq: r.seq,
+      blockIndex: r.blockIndex,
+      blockHash: r.blockHash,
+      proofUrl: r.proofUrl,
+    });
+    const appended = out.filter(r => r.status === 200 || r.status === 202).length;
+    return { appended, failed: out.length - appended, results: out };
+  }
+
+  async getEventProof(source: string, eventId: string) {
+    if (!this.evidenceService) return null;
+    return await this.evidenceService.getProof(source, eventId);
   }
 
   async getProvenance(modelId: string, filters?: { type?: string; from?: number; to?: number; organizationId?: string }) {

@@ -46,6 +46,12 @@ export class ProvenanceBlock {
   @Prop({ required: true })
   hash: string;
 
+  // ADR-004: first evidence_events seq this block chains (per-event block: its event;
+  // batch block: data.firstSeq). Outside the hashed fields on purpose -- it is a lookup
+  // key whose unique index makes chaining a seq range idempotent across batcher leaders.
+  @Prop()
+  eventSeq?: number;
+
  // @Prop({ default: 0 })
   //nonce: number;
 }

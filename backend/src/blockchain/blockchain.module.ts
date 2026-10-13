@@ -7,6 +7,9 @@ import { ProvenanceBlock, ProvenanceBlockSchema } from './models/provenance-bloc
 import { Anchor, AnchorSchema } from './models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckSchema } from './models/integrity-check.schema';
 import { ScheduledBlockchainService } from './scheduled.service';
+import { EvidenceService } from './evidence.service';
+import { EvidenceEvent, EvidenceEventSchema } from './models/evidence-event.schema';
+import { BatcherLease, BatcherLeaseSchema } from './models/batcher-lease.schema';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
@@ -14,11 +17,13 @@ import { ScheduleModule } from '@nestjs/schedule';
     MongooseModule.forFeature([
       { name: ProvenanceBlock.name, schema: ProvenanceBlockSchema },
       { name: Anchor.name, schema: AnchorSchema },
-      { name: IntegrityCheck.name, schema: IntegrityCheckSchema }
+      { name: IntegrityCheck.name, schema: IntegrityCheckSchema },
+      { name: EvidenceEvent.name, schema: EvidenceEventSchema },
+      { name: BatcherLease.name, schema: BatcherLeaseSchema },
     ]),
     ScheduleModule.forRoot(),
   ],
-  providers: [BlockchainService, ScheduledBlockchainService, OtsClient, Rfc3161Client],
-  exports: [BlockchainService]
+  providers: [BlockchainService, EvidenceService, ScheduledBlockchainService, OtsClient, Rfc3161Client],
+  exports: [BlockchainService, EvidenceService]
 })
 export class BlockchainModule {}

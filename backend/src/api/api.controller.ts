@@ -9,6 +9,19 @@ import { LogInferenceDto } from './dto/log-inference.dto';
 import { AnchorEventsService } from './anchor-events.service';
 import { ApiKeyGuard } from '../common/api-key.guard';
 
+/** `?wait=true|false` (ADR-004); absent or anything else = the batching mode's default. */
+function parseWait(raw?: string): boolean | undefined {
+  if (raw === 'true' || raw === '1') return true;
+  if (raw === 'false' || raw === '0') return false;
+  return undefined;
+}
+
+/** ADR-004: a newly accepted event that is not chained yet is 202, not 200/201. */
+function acceptedStatus(res: any, result: any) {
+  if (result?.status === 'pending' && !result.duplicate) res.status(HttpStatus.ACCEPTED);
+  return result;
+}
+
 @ApiTags('Provenance')
 @Controller('api')
 export class ApiController {
@@ -25,9 +38,18 @@ export class ApiController {
   @ApiOperation({ summary: 'Register a model and append a model block to the hashchain.' })
   @ApiHeader({ name: 'X-Ernest-Org-Id', required: false, description: 'Organization scope (overrides body.organizationId)' })
   @ApiCreatedResponse({ description: 'Model registered and stored in the hashchain.' })
-  async registerModel(@Body() dto: RegisterModelDto, @OrgId() orgId?: string) {
+  @ApiQuery({ name: 'wait', required: false, type: Boolean, description: 'EVIDENCE_BATCHING only: hold the response until the event is chained.' })
+  async registerModel(
+    @Body() dto: RegisterModelDto,
+    @Res({ passthrough: true }) res: any,
+    @OrgId() orgId?: string,
+    @Query('wait') wait?: string,
+  ) {
     this.logger.log(`Received registerModel request for model: ${dto.modelName}`);
-    return await this.apiService.registerModel({ ...dto, organizationId: orgId ?? dto.organizationId });
+    return acceptedStatus(res, await this.apiService.registerModel(
+      { ...dto, organizationId: orgId ?? dto.organizationId },
+      { wait: parseWait(wait) },
+    ));
   }
 
   @Post('inferences')
@@ -35,10 +57,12 @@ export class ApiController {
   @HttpCode(HttpStatus.OK)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Log an inference using input/output hashes and append an inference block.' })
-  @ApiOkResponse({ description: 'Inference logged and stored in the hashchain.' })
-  async logInference(@Body() dto: LogInferenceDto) {
+  @ApiOkResponse({ description: 'Inference logged and stored in the hashchain (or, with EVIDENCE_BATCHING, a duplicate of an already recorded one).' })
+  @ApiAcceptedResponse({ description: 'EVIDENCE_BATCHING: event recorded, not chained yet (status "pending"; proofUrl answers once it is).' })
+  @ApiQuery({ name: 'wait', required: false, type: Boolean, description: 'EVIDENCE_BATCHING only: hold the response until the event is chained.' })
+  async logInference(@Body() dto: LogInferenceDto, @Res({ passthrough: true }) res: any, @Query('wait') wait?: string) {
     this.logger.log(`Received logInference request for model ID: ${dto.modelId}`);
-    return await this.apiService.logInference(dto);
+    return acceptedStatus(res, await this.apiService.logInference(dto, { wait: parseWait(wait) }));
   }
 
   @Post('inferences/batch')
@@ -50,8 +74,26 @@ export class ApiController {
     description: 'Each item is validated and admitted exactly as POST /api/inferences. Items fail independently; `results[i].status` is the status that item alone would have received.',
   })
   @ApiOkResponse({ description: '{ appended, failed, results: [{ inferenceId, status, blockIndex?, blockHash?, error? }] }' })
-  async logInferenceBatch(@Body() dto: LogInferenceBatchDto) {
-    return await this.apiService.logInferenceBatch(dto.items);
+  @ApiQuery({ name: 'wait', required: false, type: Boolean, description: 'EVIDENCE_BATCHING only: hold the response until every accepted item is chained.' })
+  async logInferenceBatch(@Body() dto: LogInferenceBatchDto, @Query('wait') wait?: string) {
+    return await this.apiService.logInferenceBatch(dto.items, { wait: parseWait(wait) });
+  }
+
+  @Get('events/:source/:eventId/proof')
+  @ApiOperation({
+    summary: 'ADR-004 inclusion proof for one evidence event, verifiable offline.',
+    description: 'URL-encode both segments (API submissions use source `api/<modelId>`). Returns the event data, its RFC 6962 audit path to the batch root (or `kind: block` for a per-event block), the block, and the anchor receipt for that block once an anchor covers it. 202 while the event is still pending.',
+  })
+  @ApiOkResponse({ description: 'status chained: event, inclusion, block, anchor (null + anchorPending until anchored).' })
+  @ApiAcceptedResponse({ description: 'status pending: recorded, not chained yet.' })
+  @ApiNotFoundResponse({ description: 'No event with that source and id.' })
+  async getEventProof(@Param('source') source: string, @Param('eventId') eventId: string, @Res({ passthrough: true }) res: any) {
+    const proof = await this.apiService.getEventProof(source, eventId);
+    if (!proof) {
+      throw new NotFoundException('Event not found');
+    }
+    if (proof.status === 'pending') res.status(HttpStatus.ACCEPTED);
+    return proof;
   }
 
   @Post('demo/seed')

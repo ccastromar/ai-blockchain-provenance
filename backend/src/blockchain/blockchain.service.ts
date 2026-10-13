@@ -20,9 +20,18 @@ import abiJson from '../abis/ErnestMerkleAnchor.json';
 import { OtsClient } from './ots.client';
 import { Rfc3161Client } from './rfc3161.client';
 import { buildCycloneDxMlBom } from './cyclonedx';
+import { EvidenceEvent, EvidenceEventDocument } from './models/evidence-event.schema';
+import { leafHashOf, merkleRoot, TREE_ALG } from './merkle-rfc6962';
 
 const anchorAbi = abiJson.abi;
 const MAX_APPEND_RETRIES = 5;
+
+/** ADR-004: the evidence seq range this block would chain is already chained. */
+export class EventRangeAlreadyChainedError extends Error {
+    constructor(readonly eventSeq: number) {
+        super(`Evidence seq ${eventSeq} is already chained`);
+    }
+}
 
 type AnchorConfig = {
     rpcUrl: string;
@@ -47,6 +56,8 @@ export class BlockchainService implements OnModuleInit {
         // Last, so callers constructing the service positionally (tests) are unaffected.
         @InjectModel(IntegrityCheck.name)
         private integrityCheckModel: Model<IntegrityCheckDocument>,
+        @InjectModel(EvidenceEvent.name)
+        private evidenceEventModel?: Model<EvidenceEventDocument>,
     ) { }
 
     /**
@@ -130,6 +141,15 @@ export class BlockchainService implements OnModuleInit {
         // provenance (data.modelId), and execution counts per AI system for drift checks.
         await this.createSecondaryIndex({ 'data.modelId': 1, index: 1 }, 'model_blocks');
         await this.createSecondaryIndex({ 'data.metadata.stage': 1, 'data.metadata.aiSystemId': 1, index: 1 }, 'stage_system_blocks');
+        // ADR-004: one block per evidence seq range, whichever batcher leader gets there first.
+        try {
+            await this.provenanceBlockModel.collection.createIndex(
+                { eventSeq: 1 },
+                { unique: true, name: 'unique_event_seq', partialFilterExpression: { eventSeq: { $exists: true } } },
+            );
+        } catch (err) {
+            if (err?.code !== 85 && err?.code !== 86) throw err;
+        }
     }
 
     private async createSecondaryIndex(key: Record<string, 1 | -1>, name: string): Promise<void> {
@@ -192,7 +212,7 @@ export class BlockchainService implements OnModuleInit {
     /**
      * Añadir nuevo bloque a la cadena
      */
-    async addBlock(data: ProvenanceBlock['data']): Promise<ProvenanceBlockDocument> {
+    async addBlock(data: ProvenanceBlock['data'], opts: { eventSeq?: number } = {}): Promise<ProvenanceBlockDocument> {
         const cleanedData = this.cleanObject(data);
 
         for (let attempt = 1; attempt <= MAX_APPEND_RETRIES; attempt++) {
@@ -217,6 +237,7 @@ export class BlockchainService implements OnModuleInit {
                 data: cleanedData,
                 previousHash: lastBlock.hash,
                 hash: '',
+                ...(opts.eventSeq !== undefined ? { eventSeq: opts.eventSeq } : {}),
             };
 
             newBlock.hash = this.calculateHash(newBlock);
@@ -231,6 +252,10 @@ export class BlockchainService implements OnModuleInit {
 
                 return createdBlock;
             } catch (error) {
+                // Not an append race: another batcher leader already chained this range.
+                if (this.isDuplicateKeyError(error) && error?.keyPattern?.eventSeq !== undefined) {
+                    throw new EventRangeAlreadyChainedError(opts.eventSeq!);
+                }
                 if (this.isDuplicateKeyError(error) && attempt < MAX_APPEND_RETRIES) {
                     this.logger.warn(`Hashchain append race detected, retrying (${attempt}/${MAX_APPEND_RETRIES})`);
                     continue;
@@ -323,6 +348,10 @@ export class BlockchainService implements OnModuleInit {
                 errors.push(`Block ${currentBlock.index}: Hashchain broken ! (previousHash: ${currentBlock.previousHash.substring(0, 16)}..., expected: ${previousBlock.hash.substring(0, 16)}...)`);
             }
 
+            if (currentBlock.data?.type === 'batch') {
+                errors.push(...await this.verifyBatchBlock(currentBlock));
+            }
+
             previousBlock = currentBlock;
             blocksVerified += 1;
             lastVerifiedIndex = currentBlock.index;
@@ -336,6 +365,39 @@ export class BlockchainService implements OnModuleInit {
             lastVerifiedIndex,
             lastVerifiedHash,
         };
+    }
+
+    /**
+     * ADR-004: a batch block commits to its events only through `data.root`. Re-derive the
+     * root from the stored events -- each leaf recomputed from the event's data, not taken
+     * from its stored leafHash -- so an edited event payload, a dropped or added event, or a
+     * reordered batch all show up as errors against the (hash-chained) block.
+     */
+    async verifyBatchBlock(block: any): Promise<string[]> {
+        const { firstSeq, lastSeq, size, root, treeAlg } = block.data;
+        if (treeAlg !== TREE_ALG) return [`Block ${block.index}: unknown batch tree algorithm ${treeAlg}`];
+        if (!this.evidenceEventModel) return [`Block ${block.index}: evidence event store unavailable`];
+        const events = await this.evidenceEventModel
+            .find({ seq: { $gte: firstSeq, $lte: lastSeq } })
+            .sort({ seq: 1 })
+            .lean();
+        const errors: string[] = [];
+        if (events.length !== size) {
+            errors.push(`Block ${block.index}: batch declares ${size} events (seq ${firstSeq}..${lastSeq}), store has ${events.length}`);
+        }
+        const leaves: string[] = [];
+        events.forEach((e: any, i: number) => {
+            const leaf = leafHashOf(e.data);
+            if (leaf !== e.leafHash) errors.push(`Event seq ${e.seq}: data does not match its leaf hash`);
+            if (e.blockIndex !== undefined && (e.blockIndex !== block.index || e.leafIndex !== i)) {
+                errors.push(`Event seq ${e.seq}: recorded at block ${e.blockIndex} leaf ${e.leafIndex}, expected block ${block.index} leaf ${i}`);
+            }
+            leaves.push(leaf);
+        });
+        if (merkleRoot(leaves) !== root) {
+            errors.push(`Block ${block.index}: batch root does not match its events`);
+        }
+        return errors;
     }
 
     /**
@@ -547,7 +609,23 @@ export class BlockchainService implements OnModuleInit {
         organizationId?: string,
         signature?: Record<string, any>,
     ) {
-        return await this.addBlock({
+        return await this.addBlock(this.registrationData(modelId, modelName, version, modelHash, gitCommit, params, metrics, metadata, organizationId, signature));
+    }
+
+    /** Block data of a model registration (shared with the ADR-004 event path). */
+    registrationData(
+        modelId: string,
+        modelName: string,
+        version: string,
+        modelHash: string,
+        gitCommit: string,
+        params?: Record<string, any>,
+        metrics?: Record<string, any>,
+        metadata?: Record<string, any>,
+        organizationId?: string,
+        signature?: Record<string, any>,
+    ): ProvenanceBlock['data'] {
+        return {
             type: 'model_registration',
             modelId,
             modelName,
@@ -560,7 +638,7 @@ export class BlockchainService implements OnModuleInit {
             organizationId,
             // ADR-001: embedded so receipts/exports verify authorship offline.
             signature,
-        });
+        };
     }
 
     /**
@@ -589,7 +667,20 @@ export class BlockchainService implements OnModuleInit {
         metadata: Record<string, any>,
         signature?: Record<string, any>,
     ) {
-        return await this.addBlock({
+        return await this.addBlock(this.inferenceData(modelId, inferenceId, inputHash, outputHash, params, metadata, signature));
+    }
+
+    /** Block data of an inference (shared with the ADR-004 event path). */
+    inferenceData(
+        modelId: string,
+        inferenceId: string,
+        inputHash: string,
+        outputHash: string,
+        params: Record<string, any>,
+        metadata: Record<string, any>,
+        signature?: Record<string, any>,
+    ): ProvenanceBlock['data'] {
+        return {
             type: 'inference',
             modelId,
             inferenceId,
@@ -600,7 +691,7 @@ export class BlockchainService implements OnModuleInit {
             // executedAt is server-augmented: excluded from the signed bytes by ADR-001.
             executedAt: new Date().toISOString(),
             signature,
-        });
+        };
     }
 
     /**
@@ -753,6 +844,11 @@ export class BlockchainService implements OnModuleInit {
         }
         const isValid = errors.length === 0;
         return { modelId, isValid, valid: isValid, totalBlocks, errors };
+    }
+
+    /** ADR-004: the block chaining the evidence seq range that starts at `eventSeq`. */
+    async getBlockByEventSeq(eventSeq: number): Promise<any | null> {
+        return await this.provenanceBlockModel.findOne({ eventSeq }).lean();
     }
 
     /**
