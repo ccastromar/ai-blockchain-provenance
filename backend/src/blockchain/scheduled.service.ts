@@ -8,6 +8,7 @@ import { IntegrityCheck, IntegrityCheckDocument } from './models/integrity-check
 import { Model } from 'mongoose';
 import { BlockchainService } from './blockchain.service';
 import { queryClockOffsetMs } from '../common/ntp';
+import { hasRole } from '../common/ernest-role';
 
 @Injectable()
 export class ScheduledBlockchainService implements OnModuleInit {
@@ -21,6 +22,7 @@ export class ScheduledBlockchainService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    if (!hasRole('chainer')) return;
     // Run once at startup instead of waiting for the first cron tick, so a chain that's
     // already broken is flagged immediately rather than up to an hour later.
     await this.checkChainIntegrity();
@@ -44,6 +46,7 @@ export class ScheduledBlockchainService implements OnModuleInit {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async checkChainIntegrity() {
+    if (!hasRole('chainer')) return;
     const checkedAt = new Date();
     const errors: string[] = [];
     let mode: 'full' | 'incremental' = 'full';
@@ -188,6 +191,7 @@ export class ScheduledBlockchainService implements OnModuleInit {
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async confirmPendingAnchors() {
+    if (!hasRole('chainer')) return;
     // OTS anchors upgrade against the public calendars -- no RPC configuration needed.
     try {
       const ots = await this.blockchainService.upgradePendingOtsAnchors();

@@ -22,6 +22,7 @@ import { Rfc3161Client } from './rfc3161.client';
 import { buildCycloneDxMlBom } from './cyclonedx';
 import { EvidenceEvent, EvidenceEventDocument } from './models/evidence-event.schema';
 import { leafHashOf, merkleRoot, TREE_ALG } from './merkle-rfc6962';
+import { writesAllowed } from '../common/ernest-role';
 
 const anchorAbi = abiJson.abi;
 const MAX_APPEND_RETRIES = 5;
@@ -117,6 +118,8 @@ export class BlockchainService implements OnModuleInit {
     }
 
     async onModuleInit() {
+        // A read replica never writes: indexes and genesis are created by writer/chainer.
+        if (!writesAllowed()) return;
         await this.ensureIndexes();
         await this.createGenesisBlock();
     }

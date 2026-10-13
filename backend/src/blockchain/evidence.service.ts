@@ -13,6 +13,7 @@ import { BlockchainService, EventRangeAlreadyChainedError } from './blockchain.s
 import { EvidenceEvent, EvidenceEventDocument } from './models/evidence-event.schema';
 import { BatcherLease, BatcherLeaseDocument } from './models/batcher-lease.schema';
 import { auditPath, canonicalEventData, leafHashOf, merkleRoot, TREE_ALG, verifyInclusion } from './merkle-rfc6962';
+import { hasRole, writesAllowed } from '../common/ernest-role';
 
 /**
  * EVIDENCE_BATCHING (ADR-004 rollout):
@@ -75,7 +76,9 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
 
     async onModuleInit() {
         if (!this.enabled()) return;
-        await this.ensureIndexes();
+        if (writesAllowed()) await this.ensureIndexes();
+        // Only the chainer chains; writers insert events and readers read them.
+        if (!hasRole('chainer')) return;
         this.timer = setInterval(() => this.kick(), this.intervalMs());
         this.logger.log(`Evidence batcher started (mode=${this.mode()}, interval=${this.intervalMs()}ms, max=${this.maxEvents()})`);
     }

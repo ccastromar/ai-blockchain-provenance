@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/global.exception.filter';
+import { assertRolesConsistent, ernestRoles } from './common/ernest-role';
 
 // Last line of defence: a failure in background work (anchoring, RPC polling, webhooks)
 // must never take the evidence service down. Log it loudly and keep serving.
@@ -12,6 +13,7 @@ process.on('unhandledRejection', (reason: any) => {
 });
 
 async function bootstrap() {
+  assertRolesConsistent();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Express defaults to 100 kB JSON bodies; POST /api/inferences/batch carries up to 500
   // records (~250 kB). MAX_JSON_BODY overrides (e.g. "4mb").
@@ -61,7 +63,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3001;
   await app.listen(port);
   
-  console.log(`API running on http://localhost:${port}`);
+  console.log(`API running on http://localhost:${port} (roles: ${[...ernestRoles()].join(', ')})`);
   console.log(`API docs: http://localhost:${port}/api/docs`);
   console.log(`Chain stats: http://localhost:${port}/api/stats`);
 }

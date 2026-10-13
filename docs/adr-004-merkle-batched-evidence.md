@@ -258,6 +258,23 @@ Decisions taken while implementing, refining §1–§3:
 Not done: golden-test consumers for the new fixture in each language's test suite (verified
 with throwaway programs instead), and the emitter-side batch manifests of §6 (follow-up by design).
 
+## Deployment roles (CQRS)
+
+With batching on, writing and chaining are separate steps, so one deployment can split by
+responsibility. `ERNEST_ROLE` (comma list; default `all`) selects what a backend process does:
+
+| Role | Serves | Scales |
+|---|---|---|
+| `reader` | The read API: provenance, proofs, verify, stats, exports. Any non-GET answers 405; runs no jobs and never writes (no indexes, no genesis). | Horizontally, behind a load balancer |
+| `writer` | Submissions (`/api/models`, `/api/inferences`, admin writes). With batching it only inserts events. | Horizontally (inserts, unique `(source, eventId)`) |
+| `chainer` | The batcher (lease-elected leader), anchoring and the integrity check: the only chain writer. | One active (extra instances wait on the lease) |
+
+High-volume emitters write through the event-ingestor, whose worker also only inserts events.
+So writes scale with MongoDB inserts, reads with reader replicas, and the chain grows by one
+block per batch from a single chainer. A `writer` without `chainer` refuses to start with
+batching `off` — it would append blocks itself and race the chainer. Prudence follows the split
+with `prudence.ernest.base-url` (readers) and `prudence.ernest.write-base-url` (a writer).
+
 ## Open questions
 
 1. **Legal (eIDAS):** is a per-event emitter seal still required when a qualified timestamp

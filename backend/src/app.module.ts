@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { ReadReplicaMiddleware } from './common/read-replica.middleware';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -73,6 +74,7 @@ const envInt = (name: string, fallback: number) => {
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ReadReplicaMiddleware).forRoutes('*');
     consumer.apply(AccessResolutionMiddleware).forRoutes('*');
   }
 }

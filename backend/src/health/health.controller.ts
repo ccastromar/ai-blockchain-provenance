@@ -8,6 +8,7 @@ import { Anchor, AnchorDocument } from '../blockchain/models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckDocument } from '../blockchain/models/integrity-check.schema';
 import { ethers } from 'ethers';
 import { rpcProvider } from '../blockchain/rpc-provider';
+import { ernestRoles } from '../common/ernest-role';
 
 @ApiTags('Health')
 @Controller('health')
@@ -35,6 +36,7 @@ export class HealthController {
     return {
       status: allOk ? 'ok' : 'degraded',
       timestamp: new Date().toISOString(),
+      roles: [...ernestRoles()],
       subsystems: { mongo, ethereum, cron, integrity },
     };
   }
