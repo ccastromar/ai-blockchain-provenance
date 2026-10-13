@@ -379,6 +379,30 @@ Before allowing the Go writer to append blocks directly, we should add cross-lan
 
 This is critical. If Go and NestJS disagree on canonicalization, `/api/verify` could fail even though both services are individually "correct".
 
+## Kafka Source (ADR-005)
+
+High-volume emitters (Prudence's PDP decisions) publish to Kafka instead of calling HTTP; see
+[ADR-005](adr-005-kafka-ingestion.md). `event-ingestor kafka` consumes the topics as a consumer
+group and records each poll in bulk through the same writer as the Redis worker, committing
+offsets only after the records are recorded (at-least-once; replays are deduplicated).
+
+```bash
+KAFKA_BROKERS=127.0.0.1:9092 KAFKA_TOPICS=prudence.decisions KAFKA_GROUP=ernest-ingestor \
+EVIDENCE_BATCHING=on MONGODB_URI=mongodb://127.0.0.1:27017/ernest event-ingestor kafka
+```
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `KAFKA_BROKERS` | `127.0.0.1:9092` | Seed brokers (comma list). |
+| `KAFKA_TOPICS` | `prudence.decisions` | Topics to record (comma list). |
+| `KAFKA_GROUP` | `ernest-ingestor` | Consumer group; run up to one process per partition. |
+| `KAFKA_MAX_POLL_RECORDS` | `1000` | Records recorded per batch. |
+
+Record contract: headers `source`, `eventType`, `sourceEventId` (else the record key), value =
+the JSON body `POST /events` would carry. Events are stored with `verificationStatus=kafka_acl`.
+A record that cannot be parsed goes to `event_failures` (`sourceStreamId = kafka:<topic>/<partition>@<offset>`)
+and is committed past; a MongoDB outage retries the same poll without committing.
+
 ## Redis-Based Ingestion Architecture
 
 Redis should be used as a buffer, not as the source of truth.

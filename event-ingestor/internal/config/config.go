@@ -40,6 +40,11 @@ type Config struct {
 	// ADR-004: "events" or "on" makes the worker record events in evidence_events for the
 	// backend's batcher to chain, instead of appending one block per event itself.
 	EvidenceBatching string
+	// ADR-005 Kafka source (`event-ingestor kafka`).
+	KafkaBrokers        string
+	KafkaTopics         string
+	KafkaGroup          string
+	KafkaMaxPollRecords int
 }
 
 func Load() Config {
@@ -73,6 +78,10 @@ func Load() Config {
 		RateLimitAuthenticatedBurst: int(envInt64("RATE_LIMIT_AUTHENTICATED_BURST", 10000)),
 		MetricsPort:                 env("METRICS_PORT", "9102"),
 		EvidenceBatching:            env("EVIDENCE_BATCHING", "off"),
+		KafkaBrokers:                env("KAFKA_BROKERS", "127.0.0.1:9092"),
+		KafkaTopics:                 env("KAFKA_TOPICS", "prudence.decisions"),
+		KafkaGroup:                  env("KAFKA_GROUP", "ernest-ingestor"),
+		KafkaMaxPollRecords:         int(envInt64("KAFKA_MAX_POLL_RECORDS", 1000)),
 	}
 }
 

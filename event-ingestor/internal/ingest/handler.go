@@ -869,6 +869,10 @@ func (h Handler) verifyIngestAuth(r *http.Request) (string, bool) {
 	return "shared_secret", true
 }
 
+// AttachVerification records how an event's origin was authenticated in its payload metadata
+// (shared by the Kafka source, ADR-005).
+func AttachVerification(payload map[string]any, status string) { attachVerification(payload, status) }
+
 func attachVerification(payload map[string]any, status string) {
 	metadata, _ := payload["metadata"].(map[string]any)
 	if metadata == nil {
@@ -883,6 +887,8 @@ func attachVerification(payload map[string]any, status string) {
 		metadata["verificationMethod"] = "X-Webhook-Secret"
 	case "shared_secret":
 		metadata["verificationMethod"] = "X-Ernest-Ingest-Key"
+	case "kafka_acl":
+		metadata["verificationMethod"] = "Kafka topic ACL"
 	default:
 		metadata["verificationMethod"] = "none"
 	}

@@ -191,7 +191,8 @@ Behind `EVIDENCE_BATCHING=off|on` (default `off`):
   exactly this, but a heavy operational dependency for a PoC. Tessera's tiled-log format is the
   reference to evaluate if Ernest outgrows MongoDB storage.
 - **Kafka (or another broker) in front.** Smooths bursts, which Redis Streams already does; it
-  does not lift the chain's append ceiling.
+  does not lift the chain's append ceiling. *(Superseded for the transport by [ADR-005](adr-005-kafka-ingestion.md):
+  once the chain stopped being the limit, the emitter-to-Ernest transport was.)*
 
 ## Implementation status
 
