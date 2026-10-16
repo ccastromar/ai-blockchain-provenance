@@ -10,6 +10,10 @@ import { RegisterEmitterKeyDto } from './dto/register-emitter-key.dto';
 
 const API_KEY_HEADER = 'x-ernest-api-key';
 
+function publicReadOnlyEnabled(): boolean {
+  return process.env.ERNEST_PUBLIC_READ_ONLY?.trim().toLowerCase() === 'true';
+}
+
 export type ErnestRole = 'read-write' | 'read-only' | 'anonymous';
 
 @ApiTags('Auth')
@@ -40,6 +44,9 @@ export class AuthController {
       bearer,
       oidc: this.oidcService,
     });
+    if (role === 'anonymous' && publicReadOnlyEnabled()) {
+      return { role: 'read-only', openAccess: true, label: 'Public visitor' };
+    }
     return { role, openAccess: false, ...(label ? { label } : {}), ...(subject ? { subject } : {}) };
   }
 
