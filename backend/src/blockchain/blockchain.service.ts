@@ -1362,6 +1362,7 @@ export class BlockchainService implements OnModuleInit {
                 reason: 'OpenTimestamps anchoring: free, keyless Bitcoin attestation via public calendar servers.',
                 pendingProofs: pendingOts,
                 confirmedProofs: confirmedOts,
+                everyNBlocks: this.getAnchorEveryNBlocks(),
                 lastAnchor,
             };
         }
@@ -1404,6 +1405,7 @@ export class BlockchainService implements OnModuleInit {
             domain: config.domain,
             chainId,
             latestBlock,
+            everyNBlocks: this.getAnchorEveryNBlocks(),
             lastAnchor,
             error,
         };

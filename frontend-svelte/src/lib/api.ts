@@ -116,12 +116,18 @@ export interface ProvenanceFilter {
   to?: string;     // ISO date
 }
 
+export interface HealthSubsystem { status: string; detail?: string }
+/** GET /health: overall status plus one entry per backend subsystem. */
 export interface HealthStatus {
   status: string;
-  services?: {
-    mongodb?: { status: string; latencyMs?: number };
-    ethereum?: { status: string; blockNumber?: number };
-    anchor?:   { status: string; lastRun?: string };
+  timestamp?: string;
+  roles?: string[];
+  subsystems?: {
+    mongo?: HealthSubsystem;
+    ethereum?: HealthSubsystem;
+    cron?: HealthSubsystem;
+    integrity?: HealthSubsystem;
+    indexer?: HealthSubsystem & { indexedUpTo?: number; chainTip?: number };
   };
 }
 

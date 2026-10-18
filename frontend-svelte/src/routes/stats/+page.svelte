@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { format } from 'date-fns';
-  import { getChainStats, verifyChain, getHealth, anchorNow, absoluteApiHref } from '$lib/api';
+  import { getChainStats, verifyChain, getHealth, getAnchorStatus, anchorNow, absoluteApiHref } from '$lib/api';
   import { authState } from '$lib/auth';
 
   let canWrite = $derived($authState.role === 'read-write');
@@ -9,11 +9,19 @@
   let stats        = $state<any>(null);
   let verification = $state<any>(null);
   let health       = $state<any>(null);
+  let anchorStatus = $state<any>(null);
   let loading      = $state(true);
   let autoRefresh  = $state(true);
   let interval: ReturnType<typeof setInterval> | null = null;
 
   let anchor = $derived(stats?.lastAnchor);
+  // Blocks still to append before the automatic anchor fires (null when anchoring is off).
+  let blocksToNextAnchor = $derived.by(() => {
+    const n = anchorStatus?.everyNBlocks;
+    if (!anchorStatus?.configured || !n || !stats) return null;
+    const since = (stats.lastBlockIndex ?? 0) - (anchor?.lastBlockIndex ?? -1);
+    return Math.max(n - since, 0);
+  });
   let isOts  = $derived(anchor?.provider === 'ots');
 
   let anchoring     = $state(false);
@@ -37,7 +45,9 @@
 
   async function loadStats() {
     try {
-      [stats, verification, health] = await Promise.all([getChainStats(), verifyChain(), getHealth()]);
+      [stats, verification, health, anchorStatus] = await Promise.all([
+        getChainStats(), verifyChain(), getHealth(), getAnchorStatus().catch(() => null),
+      ]);
     } catch (e) {
       console.error('Error loading stats:', e);
     } finally {
@@ -152,7 +162,7 @@
 
     <!-- Health check -->
     {#if health}
-      {@const services = health.services ?? {}}
+      {@const subsystems = health.subsystems ?? {}}
       <div class="card p-6">
         <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
           <span class="text-blue-600">🩺</span> Service Health
@@ -161,24 +171,29 @@
             {health.status}
           </span>
         </h3>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {#each [
-            { key: 'mongodb',  label: 'MongoDB',       icon: '🗄️' },
-            { key: 'ethereum', label: 'Ethereum RPC',  icon: '⛓️' },
-            { key: 'anchor',   label: 'Anchor Cron',   icon: '⏱️' }
+            { key: 'mongo',     label: 'MongoDB',         icon: '🗄️' },
+            { key: 'indexer',   label: 'Chain indexer',   icon: '🧮' },
+            { key: 'integrity', label: 'Integrity check', icon: '🔐' },
+            { key: 'cron',      label: 'Anchor jobs',     icon: '⏱️' },
+            { key: 'ethereum',  label: 'Ethereum RPC',    icon: '⛓️' }
           ] as svc}
-            {@const s = services[svc.key]}
+            {@const s = subsystems[svc.key]}
             <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
               <div class="flex items-center gap-2 mb-2">
                 <span>{svc.icon}</span>
                 <span class="text-sm font-medium text-slate-700">{svc.label}</span>
-                <span class="ml-auto w-2 h-2 rounded-full {s?.status === 'ok' ? 'bg-emerald-400' : s ? 'bg-red-400' : 'bg-slate-300'}"></span>
+                <span class="ml-auto w-2 h-2 rounded-full
+                  {s?.status === 'ok' ? 'bg-emerald-400'
+                    : s?.status === 'error' || s?.status === 'degraded' ? 'bg-red-400'
+                    : s?.status === 'catching_up' ? 'bg-amber-400' : 'bg-slate-300'}"></span>
               </div>
               {#if s}
-                <div class="text-xs text-slate-500 space-y-0.5">
-                  {#if s.latencyMs != null}<div>Latency: {s.latencyMs}ms</div>{/if}
-                  {#if s.blockNumber  != null}<div>Block: #{s.blockNumber}</div>{/if}
-                  {#if s.lastRun}<div>Last run: {s.lastRun}</div>{/if}
+                <div class="text-xs text-slate-500 space-y-0.5 break-words">
+                  <div>{s.status === 'not_configured' ? 'not configured' : s.status.replace('_', ' ')}</div>
+                  {#if s.detail}<div class="text-slate-400">{s.detail}</div>{/if}
+                  {#if svc.key === 'indexer' && s.indexedUpTo != null}<div class="text-slate-400">indexed up to #{s.indexedUpTo}</div>{/if}
                 </div>
               {:else}
                 <div class="text-xs text-slate-400">No data</div>
@@ -253,6 +268,10 @@
             <span class="text-xs font-normal text-slate-400 ml-1">
               ({isOts ? 'OpenTimestamps · Bitcoin' : 'EVM contract'})
             </span>
+          {:else if anchorStatus?.configured}
+            <span class="text-xs font-normal text-slate-400 ml-1">
+              ({anchorStatus.mode === 'ots' ? 'OpenTimestamps · Bitcoin' : 'EVM contract'})
+            </span>
           {/if}
         </h3>
         <button
@@ -290,6 +309,11 @@
               <dd class="font-medium text-slate-700">{item.value}</dd>
             </div>
           {/each}
+          {#if blocksToNextAnchor != null}
+            <div class="sm:col-span-2 text-xs text-slate-400">
+              Next automatic anchor in {blocksToNextAnchor} blocks (every {anchorStatus.everyNBlocks}).
+            </div>
+          {/if}
           <div class="sm:col-span-2">
             <dt class="text-xs text-slate-400 uppercase tracking-wider mb-1">Merkle Root</dt>
             <dd class="font-mono text-xs bg-slate-50 border border-slate-200 rounded p-2 break-all text-slate-600">
@@ -323,7 +347,14 @@
         </dl>
       {:else}
         <div class="text-sm text-slate-400 text-center py-6">
-          No anchor yet. Anchor the chain state to an EVM contract or OpenTimestamps (Bitcoin).
+          {#if anchorStatus && !anchorStatus.configured}
+            No anchor yet: anchoring is disabled on this server.
+          {:else if anchorStatus}
+            No anchor yet. The first one is made automatically after {anchorStatus.everyNBlocks} blocks
+            {#if blocksToNextAnchor != null}({blocksToNextAnchor} to go){/if}, or now with “Anchor now”.
+          {:else}
+            No anchor yet. Anchor the chain state to an EVM contract or OpenTimestamps (Bitcoin).
+          {/if}
         </div>
       {/if}
     </div>
