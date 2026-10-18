@@ -17,6 +17,8 @@ export class ChainIndexState {
   /** Set while the indexer is stopped at an invalid block (the tip does not move past it). */
   @Prop() stalledAt?: number;
   @Prop() error?: string;
+  /** Read-model schema version; an older (or missing) version makes the indexer rebuild. */
+  @Prop() version?: number;
 }
 export type ChainIndexStateDocument = ChainIndexState & Document<string>;
 export const ChainIndexStateSchema = SchemaFactory.createForClass(ChainIndexState);
@@ -38,6 +40,8 @@ export const ModelIndexSchema = SchemaFactory.createForClass(ModelIndex);
 export class SystemIndex {
   @Prop({ required: true }) aiSystemId: string;
   @Prop({ default: 0 }) executions: number;
+  /** Latest execution time: the event's own `occurredAt`, else when Ernest received it. */
+  @Prop() lastExecutionAt?: Date;
   @Prop({ required: true }) lastBlockIndex: number;
   @Prop() updatedAt?: Date;
 }

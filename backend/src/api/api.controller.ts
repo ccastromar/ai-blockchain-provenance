@@ -196,7 +196,7 @@ export class ApiController {
     description: 'Server-side aggregation over an index. `since` is an exclusive block index; pass the returned `upToIndex` to continue incrementally.',
   })
   @ApiQuery({ name: 'since', required: false, type: Number })
-  @ApiOkResponse({ description: '{ counts: { [aiSystemId]: n }, sinceIndex, upToIndex }' })
+  @ApiOkResponse({ description: '{ counts: { [aiSystemId]: n }, lastExecutionAt: { [aiSystemId]: ISO time of the latest execution }, sinceIndex, upToIndex }' })
   async getExecutionCounts(@Query('since') since?: string) {
     const parsed = since === undefined || since === '' ? undefined : Number(since);
     if (parsed !== undefined && (!Number.isInteger(parsed) || parsed < -1)) {

@@ -11,6 +11,17 @@ import {
 import { hasRole } from '../common/ernest-role';
 
 const STATE_ID = 'chain';
+/** v2 adds lastExecutionAt per AI system; rows built by v1 are dropped and rebuilt once. */
+const INDEX_VERSION = 2;
+
+/** An event's stated time when it parses, else the given fallback (Ernest's own clock). */
+function eventTime(occurredAt: unknown, fallback: Date | null): Date | null {
+    if (typeof occurredAt === 'string' && occurredAt !== '') {
+        const t = new Date(occurredAt);
+        if (!Number.isNaN(t.getTime())) return t;
+    }
+    return fallback;
+}
 
 /**
  * ADR-006: validate each block when it is connected and derive read models from it, the way a
@@ -58,6 +69,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     async onModuleInit() {
         if (!this.enabled() || !hasRole('chainer')) return;
         await this.ensureIndexes();
+        await this.migrate();
         this.timer = setInterval(() => this.kick(), this.intervalMs());
         this.logger.log(`Chain indexer started (interval=${this.intervalMs()}ms)`);
     }
@@ -70,6 +82,19 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     async ensureIndexes(): Promise<void> {
         await this.modelIndex.collection.createIndex({ modelId: 1 }, { unique: true, name: 'unique_model' });
         await this.systemIndex.collection.createIndex({ aiSystemId: 1 }, { unique: true, name: 'unique_system' });
+    }
+
+    /**
+     * Read models built by an older indexer lack fields newer readers rely on. They are a cache
+     * of the chain, so they are dropped and rebuilt from block 0; meanwhile readyTip() is null
+     * and readers answer from the store, which stays exact.
+     */
+    async migrate(): Promise<void> {
+        const state = await this.stateModel.findById(STATE_ID).lean();
+        if (!state || (state.version ?? 1) >= INDEX_VERSION) return;
+        this.logger.warn(`Chain indexer: read models are v${state.version ?? 1}, rebuilding as v${INDEX_VERSION} from block 0`);
+        await Promise.all([this.modelIndex.deleteMany({}), this.systemIndex.deleteMany({})]);
+        await this.stateModel.deleteOne({ _id: STATE_ID });
     }
 
     private kick() {
@@ -136,9 +161,15 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     /** Counts a validated block into the read models. Safe to repeat for the same block. */
     private async apply(block: any): Promise<void> {
         const models = new Map<string, number>();
-        const systems = new Map<string, number>();
+        const systems = new Map<string, { n: number; last: Date | null }>();
         const add = (map: Map<string, number>, key: unknown, n: number) => {
             if (typeof key === 'string' && key !== '') map.set(key, (map.get(key) ?? 0) + n);
+        };
+        const addExecution = (key: unknown, n: number, last: Date | null) => {
+            if (typeof key !== 'string' || key === '') return;
+            const prev = systems.get(key);
+            const latest = !prev?.last ? last : !last ? prev.last : (last > prev.last ? last : prev.last);
+            systems.set(key, { n: (prev?.n ?? 0) + n, last: latest });
         };
         if (block.data?.type === 'batch') {
             const rows = await this.eventModel.aggregate([
@@ -149,20 +180,26 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
                         system: { $cond: [{ $eq: ['$data.metadata.stage', 'execution'] }, '$data.metadata.aiSystemId', null] },
                     },
                     n: { $sum: 1 },
+                    // The event's stated time when it parses as a date, else Ernest's receipt time.
+                    last: { $max: { $convert: { input: '$data.occurredAt', to: 'date', onError: '$createdAt', onNull: '$createdAt' } } },
                 } },
             ]);
             for (const r of rows) {
                 add(models, r._id.model, r.n);
-                add(systems, r._id.system, r.n);
+                addExecution(r._id.system, r.n, r.last ? new Date(r.last) : null);
             }
         } else {
             add(models, block.data?.modelId, 1);
-            if (block.data?.metadata?.stage === 'execution') add(systems, block.data?.metadata?.aiSystemId, 1);
+            if (block.data?.metadata?.stage === 'execution') {
+                const received = typeof block.timestamp === 'number' ? new Date(block.timestamp) : null;
+                addExecution(block.data?.metadata?.aiSystemId, 1, eventTime(block.data?.occurredAt, received));
+            }
         }
         const now = new Date();
         await Promise.all([
             ...[...models].map(([id, n]) => this.bump(this.modelIndex, 'modelId', id, 'events', n, block.index, now)),
-            ...[...systems].map(([id, n]) => this.bump(this.systemIndex, 'aiSystemId', id, 'executions', n, block.index, now)),
+            ...[...systems].map(([id, e]) => this.bump(this.systemIndex, 'aiSystemId', id, 'executions', e.n, block.index, now,
+                e.last ? { lastExecutionAt: e.last } : undefined)),
         ]);
     }
 
@@ -170,11 +207,15 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
      * Adds `n` to a row unless it already holds this block. When the row is at or past the
      * block, the filter misses and the upsert collides with the unique key: already applied.
      */
-    private async bump(model: Model<any>, key: string, id: string, field: string, n: number, at: number, now: Date) {
+    private async bump(model: Model<any>, key: string, id: string, field: string, n: number, at: number, now: Date,
+        latest?: Record<string, Date>) {
         try {
             await model.updateOne(
                 { [key]: id, lastBlockIndex: { $lt: at } },
-                { $inc: { [field]: n }, $set: { lastBlockIndex: at, updatedAt: now }, $min: { firstBlockIndex: at } },
+                {
+                    $inc: { [field]: n }, $set: { lastBlockIndex: at, updatedAt: now }, $min: { firstBlockIndex: at },
+                    ...(latest ? { $max: latest } : {}),
+                },
                 { upsert: true },
             );
         } catch (err) {
@@ -187,7 +228,7 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
         try {
             await this.stateModel.updateOne(
                 { _id: STATE_ID, $or: [{ index: { $lt: block.index } }, { index: { $exists: false } }] },
-                { $set: { index: block.index, hash: block.hash, updatedAt: new Date() }, $unset: { stalledAt: 1, error: 1 } },
+                { $set: { index: block.index, hash: block.hash, updatedAt: new Date(), version: INDEX_VERSION }, $unset: { stalledAt: 1, error: 1 } },
                 { upsert: true },
             );
         } catch (err) {
@@ -243,9 +284,12 @@ export class ChainIndexerService implements OnModuleInit, OnModuleDestroy {
     }
 
     async executionCounts(indexedUpTo: number) {
-        const rows = await this.systemIndex.find({}, { aiSystemId: 1, executions: 1 }).lean();
+        const rows = await this.systemIndex.find({}, { aiSystemId: 1, executions: 1, lastExecutionAt: 1 }).lean();
         const counts: Record<string, number> = Object.fromEntries((rows as any[]).map(r => [r.aiSystemId, r.executions]));
-        return { counts, sinceIndex: -1, upToIndex: indexedUpTo, indexedUpTo };
+        const lastExecutionAt: Record<string, string> = Object.fromEntries((rows as any[])
+            .filter(r => r.lastExecutionAt)
+            .map(r => [r.aiSystemId, new Date(r.lastExecutionAt).toISOString()]));
+        return { counts, lastExecutionAt, sinceIndex: -1, upToIndex: indexedUpTo, indexedUpTo };
     }
 
     /**

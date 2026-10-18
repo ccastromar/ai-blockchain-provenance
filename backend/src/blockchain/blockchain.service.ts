@@ -802,7 +802,7 @@ export class BlockchainService implements OnModuleInit {
      * index. Bounded to the current tip so a caller can resume incrementally from
      * `upToIndex` next time (`since` is exclusive). Replaces paging the whole chain.
      */
-    async executionCountsBySystem(sinceIndex = -1): Promise<{ counts: Record<string, number>; sinceIndex: number; upToIndex: number }> {
+    async executionCountsBySystem(sinceIndex = -1): Promise<{ counts: Record<string, number>; lastExecutionAt: Record<string, string>; sinceIndex: number; upToIndex: number }> {
         const tip = await this.provenanceBlockModel.findOne({}, { index: 1 }).sort({ index: -1 }).lean();
         const upToIndex = tip?.index ?? 0;
         const rows = await this.provenanceBlockModel.aggregate([
@@ -811,9 +811,21 @@ export class BlockchainService implements OnModuleInit {
                 'data.metadata.aiSystemId': { $type: 'string', $ne: '' },
                 index: { $gt: sinceIndex, $lte: upToIndex },
             } },
-            { $group: { _id: '$data.metadata.aiSystemId', count: { $sum: 1 } } },
+            { $group: {
+                _id: '$data.metadata.aiSystemId',
+                count: { $sum: 1 },
+                // The event's stated time when it parses as a date, else the block's own time.
+                last: { $max: { $convert: { input: '$data.occurredAt', to: 'date', onError: { $toDate: '$timestamp' }, onNull: { $toDate: '$timestamp' } } } },
+            } },
         ]);
         const counts: Record<string, number> = Object.fromEntries(rows.map((r: any) => [r._id, r.count]));
+        const latest: Record<string, Date> = {};
+        const keepLatest = (id: string, last: unknown) => {
+            if (!last) return;
+            const t = new Date(last as any);
+            if (!Number.isNaN(t.getTime()) && (!latest[id] || t > latest[id])) latest[id] = t;
+        };
+        for (const r of rows as any[]) keepLatest(r._id, r.last);
         if (this.evidenceEventModel) {
             // Batched executions count by their batch block's index, so the same
             // (since, upTo] window stays exact; pending ones are counted once chained.
@@ -825,11 +837,19 @@ export class BlockchainService implements OnModuleInit {
                     'data.metadata.aiSystemId': { $type: 'string', $ne: '' },
                     blockIndex: { $gt: sinceIndex, $lte: upToIndex },
                 } },
-                { $group: { _id: '$data.metadata.aiSystemId', count: { $sum: 1 } } },
+                { $group: {
+                    _id: '$data.metadata.aiSystemId',
+                    count: { $sum: 1 },
+                    last: { $max: { $convert: { input: '$data.occurredAt', to: 'date', onError: '$createdAt', onNull: '$createdAt' } } },
+                } },
             ]);
-            for (const r of eventRows) counts[r._id] = (counts[r._id] ?? 0) + r.count;
+            for (const r of eventRows as any[]) {
+                counts[r._id] = (counts[r._id] ?? 0) + r.count;
+                keepLatest(r._id, r.last);
+            }
         }
-        return { counts, sinceIndex, upToIndex };
+        const lastExecutionAt = Object.fromEntries(Object.entries(latest).map(([id, t]) => [id, t.toISOString()]));
+        return { counts, lastExecutionAt, sinceIndex, upToIndex };
     }
 
     /**
