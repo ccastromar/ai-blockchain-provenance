@@ -855,7 +855,7 @@ export class BlockchainService implements OnModuleInit {
     /**
      * Get all blocks (paginated)
      */
-    async getAllBlocks(page = 1, limit = 20, after?: number): Promise<any> {
+    async getAllBlocks(page = 1, limit = 20, after?: number, order: 'asc' | 'desc' = 'asc'): Promise<any> {
         if (after !== undefined) {
             // Keyset pagination over the unique index: constant cost per page at any depth,
             // unlike skip(), which walks every earlier block.
@@ -866,7 +866,7 @@ export class BlockchainService implements OnModuleInit {
         }
         const skip = (page - 1) * limit;
         const [items, total] = await Promise.all([
-            this.provenanceBlockModel.find().sort({ index: 1 }).skip(skip).limit(limit).lean(),
+            this.provenanceBlockModel.find().sort({ index: order === 'desc' ? -1 : 1 }).skip(skip).limit(limit).lean(),
             this.provenanceBlockModel.countDocuments(),
         ]);
         return { items, total, page, limit, totalPages: Math.ceil(total / limit) };

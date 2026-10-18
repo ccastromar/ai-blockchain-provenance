@@ -27,7 +27,7 @@
   async function loadList() {
     loadingList = true; listError = null;
     try {
-      const res = await getAllBlocks(page, PAGE_SIZE);
+      const res = await getAllBlocks(page, PAGE_SIZE, 'desc'); // newest first; #0 (genesis) last
       blocks     = res.data;
       total      = res.total;
       totalPages = res.totalPages;

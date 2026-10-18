@@ -583,8 +583,8 @@ export class ApiService {
     return await this.blockchainService.getAnchorStatus();
   }
 
-  async getAllBlocks(page = 1, limit = 20, after?: number) {
-    return await this.blockchainService.getAllBlocks(page, limit, after);
+  async getAllBlocks(page = 1, limit = 20, after?: number, order: 'asc' | 'desc' = 'asc') {
+    return await this.blockchainService.getAllBlocks(page, limit, after, order);
   }
 
   // ADR-006: counts come from the chain-derived read models when they are close to the tip;

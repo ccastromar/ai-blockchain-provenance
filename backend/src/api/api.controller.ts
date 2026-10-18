@@ -1,6 +1,7 @@
 import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, ParseIntPipe, Logger, Query, NotFoundException, Res, UseGuards, BadRequestException } from '@nestjs/common';
 import { ApiAcceptedResponse, ApiCreatedResponse, ApiHeader, ApiNotFoundResponse, ApiOkResponse, ApiOperation, ApiParam, ApiQuery, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { BlockListQueryDto } from '../common/dto/block-list-query.dto';
 import { OrgId } from '../common/org-id.decorator';
 import { ApiService } from './api.service';
 import { RegisterModelDto } from './dto/register-model.dto';
@@ -243,8 +244,8 @@ export class ApiController {
   @Get('blocks')
   @ApiOperation({ summary: 'Return raw hashchain blocks (paginated).' })
   @ApiOkResponse({ description: 'Paginated raw hashchain blocks.' })
-  async getAllBlocks(@Query() pagination: PaginationDto) {
-    return await this.apiService.getAllBlocks(pagination.page, pagination.limit, pagination.after);
+  async getAllBlocks(@Query() query: BlockListQueryDto) {
+    return await this.apiService.getAllBlocks(query.page, query.limit, query.after, query.order);
   }
 
   // Declared before blocks/:index so "export" is not captured by the ParseIntPipe param.

@@ -250,8 +250,8 @@ export const getBlockByIndex = async (index: number) => (await api.get(`/blocks/
 /** SPV-style inclusion receipt: block + Merkle proof to its covering confirmed anchor. */
 export const getBlockProof = async (index: number) => (await api.get(`/blocks/${index}/proof`)).data;
 
-export const getAllBlocks = async (page = 1, limit = 20): Promise<PaginatedResponse<any>> => {
-  const res = (await api.get('/blocks', { params: { page, limit } })).data;
+export const getAllBlocks = async (page = 1, limit = 20, order: 'asc' | 'desc' = 'asc'): Promise<PaginatedResponse<any>> => {
+  const res = (await api.get('/blocks', { params: { page, limit, order } })).data;
   if (Array.isArray(res)) return { data: res, total: res.length, page: 1, totalPages: 1 };
   if (res.items)          return { data: res.items, total: res.total, page: res.page, totalPages: res.totalPages };
   return res;
