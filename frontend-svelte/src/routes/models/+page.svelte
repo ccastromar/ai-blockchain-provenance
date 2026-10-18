@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { getModels, getModelById, getProvenance, patchModel, getModelIntegrity, type ModelStatus } from '$lib/api';
   import { authState } from '$lib/auth';
-  import AccessBadge from '$lib/components/AccessBadge.svelte';
 
   let canWrite = $derived($authState.role === 'read-write');
 
@@ -108,13 +107,11 @@
   <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
     <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <a href="/" class="btn-ghost text-sm py-1.5 px-3">← Dashboard</a>
         <h1 class="text-white font-semibold text-lg">AI Models</h1>
         {#if total > 0}
           <span class="text-blue-300 text-sm">{total} total</span>
         {/if}
       </div>
-      <AccessBadge />
     </div>
   </div>
 

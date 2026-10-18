@@ -3,7 +3,6 @@
   import { format } from 'date-fns';
   import { getChainStats, verifyChain, getHealth, anchorNow, absoluteApiHref } from '$lib/api';
   import { authState } from '$lib/auth';
-  import AccessBadge from '$lib/components/AccessBadge.svelte';
 
   let canWrite = $derived($authState.role === 'read-write');
 
@@ -60,7 +59,6 @@
 <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
   <div class="max-w-7xl mx-auto flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <a href="/" class="btn-ghost text-sm py-1.5 px-3">← Dashboard</a>
       <div>
         <h1 class="text-white font-bold text-lg leading-tight">Chain Statistics</h1>
         <p class="text-blue-300 text-xs">Real-time blockchain monitoring</p>
@@ -75,7 +73,6 @@
       <span class="text-xs text-blue-400 hidden sm:block">
         {format(new Date(), 'HH:mm:ss')}
       </span>
-      <AccessBadge />
     </div>
   </div>
 </div>

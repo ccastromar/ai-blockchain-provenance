@@ -70,7 +70,6 @@
 <div class="min-h-screen bg-slate-50">
   <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
     <div class="max-w-4xl mx-auto flex items-center gap-4">
-      <a href="/blocks" class="btn-ghost text-sm py-1.5 px-3">← Blocks</a>
       <h1 class="text-white font-semibold text-lg">Verify Evidence Receipt</h1>
     </div>
   </div>

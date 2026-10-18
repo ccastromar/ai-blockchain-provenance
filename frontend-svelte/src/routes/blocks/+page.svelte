@@ -101,12 +101,10 @@
   <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
     <div class="max-w-6xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <a href="/" class="btn-ghost text-sm py-1.5 px-3">← Dashboard</a>
         <h1 class="text-white font-semibold text-lg">Hashchain Blocks</h1>
         {#if total > 0}
           <span class="text-blue-300 text-sm">{total} total</span>
         {/if}
-        <a href="/verify-receipt" class="btn-ghost text-sm py-1.5 px-3">Verify receipt</a>
       </div>
     </div>
   </div>

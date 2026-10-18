@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { getIngestedEventStats, getIngestorAuthStatus, getIngestorHealth, simulateAzureMlEvent, simulateCloudEventsEvent, simulateDatabricksEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs, simulateSageMakerEvent, simulateVertexAiEvent } from '$lib/api';
   import { authState } from '$lib/auth';
-  import AccessBadge from '$lib/components/AccessBadge.svelte';
 
   let canWrite = $derived($authState.role === 'read-write');
 
@@ -198,7 +197,6 @@
   <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
     <div class="max-w-7xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="flex items-center gap-4">
-        <a href="/" class="btn-ghost text-sm py-1.5 px-3">Dashboard</a>
         <div>
           <h1 class="text-white font-bold text-lg leading-tight">Connectors</h1>
           <p class="text-blue-300 text-xs">External AI platforms wired into Ernest evidence ingestion</p>
@@ -213,7 +211,6 @@
         <button class="btn-ghost text-sm py-1.5 px-3" onclick={loadStats} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
-        <AccessBadge />
       </div>
     </div>
   </div>

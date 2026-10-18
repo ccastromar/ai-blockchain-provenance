@@ -9,7 +9,6 @@
     simulateHuggingFaceEvent
   } from '$lib/api';
   import { authState } from '$lib/auth';
-  import AccessBadge from '$lib/components/AccessBadge.svelte';
 
   let canWrite = $derived($authState.role === 'read-write');
 
@@ -173,7 +172,6 @@
   <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
     <div class="max-w-7xl mx-auto flex items-center justify-between">
       <div class="flex items-center gap-4">
-        <a href="/" class="btn-ghost text-sm py-1.5 px-3">Dashboard</a>
         <div>
           <h1 class="text-white font-bold text-lg leading-tight">Event Ingestion</h1>
           <p class="text-blue-300 text-xs">External AI lifecycle events flowing into Ernest</p>
@@ -191,7 +189,6 @@
         <button class="btn-ghost text-sm py-1.5 px-3" onclick={load} disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
-        <AccessBadge />
       </div>
     </div>
   </div>

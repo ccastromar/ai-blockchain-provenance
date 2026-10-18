@@ -199,27 +199,12 @@
 </script>
 
 <div class="min-h-screen bg-slate-50">
-  <header class="bg-blue-900 shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
-      <div class="flex flex-col gap-4 md:flex-row md:items-center">
-        <div class="flex-1">
-          <a href="/" class="inline-flex items-center gap-3">
-            <div class="w-9 h-9 bg-sky-400 rounded-lg flex items-center justify-center font-bold text-blue-900 text-lg">E</div>
-            <div>
-              <h1 class="text-xl font-bold text-white tracking-tight">Audit Readiness</h1>
-              <p class="text-xs text-blue-200 leading-none mt-0.5">Evidence pipeline review</p>
-            </div>
-          </a>
-        </div>
-
-        <nav class="flex flex-wrap items-center gap-2">
-          <a href="/" class="btn-ghost text-sm py-2 px-4">Dashboard</a>
-          <a href="/models" class="btn-ghost text-sm py-2 px-4">Models</a>
-          <a href="/stats" class="btn-ghost text-sm py-2 px-4">Statistics</a>
-        </nav>
-      </div>
+  <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
+    <div class="max-w-7xl mx-auto">
+      <h1 class="text-white font-bold text-lg leading-tight">Audit Readiness</h1>
+      <p class="text-blue-300 text-xs">Evidence pipeline review</p>
     </div>
-  </header>
+  </div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
     <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

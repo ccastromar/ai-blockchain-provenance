@@ -5,7 +5,6 @@
   import ModelRegistration from '$lib/components/ModelRegistration.svelte';
   import InferenceLogger from '$lib/components/InferenceLogger.svelte';
   import ProvenanceViewer from '$lib/components/ProvenanceViewer.svelte';
-  import AccessBadge from '$lib/components/AccessBadge.svelte';
 
   type Tab = 'register' | 'inference' | 'provenance';
 
@@ -50,31 +49,14 @@
 
 <div class="min-h-screen bg-slate-50">
   <!-- Header -->
-  <header class="bg-blue-900 shadow-lg">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+  <!-- Page toolbar (navigation lives in the shared layout) -->
+  <div class="bg-blue-900 px-4 sm:px-6 lg:px-8 py-4">
+    <div class="max-w-7xl mx-auto">
       <div class="flex items-center gap-6">
-        <!-- Brand -->
         <div class="flex-1">
-          <div class="flex items-center gap-3">
-            <div class="w-9 h-9 bg-sky-400 rounded-lg flex items-center justify-center font-bold text-blue-900 text-lg">E</div>
-            <div>
-              <h1 class="text-xl font-bold text-white tracking-tight">Ernest</h1>
-              <p class="text-xs text-blue-200 leading-none mt-0.5">AI Provenance</p>
-            </div>
-          </div>
+          <h1 class="text-white font-bold text-lg leading-tight">Dashboard</h1>
+          <p class="text-blue-300 text-xs">Register models, log inferences and trace provenance</p>
         </div>
-
-        <!-- Nav links -->
-        <nav class="flex items-center gap-2">
-          <a href="/models" class="btn-ghost text-sm py-2 px-4">Models</a>
-          <a href="/blocks" class="btn-ghost text-sm py-2 px-4">Blocks</a>
-          <a href="/connectors" class="btn-ghost text-sm py-2 px-4">Connectors</a>
-          <a href="/events" class="btn-ghost text-sm py-2 px-4">Events</a>
-          <a href="/stats" class="btn-ghost text-sm py-2 px-4">Statistics</a>
-          <a href="/auditor" class="btn-ghost text-sm py-2 px-4">Audit</a>
-        </nav>
-
-        <AccessBadge />
 
         <!-- Live stats chips -->
         {#if stats}
@@ -97,7 +79,7 @@
         {/if}
       </div>
     </div>
-  </header>
+  </div>
 
   <!-- Main content -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
