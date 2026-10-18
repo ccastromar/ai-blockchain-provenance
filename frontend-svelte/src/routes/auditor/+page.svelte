@@ -241,7 +241,7 @@
         {#if loadingModels}
           <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">Loading models...</div>
         {:else if models.length === 0}
-          <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">No models available yet. Register one from the dashboard to create an evidence packet.</div>
+          <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">No models available yet. Evidence arrives from AOS and Prudence; to try it by hand, use Demo (read-write sign-in).</div>
         {/if}
       </div>
 

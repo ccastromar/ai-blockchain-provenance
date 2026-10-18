@@ -105,6 +105,6 @@
       {/if}
     </div>
 
-    <a href="/" class="block text-center text-xs text-slate-400 hover:text-slate-600 mt-4">← Back to dashboard</a>
+    <a href="/" class="block text-center text-xs text-slate-400 hover:text-slate-600 mt-4">← Back to Ernest</a>
   </div>
 </div>

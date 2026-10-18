@@ -1,12 +1,12 @@
 # Demo Script
 
 Use this script for a 5-minute company or incubator presentation. It assumes the stack
-is already running and the dashboard is available. The demo builds to one moment: an
+is already running and the web UI is available. The demo builds to one moment: an
 evidence receipt that still verifies **after you shut the server down**.
 
 ## Setup
 
-- Dashboard: `http://localhost:3000` or the public demo URL.
+- Web UI: `http://localhost:3000` or the public demo URL (manual entry lives on **Demo**).
 - API docs: `http://localhost:3001/api/docs` or `/api/docs` behind the proxy.
 - If access keys are configured, sign in at `/login` with the read-write key beforehand.
 - For the anchoring/receipt finale, have at least one confirmed anchor covering the
@@ -29,7 +29,7 @@ Key point: Ernest is not a model registry or a data platform. It records
 
 ### 2. Seed and register (60s)
 
-Click **Seed demo** on the dashboard (or register `credit-risk-logreg-v1` manually with
+Click **Seed demo** on the **Demo** page (or register `credit-risk-logreg-v1` manually with
 a SHA-256 artifact hash and a git commit).
 
 Explain while it loads:

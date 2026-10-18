@@ -200,7 +200,8 @@ docker compose up --build
 
 Then open:
 
-- Dashboard: `http://localhost:3000`
+- Overview: `http://localhost:3000`
+- Manual entry (Demo, read-write sign-in): `http://localhost:3000/demo`
 - Backend health: `http://localhost:3001/health`
 - API docs: `http://localhost:3001/api/docs`
 - Chain stats: `http://localhost:3001/api/stats`
@@ -384,7 +385,7 @@ No standalone tool is compliant by itself. Ernest is an alpha PoC that can suppo
 
 ### Register AI Model
 
-Register a model with its version, artifact hash, Git commit, params, metrics, and metadata. Quick-fill lets you pre-populate the form from an already-registered model.
+On the **Demo** page (manual entry; in production evidence arrives automatically over Kafka), register a model with its version, artifact hash, Git commit, params, metrics, and metadata. Quick-fill lets you pre-populate the form from an already-registered model.
 
 ![Register AI Model](docs/img/register-model-form.jpg)
 
@@ -396,13 +397,13 @@ Log an inference using input/output hashes only — never the raw prompt, input,
 
 ### View Provenance
 
-Query the full tamper-evident history for a model, verify the chain, and export it — as a signed JSON bundle or as a CycloneDX 1.6 AI/ML-BOM document that other supply-chain tooling can read directly.
+On **Models**, select a model to see its full tamper-evident history, filter it by event type and date, and export it — as a signed JSON bundle or as a CycloneDX 1.6 AI/ML-BOM document that other supply-chain tooling can read directly.
 
 ![View Provenance](docs/img/view-provenance.jpg)
 
-### Hashchain Stats
+### Overview
 
-Live chain health: block count, model count, last block hash, and service status.
+The landing page. Live chain health, the blockchain anchor (and how many blocks until the next one), and the backend subsystems: block count, model count, last block hash, and service status.
 
 ![Show hashchain stats](docs/img/hashchain-stats.jpg)
 

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { getModels, getModelById, getProvenance, patchModel, getModelIntegrity, type ModelStatus } from '$lib/api';
+  import { page as pageStore } from '$app/stores';
+  import { getModels, getModelById, getProvenance, patchModel, getModelIntegrity, exportProvenance,
+    exportProvenanceCycloneDx, type ModelStatus, type ProvenanceFilter } from '$lib/api';
   import { authState } from '$lib/auth';
 
   let canWrite = $derived($authState.role === 'read-write');
@@ -18,6 +20,13 @@
   let provenance      = $state<any>(null);
   let integrity       = $state<any>(null);
 
+  // Provenance filters (event type and date range) for the timeline and its exports.
+  let filterType = $state<'' | 'model_registration' | 'inference'>('');
+  let filterFrom = $state('');
+  let filterTo   = $state('');
+  let filtering  = $state(false);
+  let filtersActive = $derived(!!(filterType || filterFrom || filterTo));
+
   // ── UI state ────────────────────────────────────────────────────────────────
   let loadingList      = $state(false);
   let loadingDetail    = $state(false);
@@ -26,7 +35,12 @@
   let listError        = $state<string | null>(null);
   let detailError      = $state<string | null>(null);
 
-  onMount(() => { loadList(); });
+  onMount(() => {
+    loadList();
+    // /models?model=<id> opens that model directly (e.g. from Demo or Audit).
+    const preselected = $pageStore.url.searchParams.get('model');
+    if (preselected) selectModel(preselected);
+  });
 
   async function loadList() {
     loadingList = true; listError = null;
@@ -47,6 +61,7 @@
     selectedModel    = null;
     provenance       = null;
     integrity        = null;
+    filterType = ''; filterFrom = ''; filterTo = '';
     loadingDetail    = true;
     detailError      = null;
     try {
@@ -59,6 +74,31 @@
     } finally {
       loadingDetail = false;
     }
+  }
+
+  function provenanceFilters(): ProvenanceFilter {
+    const filters: ProvenanceFilter = {};
+    if (filterType) filters.type = filterType;
+    if (filterFrom) filters.from = filterFrom;
+    if (filterTo)   filters.to   = filterTo;
+    return filters;
+  }
+
+  async function applyFilters() {
+    if (!selectedModelId) return;
+    filtering = true;
+    try {
+      provenance = await getProvenance(selectedModelId, provenanceFilters());
+    } catch (e: any) {
+      detailError = e.message ?? 'Failed to load provenance';
+    } finally {
+      filtering = false;
+    }
+  }
+
+  function clearFilters() {
+    filterType = ''; filterFrom = ''; filterTo = '';
+    applyFilters();
   }
 
   async function changeStatus(status: ModelStatus) {
@@ -267,13 +307,51 @@
               {/if}
             </div>
 
-            <!-- Provenance mini-timeline -->
+            <!-- Provenance: timeline with filters and exports -->
             {#if provenance}
               <div class="card p-5">
-                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                  Provenance · {provenance.totalBlocks} blocks
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Provenance · {provenance.totalBlocks} blocks
+                    {#if filtersActive}<span class="ml-1 normal-case bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">filtered</span>{/if}
+                  </div>
+                  <div class="flex gap-2">
+                    <a href={exportProvenance(selectedModelId)} target="_blank" rel="noopener noreferrer"
+                      class="btn-outline text-xs py-1.5 px-3" title="Download the full provenance as JSON">⬇ JSON</a>
+                    <a href={exportProvenanceCycloneDx(selectedModelId)} target="_blank" rel="noopener noreferrer"
+                      class="btn-outline text-xs py-1.5 px-3" title="Download as CycloneDX 1.6 AI/ML-BOM">⬇ ML-BOM</a>
+                  </div>
                 </div>
-                <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+
+                <div class="flex flex-wrap items-end gap-2 mb-3 text-xs">
+                  <label class="flex flex-col gap-1 text-slate-500">
+                    Event type
+                    <select bind:value={filterType} class="field-input text-xs py-1.5">
+                      <option value="">All</option>
+                      <option value="model_registration">Registration</option>
+                      <option value="inference">Inference</option>
+                    </select>
+                  </label>
+                  <label class="flex flex-col gap-1 text-slate-500">
+                    From
+                    <input type="date" bind:value={filterFrom} class="field-input text-xs py-1.5" />
+                  </label>
+                  <label class="flex flex-col gap-1 text-slate-500">
+                    To
+                    <input type="date" bind:value={filterTo} class="field-input text-xs py-1.5" />
+                  </label>
+                  <button onclick={applyFilters} disabled={filtering} class="btn-primary text-xs py-1.5 px-3">
+                    {filtering ? '…' : 'Apply'}
+                  </button>
+                  {#if filtersActive}
+                    <button onclick={clearFilters} class="btn-outline text-xs py-1.5 px-3">Clear</button>
+                  {/if}
+                </div>
+
+                {#if provenance.history.length === 0}
+                  <p class="text-xs text-slate-400">No events match these filters.</p>
+                {/if}
+                <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
                   {#each provenance.history as block}
                     <div class="flex items-start gap-3 text-xs bg-blue-50 border border-blue-100 rounded-lg p-3">
                       <span class="mt-0.5 text-blue-400 font-mono">#{block.blockIndex}</span>

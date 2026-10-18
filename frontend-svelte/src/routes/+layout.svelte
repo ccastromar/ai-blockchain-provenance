@@ -3,21 +3,26 @@
   import { env } from '$env/dynamic/public';
   import { page } from '$app/stores';
   import AccessBadge from '$lib/components/AccessBadge.svelte';
+  import { authState } from '$lib/auth';
   let { children } = $props();
 
   // One navigation for every page: the same destinations are always shown, the current one is
   // highlighted. Page-specific actions (Refresh, Simulate…) stay in each page's own toolbar.
-  const sections = [
-    { href: '/', label: 'Dashboard' },
+  const baseSections = [
+    { href: '/', label: 'Overview' },
     { href: '/models', label: 'Models' },
     { href: '/blocks', label: 'Blocks' },
     { href: '/events', label: 'Events' },
     { href: '/connectors', label: 'Connectors' },
-    { href: '/stats', label: 'Statistics' },
     { href: '/auditor', label: 'Audit' },
     { href: '/verify-receipt', label: 'Verify receipt' },
     { href: '/settings/tokens', label: 'Tokens' },
   ];
+  // Demo (manual evidence entry) writes to the chain: only offered to read-write users, so
+  // visitors of the public portal see real evidence only.
+  let sections = $derived($authState.role === 'read-write'
+    ? [...baseSections, { href: '/demo', label: 'Demo' }]
+    : baseSections);
 
   // Chestertown app-switcher — one platform, three modules. Ernest is the "assure" vertex.
   // URLs are deploy-configured; these are dev defaults.
@@ -38,7 +43,7 @@
 {#if !bare}
   <header class="site-nav">
     <div class="site-nav-inner">
-      <a href="/" class="brand" aria-label="Ernest dashboard">
+      <a href="/" class="brand" aria-label="Ernest overview">
         <span class="brand-mark">E</span>
         <span class="brand-text">
           <span class="brand-name">Ernest</span>
