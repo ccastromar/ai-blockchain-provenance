@@ -204,59 +204,35 @@
       </div>
     {/if}
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Chain metrics -->
-      <div class="card p-6">
-        <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-          <span class="text-blue-600">📊</span> Chain Metrics
-        </h3>
-        <dl class="space-y-3">
-          {#each [
-            {
-              label: 'Average events / model',
-              value: stats?.totalBlocks > 1
-                ? `${Math.round(stats.totalBlocks / (stats.totalModels || 1))}`
-                : 'N/A'
-            },
-            {
-              label: 'Chain growth',
-              value: stats?.totalBlocks > 1 ? 'Active' : 'Starting'
-            },
-            {
-              label: 'Verification',
-              value: verification?.isValid ? 'Passing' : 'Failing',
-              color: verification?.isValid ? 'text-emerald-600' : 'text-red-600'
-            }
-          ] as row}
-            <div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0">
-              <dt class="text-sm text-slate-500">{row.label}</dt>
-              <dd class="text-sm font-semibold {row.color ?? 'text-slate-800'}">{row.value}</dd>
-            </div>
-          {/each}
-        </dl>
-      </div>
-
-      <!-- Quick actions -->
-      <div class="card p-6">
-        <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-          <span class="text-blue-600">⚡</span> Quick Actions
-        </h3>
-        <div class="space-y-2.5">
-          <a href="/" class="flex items-center gap-2 btn-primary w-full justify-center text-sm">
-            📝 Register New Model
-          </a>
-          <a href="/?tab=inference" class="flex items-center gap-2 btn-secondary w-full justify-center text-sm">
-            🔬 Log Inference
-          </a>
-          <a href="/?tab=provenance" class="flex items-center gap-2 btn-outline w-full justify-center text-sm">
-            🔍 View Provenance
-          </a>
-          <a href="/api/stats" target="_blank" rel="noopener noreferrer"
-            class="flex items-center gap-2 btn-outline w-full justify-center text-sm">
-            📄 Raw JSON API
-          </a>
-        </div>
-      </div>
+    <!-- Chain metrics -->
+    <div class="card p-6">
+      <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+        <span class="text-blue-600">📊</span> Chain Metrics
+      </h3>
+      <dl class="space-y-3">
+        {#each [
+          {
+            label: 'Average events / model',
+            value: stats?.totalBlocks > 1
+              ? `${Math.round(stats.totalBlocks / (stats.totalModels || 1))}`
+              : 'N/A'
+          },
+          {
+            label: 'Chain growth',
+            value: stats?.totalBlocks > 1 ? 'Active' : 'Starting'
+          },
+          {
+            label: 'Verification',
+            value: verification?.isValid ? 'Passing' : 'Failing',
+            color: verification?.isValid ? 'text-emerald-600' : 'text-red-600'
+          }
+        ] as row}
+          <div class="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-0">
+            <dt class="text-sm text-slate-500">{row.label}</dt>
+            <dd class="text-sm font-semibold {row.color ?? 'text-slate-800'}">{row.value}</dd>
+          </div>
+        {/each}
+      </dl>
     </div>
 
     <!-- Blockchain anchor (EVM contract or OpenTimestamps/Bitcoin) -->
