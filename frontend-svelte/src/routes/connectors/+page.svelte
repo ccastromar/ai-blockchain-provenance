@@ -104,6 +104,9 @@
   let stats = $state<any>(null);
   let authStatus = $state<any>(null);
   let health = $state<any>(null);
+  // The HTTP event-ingestor is optional (deployments may ingest over Kafka only); without it the
+  // page still shows ingested evidence, and the Simulate buttons, which need it, are hidden.
+  let ingestorAvailable = $state(false);
   let loading = $state(false);
   let simulating = $state(false);
   let copiedEndpoint = $state('');
@@ -118,14 +121,17 @@
     loading = true;
     error = null;
     try {
-      const [nextStats, nextAuthStatus, nextHealth] = await Promise.all([
+      const [nextStats, nextAuthStatus, nextHealth] = await Promise.allSettled([
         getIngestedEventStats(),
         getIngestorAuthStatus(),
         getIngestorHealth()
       ]);
-      stats = nextStats;
-      authStatus = nextAuthStatus;
-      health = nextHealth;
+      if (nextStats.status === 'rejected') throw nextStats.reason;
+      stats = nextStats.value;
+      authStatus = nextAuthStatus.status === 'fulfilled' ? nextAuthStatus.value : null;
+      health = nextHealth.status === 'fulfilled' ? nextHealth.value : { status: 'unavailable' };
+      // The backend answers this health check itself and reports whether it can reach the ingestor.
+      ingestorAvailable = health?.ingestor?.reachable === true;
     } catch (e: any) {
       error = e.message ?? 'Failed to load connector stats';
     } finally {
@@ -203,7 +209,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        {#if canWrite}
+        {#if canWrite && ingestorAvailable}
           <button class="btn-ghost text-sm py-1.5 px-3" onclick={() => simulateConnector('huggingface')} disabled={simulating || loading}>
             {simulating ? 'Simulating...' : 'Simulate HF'}
           </button>
@@ -302,7 +308,7 @@
             </div>
 
             <div class="flex flex-wrap gap-2 pt-1">
-              {#if canWrite && (connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'vertexai' || connector.id === 'openlineage' || connector.id === 'otel')}
+              {#if canWrite && ingestorAvailable && (connector.id === 'huggingface' || connector.id === 'sagemaker' || connector.id === 'azureml' || connector.id === 'cloudevents' || connector.id === 'databricks' || connector.id === 'vertexai' || connector.id === 'openlineage' || connector.id === 'otel')}
                 <button class="btn-primary py-2 px-3 text-sm" onclick={() => simulateConnector(connector.id)} disabled={simulating}>
                   {simulating ? 'Simulating...' : 'Simulate'}
                 </button>

@@ -6,11 +6,14 @@
     getBlockByIndex,
     getIngestedEvents,
     getIngestedEventStats,
+    getIngestorHealth,
     simulateHuggingFaceEvent
   } from '$lib/api';
   import { authState } from '$lib/auth';
 
   let canWrite = $derived($authState.role === 'read-write');
+  // Simulating needs the optional HTTP event-ingestor; hide the button where it is not deployed.
+  let ingestorAvailable = $state(false);
 
   let events = $state<any[]>([]);
   let failures = $state<any[]>([]);
@@ -40,6 +43,10 @@
     statusFilter = params.get('status') ?? '';
     verificationFilter = params.get('verificationStatus') ?? '';
     load();
+    // The backend answers this itself and reports whether it can reach the ingestor.
+    getIngestorHealth()
+      .then((h) => (ingestorAvailable = h?.ingestor?.reachable === true))
+      .catch(() => (ingestorAvailable = false));
   });
 
   async function load() {
@@ -181,7 +188,7 @@
         {/if}
       </div>
       <div class="flex items-center gap-2">
-        {#if canWrite}
+        {#if canWrite && ingestorAvailable}
           <button class="btn-ghost text-sm py-1.5 px-3" onclick={simulateHF} disabled={simulating || loading}>
             {simulating ? 'Simulating...' : 'Simulate HF'}
           </button>
