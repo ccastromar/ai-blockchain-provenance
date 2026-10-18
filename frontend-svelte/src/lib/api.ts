@@ -117,7 +117,7 @@ export interface ProvenanceFilter {
 }
 
 export interface HealthSubsystem { status: string; detail?: string }
-/** GET /health: overall status plus one entry per backend subsystem. */
+/** GET /api/health: overall status plus one entry per backend subsystem. */
 export interface HealthStatus {
   status: string;
   timestamp?: string;
@@ -271,4 +271,4 @@ export const seedDemoData = async () =>
 // ── Health ─────────────────────────────────────────────────────────────────
 
 export const getHealth = async (): Promise<HealthStatus> =>
-  (await axios.get(`${apiUrl}/health`)).data;
+  (await api.get('/health')).data;

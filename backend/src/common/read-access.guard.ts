@@ -11,9 +11,9 @@ function publicReadOnlyEnabled(): boolean {
 }
 
 // Routes that must stay reachable without a key: /health is polled unauthenticated by
-// Docker healthchecks, and /api/auth/whoami is how a caller with no key yet finds out
+// Docker healthchecks (and /api/health is the same report for the UI behind nginx), and /api/auth/whoami is how a caller with no key yet finds out
 // what it's allowed to do.
-const EXEMPT_PATHS = new Set(['/health', '/api/auth/whoami']);
+const EXEMPT_PATHS = new Set(['/health', '/api/health', '/api/auth/whoami']);
 
 // Applied globally (see app.module.ts) so every route is read-gated by default,
 // instead of relying on each new controller remembering to opt in. Accepts the

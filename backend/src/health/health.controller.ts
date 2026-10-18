@@ -12,7 +12,9 @@ import { ernestRoles } from '../common/ernest-role';
 import { ChainIndexerService } from '../blockchain/chain-indexer.service';
 
 @ApiTags('Health')
-@Controller('health')
+// /health for Docker healthchecks; /api/health for the UI, whose nginx only forwards /api/ to the
+// backend (its own /health is nginx's liveness answer).
+@Controller(['health', 'api/health'])
 export class HealthController {
 
   constructor(
