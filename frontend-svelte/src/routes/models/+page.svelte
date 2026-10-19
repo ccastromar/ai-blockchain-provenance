@@ -246,7 +246,12 @@
             <div class="flex items-start justify-between gap-4">
               <div>
                 <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Model Detail</h2>
-                <div class="font-semibold text-blue-700">{selectedModel.modelId}</div>
+                {#if governedBy(selectedModel) && selectedModel.name && selectedModel.name !== selectedModel.modelId}
+                  <div class="font-semibold text-blue-700">{selectedModel.name}</div>
+                  <div class="font-mono text-xs text-slate-400">{selectedModel.modelId}</div>
+                {:else}
+                  <div class="font-semibold text-blue-700">{selectedModel.modelId}</div>
+                {/if}
                 {#if governedBy(selectedModel)}
                   {@const owner = governedBy(selectedModel) ?? ''}
                   <div class="mt-1 text-xs text-slate-500">
