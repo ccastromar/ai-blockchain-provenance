@@ -2,7 +2,8 @@
   import { onMount } from 'svelte';
   import { page as pageStore } from '$app/stores';
   import { getModels, getModelById, getProvenance, patchModel, getModelIntegrity, exportProvenance,
-    exportProvenanceCycloneDx, type ModelStatus, type ProvenanceFilter } from '$lib/api';
+    exportProvenanceCycloneDx, type ModelStatus, type ProvenanceFilter, type ModelSort,
+    type ModelKind } from '$lib/api';
   import { authState } from '$lib/auth';
   import { env } from '$env/dynamic/public';
 
@@ -14,6 +15,18 @@
   let totalPages  = $state(1);
   let page        = $state(1);
   const PAGE_SIZE = 10;
+
+  // Which entries and in which order. Records are governance registers owned by another
+  // system (Prudence's incidents, reviews, attestations): evidence streams, not AI models.
+  let kind = $state<Exclude<ModelKind, 'all'>>('models');
+  let sort = $state<ModelSort>('recent');
+  const SORTS: { value: ModelSort; label: string }[] = [
+    { value: 'recent',   label: 'Newest first' },
+    { value: 'activity', label: 'Latest activity' },
+    { value: 'name',     label: 'Name' },
+    { value: 'risk',     label: 'Risk (highest first)' },
+    { value: 'governed', label: 'Governed by Prudence first' },
+  ];
 
   // ── Detail state ────────────────────────────────────────────────────────────
   let selectedModelId = $state('');
@@ -37,6 +50,10 @@
   let detailError      = $state<string | null>(null);
 
   onMount(() => {
+    const params = $pageStore.url.searchParams;
+    if (params.get('kind') === 'records') kind = 'records';
+    const s = params.get('sort');
+    if (s && SORTS.some(x => x.value === s)) sort = s as ModelSort;
     loadList();
     // /models?model=<id> opens that model directly (e.g. from Demo or Audit).
     const preselected = $pageStore.url.searchParams.get('model');
@@ -46,7 +63,7 @@
   async function loadList() {
     loadingList = true; listError = null;
     try {
-      const res = await getModels(page, PAGE_SIZE);
+      const res = await getModels(page, PAGE_SIZE, sort, kind);
       models     = res.data;
       total      = res.total;
       totalPages = res.totalPages;
@@ -132,13 +149,29 @@
 
   function goPage(p: number) { page = p; loadList(); }
 
+  /// Kind and order live in the URL (shareable, survive reload) and restart at page 1.
+  function setView(next: { kind?: Exclude<ModelKind, 'all'>; sort?: ModelSort }) {
+    if (next.kind) kind = next.kind;
+    if (next.sort) sort = next.sort;
+    page = 1;
+    selectedModelId = ''; selectedModel = null; provenance = null; integrity = null;
+    const url = new URL(window.location.href);
+    url.searchParams.set('kind', kind);
+    url.searchParams.set('sort', sort);
+    url.searchParams.delete('model');
+    history.replaceState(history.state, '', url);
+    loadList();
+  }
+
   function integrityValid(result: any) {
     return (result?.valid ?? result?.isValid) === true;
   }
 
   // A system governed elsewhere (Prudence's registry) keeps its lifecycle there: Ernest only
   // holds its evidence, so its status is read-only here (the backend refuses changes too).
-  const governedBy = (m: any): string | undefined => m?.governance?.systemOfRecord;
+  const governedBy = (m: any): string | undefined =>
+    m?.governance?.systemOfRecord
+    ?? (m?.metadata?.kind === 'governance-register' ? m?.metadata?.systemOfRecord : undefined);
   const ownerUrl = (owner: string) =>
     owner === 'prudence' ? (env.PUBLIC_PRUDENCE_URL ?? 'http://localhost:5200') : undefined;
   const ownerLabel = (owner: string) => owner === 'prudence' ? 'Prudence' : owner;
@@ -175,7 +208,27 @@
 
       <!-- ── Master list ──────────────────────────────────────────────────── -->
       <div class="md:col-span-2 flex flex-col gap-3">
-        <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Registered Models</h2>
+        <div class="flex rounded-lg border border-slate-200 bg-white p-0.5 text-xs font-medium">
+          {#each [{ id: 'models', label: 'AI systems & models' }, { id: 'records', label: 'Prudence records' }] as tab}
+            <button onclick={() => setView({ kind: tab.id as 'models' | 'records' })}
+              class="flex-1 rounded-md px-3 py-1.5 transition-colors {kind === tab.id ? 'bg-blue-700 text-white' : 'text-slate-600 hover:bg-slate-50'}">
+              {tab.label}
+            </button>
+          {/each}
+        </div>
+        <label class="flex items-center gap-2 text-xs text-slate-500">
+          Sort
+          <select class="field-input text-xs py-1.5 flex-1" value={sort}
+            onchange={(e) => setView({ sort: (e.currentTarget as HTMLSelectElement).value as ModelSort })}>
+            {#each SORTS as s}<option value={s.value}>{s.label}</option>{/each}
+          </select>
+        </label>
+        {#if kind === 'records'}
+          <p class="text-xs text-slate-500">
+            Governance registers kept by Prudence: incident events, review decisions and
+            attestations. Each is a stream of evidence records, not an AI model.
+          </p>
+        {/if}
 
         {#if listError}
           <div class="alert-error">{listError}</div>
@@ -185,7 +238,9 @@
           {#if loadingList}
             <div class="py-10 text-center text-slate-400 text-sm">Loading…</div>
           {:else if models.length === 0}
-            <div class="py-10 text-center text-slate-400 text-sm">No models registered yet.</div>
+            <div class="py-10 text-center text-slate-400 text-sm">
+              {kind === 'records' ? 'No governance registers yet.' : 'No models registered yet.'}
+            </div>
           {:else}
             {#each models as m}
               <button

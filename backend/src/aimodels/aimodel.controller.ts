@@ -2,7 +2,7 @@ import { Body, ConflictException, Controller, Get, NotFoundException, Param, Pat
 import { ApiConflictResponse, ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AIModelService } from './aimodel.service';
 import { UpdateModelStatusDto } from './dto/update-model-status.dto';
-import { PaginationDto } from '../common/dto/pagination.dto';
+import { ModelListQueryDto } from '../common/dto/model-list-query.dto';
 import { OrgId } from '../common/org-id.decorator';
 import { ApiKeyGuard } from '../common/api-key.guard';
 
@@ -17,9 +17,9 @@ export class AIModelController {
   @ApiOperation({ summary: 'Return registered model records (paginated). Scope to an org with X-Ernest-Org-Id.' })
   @ApiHeader({ name: 'X-Ernest-Org-Id', required: false, description: 'Filter results by organization' })
   @ApiOkResponse({ description: 'Paginated registered model records.' })
-  async findAll(@Query() pagination: PaginationDto, @OrgId() orgId?: string) {
+  async findAll(@Query() query: ModelListQueryDto, @OrgId() orgId?: string) {
     this.logger.log('Fetching all AI models');
-    return await this.modelService.findAll(pagination.page, pagination.limit, orgId);
+    return await this.modelService.findAll(query.page, query.limit, orgId, query.sort, query.kind);
   }
 
   @Get(':modelId')
@@ -44,7 +44,10 @@ export class AIModelController {
     // A system governed elsewhere (Prudence's registry, with four-eyes approval) must not get
     // a second, weaker lifecycle here.
     const existing: any = await this.modelService.findOne(modelId);
-    const owner = existing?.governance?.systemOfRecord;
+    // A governed system, or a governance register (records owned by e.g. Prudence).
+    const owner =
+      existing?.governance?.systemOfRecord ??
+      (existing?.metadata?.kind === 'governance-register' ? existing?.metadata?.systemOfRecord : undefined);
     if (owner) {
       throw new ConflictException(`Model ${modelId} is governed by ${owner}; change its status there.`);
     }

@@ -143,8 +143,13 @@ export interface IngestedEventFilters {
 export const registerModel = async (data: RegisterModelData) =>
   (await api.post('/models', data)).data;
 
-export const getModels = async (page = 1, limit = 20): Promise<PaginatedResponse<any>> => {
-  const res = (await api.get('/models', { params: { page, limit } })).data;
+export type ModelSort = 'recent' | 'name' | 'risk' | 'activity' | 'governed';
+export type ModelKind = 'all' | 'models' | 'records';
+
+export const getModels = async (
+  page = 1, limit = 20, sort: ModelSort = 'recent', kind: ModelKind = 'all',
+): Promise<PaginatedResponse<any>> => {
+  const res = (await api.get('/models', { params: { page, limit, sort, kind } })).data;
   // Backend returns { items, total, page, limit, totalPages }
   if (Array.isArray(res)) return { data: res, total: res.length, page: 1, totalPages: 1 };
   if (res.items)          return { data: res.items, total: res.total, page: res.page, totalPages: res.totalPages };
