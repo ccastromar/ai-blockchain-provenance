@@ -111,7 +111,7 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ProvenanceFilter {
-  type?: 'model_registration' | 'inference';
+  type?: 'model_registration' | 'inference' | 'policy_decision' | 'external_event';
   from?: string;   // ISO date
   to?: string;     // ISO date
 }

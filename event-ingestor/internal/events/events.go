@@ -72,7 +72,7 @@ func Normalize(event IngestedEvent) CanonicalEvent {
 	return CanonicalEvent{
 		Type:          eventType,
 		ModelID:       modelID,
-		ModelName:     firstString(event.Payload, "modelName", "model_name", "name"),
+		ModelName:     firstNonEmptyString(firstString(event.Payload, "modelName", "model_name", "name"), aiSystemName(event.Payload)),
 		Version:       firstString(event.Payload, "version", "modelVersion", "model_version"),
 		ModelHash:     modelHash,
 		GitCommit:     firstString(event.Payload, "gitCommit", "git_commit", "commit", "sha"),
@@ -111,9 +111,50 @@ func normalizeEventType(eventType string) string {
 		return "dataset_linked"
 	case "inference.logged":
 		return "inference"
+	case "policy.decision":
+		return "policy_decision"
 	default:
 		return "external_event"
 	}
+}
+
+// AISystem is the identity block a governance source attaches to its evidence (Prudence ADR-001):
+// which AI system the event is about, and which system of record owns that system's lifecycle.
+// When SystemOfRecord is set, Ernest records the identity but never manages the system itself.
+type AISystem struct {
+	ID             string
+	Name           string
+	RiskTier       string
+	SystemOfRecord string
+}
+
+// AISystemOf reads the optional `aiSystem` block from an event payload (top level, or inside
+// `metadata` for sources that only pass metadata through).
+func AISystemOf(payload map[string]any) AISystem {
+	block := objectValue(payload, "aiSystem")
+	if block == nil {
+		block = objectValue(objectValue(payload, "metadata"), "aiSystem")
+	}
+	if block == nil {
+		return AISystem{}
+	}
+	return AISystem{
+		ID:             stringValue(block, "id"),
+		Name:           stringValue(block, "name"),
+		RiskTier:       stringValue(block, "riskTier"),
+		SystemOfRecord: stringValue(block, "systemOfRecord"),
+	}
+}
+
+func aiSystemName(payload map[string]any) string { return AISystemOf(payload).Name }
+
+func firstNonEmptyString(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func firstString(payload map[string]any, keys ...string) string {

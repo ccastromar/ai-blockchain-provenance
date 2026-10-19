@@ -3,6 +3,14 @@ import { Document } from 'mongoose';
 
 export type ModelStatus = 'active' | 'deprecated' | 'archived';
 
+/// Set when another system owns this AI system's lifecycle (e.g. Prudence's registry): Ernest
+/// keeps its evidence but does not manage it, so its status cannot be changed here.
+export interface ModelGovernance {
+  systemOfRecord: string;
+  aiSystemId?: string;
+  riskTier?: string;
+}
+
 @Schema({ timestamps: true })
 export class AIModel {
   @Prop({ required: true })
@@ -28,6 +36,9 @@ export class AIModel {
 
   @Prop({ type: Object })
   metadata: Record<string, any>;
+
+  @Prop({ type: Object })
+  governance?: ModelGovernance;
 }
 
 export type AIModelDocument = AIModel & Document;

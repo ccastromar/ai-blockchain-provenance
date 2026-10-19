@@ -455,12 +455,8 @@ func (w MongoWriter) upsertAIModel(ctx context.Context, event events.CanonicalEv
 	payload, _ := event.Metadata["payload"].(map[string]any)
 	version := modelVersion(event)
 
-	name := event.ModelName
-	if name == "" {
-		name = event.ModelID
-	}
-
 	payloadMetadata, _ := payload["metadata"].(map[string]any)
+	aiSystem := events.AISystemOf(payload)
 
 	metadata := map[string]any{
 		"source":        event.Source,
@@ -480,24 +476,36 @@ func (w MongoWriter) upsertAIModel(ctx context.Context, event events.CanonicalEv
 	opCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Many sources write to one model record (a governed system gets decisions from Prudence
+	// and executions from AOS), so each event only sets what it actually carries: a nameless
+	// event must not overwrite the name, nor an event without params wipe the registered ones,
+	// and only an operator or the system of record changes the status, never a new event.
+	set := bson.M{"metadata": metadata, "updatedAt": now}
+	setOnInsert := bson.M{"modelId": event.ModelID, "version": version, "status": "active", "createdAt": now}
+	if event.ModelName != "" {
+		set["name"] = event.ModelName
+	} else {
+		setOnInsert["name"] = event.ModelID
+	}
+	if len(event.Params) > 0 {
+		set["parameters"] = event.Params
+	}
+	if len(event.Metrics) > 0 {
+		set["metrics"] = event.Metrics
+	}
+	// Field by field: AOS names the system of record but not the risk tier, Prudence both.
+	if aiSystem.SystemOfRecord != "" {
+		set["governance.systemOfRecord"] = aiSystem.SystemOfRecord
+		set["governance.aiSystemId"] = firstNonEmpty(aiSystem.ID, event.ModelID)
+		if aiSystem.RiskTier != "" {
+			set["governance.riskTier"] = aiSystem.RiskTier
+		}
+	}
+
 	_, err := w.db.Collection("aimodels").UpdateOne(
 		opCtx,
 		bson.M{"modelId": event.ModelID, "version": version},
-		bson.M{
-			"$set": bson.M{
-				"name":       name,
-				"status":     "active",
-				"parameters": event.Params,
-				"metrics":    event.Metrics,
-				"metadata":   metadata,
-				"updatedAt":  now,
-			},
-			"$setOnInsert": bson.M{
-				"modelId":   event.ModelID,
-				"version":   version,
-				"createdAt": now,
-			},
-		},
+		bson.M{"$set": set, "$setOnInsert": setOnInsert},
 		options.Update().SetUpsert(true),
 	)
 	return err

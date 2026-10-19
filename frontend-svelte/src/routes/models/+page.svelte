@@ -4,6 +4,7 @@
   import { getModels, getModelById, getProvenance, patchModel, getModelIntegrity, exportProvenance,
     exportProvenanceCycloneDx, type ModelStatus, type ProvenanceFilter } from '$lib/api';
   import { authState } from '$lib/auth';
+  import { env } from '$env/dynamic/public';
 
   let canWrite = $derived($authState.role === 'read-write');
 
@@ -21,7 +22,7 @@
   let integrity       = $state<any>(null);
 
   // Provenance filters (event type and date range) for the timeline and its exports.
-  let filterType = $state<'' | 'model_registration' | 'inference'>('');
+  let filterType = $state<'' | 'model_registration' | 'inference' | 'policy_decision' | 'external_event'>('');
   let filterFrom = $state('');
   let filterTo   = $state('');
   let filtering  = $state(false);
@@ -135,6 +136,20 @@
     return (result?.valid ?? result?.isValid) === true;
   }
 
+  // A system governed elsewhere (Prudence's registry) keeps its lifecycle there: Ernest only
+  // holds its evidence, so its status is read-only here (the backend refuses changes too).
+  const governedBy = (m: any): string | undefined => m?.governance?.systemOfRecord;
+  const ownerUrl = (owner: string) =>
+    owner === 'prudence' ? (env.PUBLIC_PRUDENCE_URL ?? 'http://localhost:5200') : undefined;
+  const ownerLabel = (owner: string) => owner === 'prudence' ? 'Prudence' : owner;
+
+  const RISK_STYLES: Record<string, string> = {
+    PROHIBITED: 'bg-red-100 text-red-700',
+    HIGH:       'bg-orange-100 text-orange-700',
+    LIMITED:    'bg-amber-100 text-amber-700',
+    MINIMAL:    'bg-slate-100 text-slate-600'
+  };
+
   const STATUS_STYLES: Record<string, string> = {
     active:     'bg-emerald-100 text-emerald-700',
     deprecated: 'bg-amber-100 text-amber-700',
@@ -179,14 +194,22 @@
                        hover:bg-blue-50 transition-colors
                        {selectedModelId === m.modelId ? 'bg-blue-50 border-l-4 border-l-blue-700 pl-4' : ''}">
                 <div class="flex items-center justify-between gap-2">
-                  <div class="font-medium text-slate-800 text-sm truncate">{m.modelId}</div>
+                  <div class="font-medium text-slate-800 text-sm truncate">{governedBy(m) && m.name && m.name !== m.modelId ? m.name : m.modelId}</div>
                   {#if m.status && m.status !== 'active'}
                     <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0 {STATUS_STYLES[m.status] ?? ''}">
                       {m.status}
                     </span>
                   {/if}
                 </div>
-                <div class="text-xs text-slate-500 mt-0.5">{m.name || 'No name'} · v{m.version}</div>
+                <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <span>{governedBy(m) ? m.modelId : (m.name || 'No name')}{m.version && m.version !== 'external' ? ` · v${m.version}` : ''}</span>
+                  {#if governedBy(m)}
+                    <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">{ownerLabel(governedBy(m) ?? '')}</span>
+                  {/if}
+                  {#if m.governance?.riskTier}
+                    <span class="px-1.5 py-0.5 rounded {RISK_STYLES[m.governance.riskTier] ?? RISK_STYLES.MINIMAL}">{m.governance.riskTier}</span>
+                  {/if}
+                </div>
               </button>
             {/each}
           {/if}
@@ -224,12 +247,33 @@
               <div>
                 <h2 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Model Detail</h2>
                 <div class="font-semibold text-blue-700">{selectedModel.modelId}</div>
+                {#if governedBy(selectedModel)}
+                  {@const owner = governedBy(selectedModel) ?? ''}
+                  <div class="mt-1 text-xs text-slate-500">
+                    Governed by
+                    {#if ownerUrl(owner)}
+                      <a href={ownerUrl(owner)} class="text-blue-700 underline" target="_blank" rel="noopener noreferrer">{ownerLabel(owner)}</a>
+                    {:else}
+                      {ownerLabel(owner)}
+                    {/if}
+                    {#if selectedModel.governance?.riskTier}
+                      · <span class="px-1.5 py-0.5 rounded {RISK_STYLES[selectedModel.governance.riskTier] ?? RISK_STYLES.MINIMAL}">{selectedModel.governance.riskTier} risk</span>
+                    {/if}
+                  </div>
+                {/if}
               </div>
               <!-- Status badge + dropdown -->
               <div class="flex items-center gap-2 flex-shrink-0">
+                {#if !governedBy(selectedModel)}
                 <span class="text-xs px-2.5 py-1 rounded-full font-medium {STATUS_STYLES[selectedModel.status ?? 'active'] ?? STATUS_STYLES.active}">
                   {selectedModel.status ?? 'active'}
                 </span>
+                {/if}
+                {#if governedBy(selectedModel)}
+                  <span class="text-xs text-slate-400" title="Its lifecycle (approval, suspension, retirement) is managed by its system of record">
+                    managed in {ownerLabel(governedBy(selectedModel) ?? '')}
+                  </span>
+                {:else}
                 <div class="relative group" title={canWrite ? '' : 'Read-only access — changing model status requires a read-write key'}>
                   <button disabled={patchingStatus || !canWrite}
                     class="btn-outline text-xs py-1.5 px-3 disabled:opacity-50">
@@ -248,6 +292,7 @@
                   </div>
                   {/if}
                 </div>
+                {/if}
               </div>
             </div>
 
@@ -330,6 +375,8 @@
                       <option value="">All</option>
                       <option value="model_registration">Registration</option>
                       <option value="inference">Inference</option>
+                      <option value="policy_decision">Policy decision</option>
+                      <option value="external_event">Runtime event</option>
                     </select>
                   </label>
                   <label class="flex flex-col gap-1 text-slate-500">

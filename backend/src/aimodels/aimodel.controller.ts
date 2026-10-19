@@ -1,5 +1,5 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Logger, Query, UseGuards } from '@nestjs/common';
-import { ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { Body, ConflictException, Controller, Get, NotFoundException, Param, Patch, Logger, Query, UseGuards } from '@nestjs/common';
+import { ApiConflictResponse, ApiHeader, ApiOkResponse, ApiOperation, ApiParam, ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { AIModelService } from './aimodel.service';
 import { UpdateModelStatusDto } from './dto/update-model-status.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
@@ -36,10 +36,18 @@ export class AIModelController {
   @ApiOperation({ summary: 'Update model status (active | deprecated | archived).' })
   @ApiParam({ name: 'modelId', example: 'credit-risk-logreg-v1' })
   @ApiOkResponse({ description: 'Updated model record.' })
+  @ApiConflictResponse({ description: 'The model is governed by another system of record; change its status there.' })
   async updateStatus(
     @Param('modelId') modelId: string,
     @Body() dto: UpdateModelStatusDto,
   ) {
+    // A system governed elsewhere (Prudence's registry, with four-eyes approval) must not get
+    // a second, weaker lifecycle here.
+    const existing: any = await this.modelService.findOne(modelId);
+    const owner = existing?.governance?.systemOfRecord;
+    if (owner) {
+      throw new ConflictException(`Model ${modelId} is governed by ${owner}; change its status there.`);
+    }
     const updated = await this.modelService.update(modelId, { status: dto.status });
     if (!updated) throw new NotFoundException(`Model ${modelId} not found`);
     return updated;
