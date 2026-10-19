@@ -15,8 +15,11 @@ obligations directly applicable to exactly that kind of system.
 
 ## EU AI Act (Regulation (EU) 2024/1689)
 
-Most obligations for high-risk AI systems apply from **August 2026** — organizations
-deploying Annex III systems are building their logging story now.
+The Digital Omnibus on AI (Regulation (EU) 2026/1744, in force since 27 July 2026) moved the
+high-risk obligations: they apply from **2 December 2027** for stand-alone Annex III systems
+(such as creditworthiness evaluation) and from **2 August 2028** for AI in products covered by
+Annex I. The obligations themselves, Article 12 record-keeping included, did not change —
+organizations deploying Annex III systems are building their logging story now.
 
 | Obligation | What it requires | What Ernest provides | What remains yours |
 | --- | --- | --- | --- |
