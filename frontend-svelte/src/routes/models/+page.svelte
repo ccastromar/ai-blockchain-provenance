@@ -172,8 +172,24 @@
   const governedBy = (m: any): string | undefined =>
     m?.governance?.systemOfRecord
     ?? (m?.metadata?.kind === 'governance-register' ? m?.metadata?.systemOfRecord : undefined);
-  const ownerUrl = (owner: string) =>
-    owner === 'prudence' ? (env.PUBLIC_PRUDENCE_URL ?? 'http://localhost:5200') : undefined;
+  // Deep link into the system of record: Prudence opens the AI system in its registry, or the
+  // tab of one of its registers (incidents, reviews, attestations).
+  const REGISTER_TABS: Record<string, string> = {
+    'prudence-incidents': 'incidents',
+    'prudence-reviews': 'approvals',
+    'prudence-attestations': 'attestations',
+  };
+  const ownerUrl = (owner: string, m?: any) => {
+    if (owner !== 'prudence') return undefined;
+    const base = (env.PUBLIC_PRUDENCE_URL ?? 'http://localhost:5200').replace(/\/+$/, '');
+    if (!m) return base;
+    if (m.metadata?.kind === 'governance-register') {
+      const tab = REGISTER_TABS[m.modelId];
+      return tab ? `${base}/?tab=${tab}` : base;
+    }
+    const id = m.governance?.aiSystemId ?? m.modelId;
+    return `${base}/?tab=registry&system=${encodeURIComponent(id)}`;
+  };
   const ownerLabel = (owner: string) => owner === 'prudence' ? 'Prudence' : owner;
 
   const RISK_STYLES: Record<string, string> = {
@@ -311,8 +327,8 @@
                   {@const owner = governedBy(selectedModel) ?? ''}
                   <div class="mt-1 text-xs text-slate-500">
                     Governed by
-                    {#if ownerUrl(owner)}
-                      <a href={ownerUrl(owner)} class="text-blue-700 underline" target="_blank" rel="noopener noreferrer">{ownerLabel(owner)}</a>
+                    {#if ownerUrl(owner, selectedModel)}
+                      <a href={ownerUrl(owner, selectedModel)} class="text-blue-700 underline" target="_blank" rel="noopener noreferrer">{ownerLabel(owner)}</a>
                     {:else}
                       {ownerLabel(owner)}
                     {/if}
