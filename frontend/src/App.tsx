@@ -2,6 +2,9 @@ import { useEffect } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
 import { AppShell, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
 import AccessBadge from "./components/AccessBadge";
+import Audit from "./pages/Audit";
+import Connectors from "./pages/Connectors";
+import VerifyReceipt from "./pages/VerifyReceipt";
 import { refreshAuthRole } from "./lib/api";
 import { useAuth } from "./lib/auth";
 import { env } from "./env";
@@ -73,6 +76,9 @@ export default function App() {
         <Route path="/models" element={<Models />} />
         <Route path="/blocks" element={<Blocks />} />
         <Route path="/events" element={<Events />} />
+        <Route path="/connectors" element={<Connectors />} />
+        <Route path="/auditor" element={<Audit />} />
+        <Route path="/verify-receipt" element={<VerifyReceipt />} />
         {/* Statistics became the Overview at "/"; keep old links and bookmarks working. */}
         <Route path="/stats" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Pending />} />

@@ -9,8 +9,8 @@ both exist and the deployment still builds the Svelte one.
 |---|---|
 | Overview (`/`), sign-in (`/login`, `/auth/callback`), `/stats` redirect | ported |
 | Models, Blocks, Events | ported |
-| Verify receipt, Audit, Connectors | next |
-| Tokens, Demo | later |
+| Verify receipt, Audit, Connectors | ported |
+| Tokens, Demo | next |
 
 ## Run locally
 
