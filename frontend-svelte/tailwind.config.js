@@ -3,7 +3,7 @@
 // (Inter) already match the shared tokens; convergence is the accent. Rather than touch ~88
 // blue-* usages, we remap Tailwind's `blue` scale to the assure teal, so every existing
 // blue utility and component class becomes the vertex accent in one place. Status colors
-// (red/emerald/amber) are shared and left untouched. See Prudence's docs/design/DESIGN.md.
+// (red/emerald/amber) are shared and left untouched. See DESIGN.md in chestertown-design.
 const assure = {
   50: '#f0fdfa', 100: '#ccfbf1', 200: '#99f6e4', 300: '#5eead4', 400: '#2dd4bf',
   500: '#14b8a6', 600: '#0d9488', 700: '#0f766e', 800: '#115e59', 900: '#134e4a', 950: '#042f2e',
