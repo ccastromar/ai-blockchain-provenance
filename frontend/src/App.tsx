@@ -6,7 +6,10 @@ import { refreshAuthRole } from "./lib/api";
 import { useAuth } from "./lib/auth";
 import { env } from "./env";
 import AuthCallback from "./pages/AuthCallback";
+import Blocks from "./pages/Blocks";
+import Events from "./pages/Events";
 import Login from "./pages/Login";
+import Models from "./pages/Models";
 import Overview from "./pages/Overview";
 import Pending from "./pages/Pending";
 
@@ -67,6 +70,9 @@ export default function App() {
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route element={<Shell />}>
         <Route index element={<Overview />} />
+        <Route path="/models" element={<Models />} />
+        <Route path="/blocks" element={<Blocks />} />
+        <Route path="/events" element={<Events />} />
         {/* Statistics became the Overview at "/"; keep old links and bookmarks working. */}
         <Route path="/stats" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Pending />} />

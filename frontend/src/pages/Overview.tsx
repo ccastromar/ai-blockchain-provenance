@@ -154,7 +154,7 @@ export default function Overview() {
             {verification?.errors?.length > 0 && (
               <div className="er-field">
                 <Alert tone="warn" title="Verification errors">
-                  <ul className="er-list">
+                  <ul className="er-bullets">
                     {verification.errors.map((err: string) => (
                       <li key={err}>{err}</li>
                     ))}

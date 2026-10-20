@@ -8,8 +8,8 @@ both exist and the deployment still builds the Svelte one.
 | Screen | Status |
 |---|---|
 | Overview (`/`), sign-in (`/login`, `/auth/callback`), `/stats` redirect | ported |
-| Models, Blocks, Events | next |
-| Verify receipt, Audit, Connectors | later |
+| Models, Blocks, Events | ported |
+| Verify receipt, Audit, Connectors | next |
 | Tokens, Demo | later |
 
 ## Run locally
