@@ -12,7 +12,7 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
-    "@chestertown/design": "file:vendor/chestertown-design-0.3.3.tgz",
+    "@chestertown/design": "file:vendor/chestertown-design-0.3.4.tgz",
     "axios": "^1.6.2",
     "date-fns": "^3.0.6",
     "react": "^19.0.0",
