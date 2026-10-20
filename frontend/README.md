@@ -2,15 +2,15 @@
 
 The Ernest web console — the *assure* vertex of Chestertown — rebuilt in React 19 + Vite +
 TypeScript on the shared design system `@chestertown/design` (vendored in `vendor/`). It
-replaces the SvelteKit console in `../frontend-svelte`, screen by screen; until the switch-over
-both exist and the deployment still builds the Svelte one.
+replaces the SvelteKit console in `../frontend-svelte`: every screen is ported; until the
+switch-over both exist and the deployment still builds the Svelte one.
 
 | Screen | Status |
 |---|---|
 | Overview (`/`), sign-in (`/login`, `/auth/callback`), `/stats` redirect | ported |
 | Models, Blocks, Events | ported |
 | Verify receipt, Audit, Connectors | ported |
-| Tokens, Demo | next |
+| Tokens, Demo | ported |
 
 ## Run locally
 

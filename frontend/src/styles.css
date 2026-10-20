@@ -146,3 +146,16 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 }
 .er-chip { font-family: var(--font-mono); font-size: var(--fs-xs); background: var(--accent-weak); color: var(--accent);
   border-radius: var(--radius-sm); padding: 2px 8px; }
+
+/* Tokens, Demo */
+.er-token code { overflow-wrap: anywhere; word-break: break-all; }
+.er-actions { text-align: right; white-space: nowrap; }
+.er-inline-facts { margin: 0; display: grid; gap: 2px; }
+.er-inline-facts > div { display: flex; gap: var(--sp-2); min-width: 0; }
+.er-inline-facts dt { font-weight: var(--fw-semibold); flex-shrink: 0; }
+.er-inline-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; word-break: break-all; }
+.er-bare-input { border: 0; background: transparent; padding-left: 0; }
+.er-bare-input:focus { box-shadow: none; }
+.er-card-tabs { margin: calc(-1 * var(--sp-5)) calc(-1 * var(--sp-5)) var(--sp-5); }
+.er-card-tabs .ct-tabs { border-radius: var(--radius) var(--radius) 0 0; padding: 0 var(--sp-3); }
+.er-form { max-width: 760px; }

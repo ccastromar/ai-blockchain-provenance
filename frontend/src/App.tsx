@@ -4,6 +4,7 @@ import { AppShell, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } f
 import AccessBadge from "./components/AccessBadge";
 import Audit from "./pages/Audit";
 import Connectors from "./pages/Connectors";
+import Demo from "./pages/Demo";
 import VerifyReceipt from "./pages/VerifyReceipt";
 import { refreshAuthRole } from "./lib/api";
 import { useAuth } from "./lib/auth";
@@ -14,7 +15,8 @@ import Events from "./pages/Events";
 import Login from "./pages/Login";
 import Models from "./pages/Models";
 import Overview from "./pages/Overview";
-import Pending from "./pages/Pending";
+import NotFound from "./pages/NotFound";
+import Tokens from "./pages/Tokens";
 
 const APPS = chestertownApps({
   operate: env.PUBLIC_AOS_URL,
@@ -79,9 +81,11 @@ export default function App() {
         <Route path="/connectors" element={<Connectors />} />
         <Route path="/auditor" element={<Audit />} />
         <Route path="/verify-receipt" element={<VerifyReceipt />} />
+        <Route path="/settings/tokens" element={<Tokens />} />
+        <Route path="/demo" element={<Demo />} />
         {/* Statistics became the Overview at "/"; keep old links and bookmarks working. */}
         <Route path="/stats" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Pending />} />
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );
