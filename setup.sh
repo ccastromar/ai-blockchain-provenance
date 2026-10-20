@@ -79,7 +79,7 @@ EOF
     # Frontend
     echo ""
     echo -e "${BLUE}Installing frontend dependencies...${NC}"
-    cd frontend-svelte
+    cd frontend
     npm ci
     cd ..
     
@@ -94,7 +94,7 @@ EOF
     echo "2. Start backend (in backend/):"
     echo "   npm run start:dev"
     echo ""
-    echo "3. Start frontend (in frontend-svelte/):"
+    echo "3. Start frontend (in frontend/):"
     echo "   npm run dev"
     echo ""
     echo "Then access:"
