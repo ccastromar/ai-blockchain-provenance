@@ -1,0 +1,27 @@
+{
+  "name": "ernest-frontend",
+  "private": true,
+  "version": "0.3.0",
+  "description": "Ernest console (assure vertex): AI provenance, evidence and audit",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@chestertown/design": "file:vendor/chestertown-design-0.3.1.tgz",
+    "axios": "^1.6.2",
+    "date-fns": "^3.0.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.5"
+  }
+}

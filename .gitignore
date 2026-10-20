@@ -141,3 +141,7 @@ scripts/dev-local.sh
 
 # Local eIDAS QTSP/TSA emulator (dev + demo only; emulates the shape, not legal status)
 scripts/dev-qtsp/
+
+# React console: the vendored design system is committed on purpose (see frontend/README.md).
+!frontend/vendor/*.tgz
+frontend/*.tsbuildinfo

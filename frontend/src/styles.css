@@ -1,0 +1,52 @@
+/* Ernest-specific layout on top of @chestertown/design. Prefixed er- (ct- is the package's). */
+
+body { margin: 0; background: var(--bg); }
+a { color: var(--accent); }
+code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+
+.er-stack { display: grid; gap: var(--sp-4); }
+.er-stack-lg { display: grid; gap: var(--sp-6); }
+.er-gap { margin-bottom: var(--sp-3); }
+.er-field { margin-top: var(--sp-4); }
+.er-grid-3 { display: grid; gap: var(--sp-4); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.er-grid-5 { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+
+.er-tile { background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: var(--sp-3); display: grid; gap: var(--sp-1); overflow-wrap: anywhere; }
+.er-tile-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--sp-2);
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+
+.er-mono-box { font-family: var(--font-mono); font-size: var(--fs-xs); background: var(--surface-muted);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-3);
+  overflow-wrap: anywhere; color: var(--text); margin: 0; }
+.er-list { margin: 0; padding-left: var(--sp-5); }
+
+.er-dl { margin: 0; }
+.er-dl > div { display: flex; justify-content: space-between; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border); }
+.er-dl > div:last-child { border-bottom: 0; }
+.er-dl dt { color: var(--text-muted); font-size: var(--fs-sm); }
+.er-dl dd { margin: 0; font-weight: var(--fw-semibold); font-size: var(--fs-sm); }
+.er-facts { margin: 0; display: grid; gap: var(--sp-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.er-facts dd { margin: 0; font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+.er-span { grid-column: 1 / -1; }
+.er-ok { color: var(--ok); }
+.er-danger { color: var(--danger); }
+.er-empty-line { text-align: center; padding: var(--sp-6) 0; margin: 0; }
+
+.er-check { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text-muted); cursor: pointer; }
+.er-check input { accent-color: var(--accent); }
+
+/* sign-in screens */
+.er-centered { display: grid; place-items: center; padding: var(--sp-6) var(--sp-4); }
+.er-narrow { width: 100%; max-width: 400px; }
+.er-login-head { text-align: center; margin-bottom: var(--sp-5); display: grid; justify-items: center; gap: var(--sp-2); }
+.er-login-head .ct-mark { width: 40px; height: 40px; font-size: var(--fs-lg); }
+.er-divider { display: flex; align-items: center; gap: var(--sp-3); color: var(--text-muted); font-size: var(--fs-xs); }
+.er-divider::before, .er-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.er-back { text-align: center; font-size: var(--fs-sm); }
+
+@media (max-width: 760px) {
+  .er-grid-3 { grid-template-columns: 1fr; }
+  .er-facts { grid-template-columns: 1fr; }
+  .er-clock { display: none; }
+}
