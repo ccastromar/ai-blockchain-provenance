@@ -50,6 +50,14 @@ function ownerUrl(owner: string, m?: Any) {
   const id = m.governance?.aiSystemId ?? m.modelId;
   return `${base}/?tab=registry&system=${encodeURIComponent(id)}`;
 }
+// An execution recorded by AOS links back to that run in the AOS console (its task id is the
+// event's traceId).
+function aosRunUrl(block: Any) {
+  const md = block?.metadata;
+  if (md?.producer !== "aos-agentic-orchestration-system" || !md?.traceId) return undefined;
+  const base = (env.PUBLIC_AOS_URL || "http://localhost:5173").replace(/\/+$/, "");
+  return `${base}/?taskId=${encodeURIComponent(md.traceId)}`;
+}
 const ownerLabel = (owner: string) => (owner === "prudence" ? "Prudence" : owner);
 const integrityValid = (result: Any) => (result?.valid ?? result?.isValid) === true;
 // The name shown first: a governed system's own name, otherwise the model id.
@@ -408,6 +416,14 @@ export default function Models() {
                         <code>#{block.blockIndex}</code>
                         <div>
                           <strong>{block.type}</strong> <span className="ct-hint">{block.timestamp}</span>
+                          {aosRunUrl(block) && (
+                            <>
+                              {" "}
+                              <a href={aosRunUrl(block)} target="_blank" rel="noopener noreferrer" className="ct-hint">
+                                Run in AOS ↗
+                              </a>
+                            </>
+                          )}
                           <div className="er-truncate"><code>{block.blockHash.substring(0, 24)}…</code></div>
                         </div>
                       </div>
