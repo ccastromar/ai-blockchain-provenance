@@ -33,8 +33,6 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 .er-danger { color: var(--danger); }
 .er-empty-line { text-align: center; padding: var(--sp-6) 0; margin: 0; }
 
-.er-check { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-sm); color: var(--text-muted); cursor: pointer; }
-.er-check input { accent-color: var(--accent); }
 
 /* sign-in screens */
 .er-centered { display: grid; place-items: center; padding: var(--sp-6) var(--sp-4); }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Alert, Badge, Button, Card, Page, Spinner, Stat, type Tone } from "@chestertown/design";
+import { Alert, Badge, Button, Card, Checkbox, Page, Spinner, Stat, type Tone } from "@chestertown/design";
 import { absoluteApiHref, anchorNow, getAnchorStatus, getChainStats, getHealth, verifyChain, type HealthStatus } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
@@ -111,10 +111,7 @@ export default function Overview() {
       actions={
         <>
           <Button size="sm" onClick={() => void loadStats()}>Refresh</Button>
-          <label className="er-check">
-            <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
-            Auto (10 s)
-          </label>
+          <Checkbox label="Auto (10 s)" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
           <span className="ct-hint er-clock">Updated {format(now, "HH:mm:ss")}</span>
         </>
       }
