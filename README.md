@@ -174,7 +174,7 @@ Planned enterprise controls include signed client submissions, OIDC/JWT auth, RB
 | Component | Path | Purpose |
 | --- | --- | --- |
 | Backend | `backend/` | NestJS API, validation, hashchain, anchoring |
-| Frontend | `frontend-svelte/` | SvelteKit dashboard and Audit Readiness evidence review |
+| Frontend | `frontend/` | React console (Chestertown design system): evidence, audit readiness, receipt verification |
 | Blockchain | `blockchain/` | Hardhat project and Solidity contract |
 | CLI | `cli-ernest/` | Go CLI for querying/verifying chain data |
 | Merkle WASM | `merkle-wasm/` | Rust/WASM verifier: canonical hashing + Merkle proofs for in-browser receipt verification |
@@ -189,7 +189,7 @@ Copy environment examples:
 ```bash
 cp .env.example .env
 cp backend/.env.example backend/.env
-cp frontend-svelte/.env.example frontend-svelte/.env
+cp frontend/.env.example frontend/.env
 ```
 
 Start the local stack:
@@ -264,12 +264,13 @@ pnpm run start:dev
 Frontend:
 
 ```bash
-cd frontend-svelte
-pnpm install
-pnpm run dev
+cd frontend
+npm ci
+npm run dev
 ```
 
-Or install all JavaScript workspace dependencies from the repository root:
+Or install the backend and blockchain workspace dependencies from the repository root (the
+frontend is a standalone npm project):
 
 ```bash
 pnpm install

@@ -48,8 +48,11 @@ jobs:
         run: pnpm --filter ernest-backend test:integrity
 
   frontend:
-    name: Frontend Svelte
+    name: Frontend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,23 +61,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@11.7.0 --activate
-
+      # @chestertown/design installs from the vendored tarball in frontend/vendor.
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check
-        run: pnpm run frontend:check
+        run: npm ci
 
       - name: Unit tests
-        run: pnpm run frontend:test
+        run: npm test
 
-      - name: Build
-        run: pnpm run frontend:build
+      - name: Type-check and build
+        run: npm run build
 
   blockchain:
     name: Blockchain

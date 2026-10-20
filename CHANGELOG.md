@@ -6,6 +6,10 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## [Unreleased]
 
+### Changed
+
+- The web console is now React 19 + Vite + TypeScript in `frontend/`, built on the shared Chestertown design system (`@chestertown/design`, vendored), with the same screens, URLs and `PUBLIC_*` build variables as the SvelteKit console it replaces; `frontend-svelte/` is removed. It is a standalone npm project outside the pnpm workspace.
+
 ### Added
 
 - Merkle-batched evidence, ADR-004 rollout steps 1–2 (behind `EVIDENCE_BATCHING`, default `off`): `evidence_events` store with idempotent submission by `(source, eventId)` (same content → 200 with the stored record, different content → 409); a leased single-leader batcher that chains either one ordinary block per event (`events`, chain shape unchanged) or one `batch` block per interval committing to its events through an RFC 6962 SHA-256 root (`on`); `?wait=true` on submissions; `GET /api/events/{source}/{eventId}/proof` (audit path + block + anchor receipt); `verifyChain` re-derives every batch root from its events. Crash-resume and double-leader safety via a unique `eventSeq` index on blocks.

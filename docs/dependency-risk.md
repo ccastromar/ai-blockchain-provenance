@@ -38,10 +38,9 @@ For an official release, `pnpm run audit:prod` should pass. A failing production
 The production audit covers runtime dependencies in these workspace packages:
 
 - `backend`
-- `frontend-svelte`
 - `blockchain`
-
-The legacy Next.js `frontend` package remains in the workspace while migration finishes, but it is deprecated in favor of `frontend-svelte` and is not part of the official production runtime gate.
+- `frontend` (the React console: a standalone npm project outside the pnpm workspace,
+  audited with `npm audit` by the same script)
 
 The full audit additionally covers legacy packages, developer tooling, and build systems. Findings there should be reviewed, but not automatically treated as production exposure.
 

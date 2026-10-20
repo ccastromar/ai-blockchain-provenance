@@ -13,8 +13,7 @@ node_modules
 **/out
 **/coverage
 **/.turbo
-frontend-svelte/.svelte-kit
-frontend-svelte/build
+frontend/*.tsbuildinfo
 
 agentic-auditor
 ai-sandbox

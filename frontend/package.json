@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test 'src/lib/*.test.ts'"
+    "test": "node --disable-warning=ExperimentalWarning --experimental-strip-types --test 'src/lib/*.test.ts'",
+    "typecheck": "tsc -b"
   },
   "dependencies": {
     "@chestertown/design": "file:vendor/chestertown-design-0.3.2.tgz",

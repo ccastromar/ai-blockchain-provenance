@@ -183,7 +183,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend-svelte/Dockerfile
+      dockerfile: frontend/Dockerfile
       args:
         PUBLIC_API_URL: ${PUBLIC_API_URL:-}
         PUBLIC_ERNEST_API_KEY: ${PUBLIC_ERNEST_API_KEY:-}

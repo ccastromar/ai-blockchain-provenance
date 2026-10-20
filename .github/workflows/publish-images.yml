@@ -68,7 +68,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: frontend-svelte/Dockerfile
+          file: frontend/Dockerfile
           push: true
           build-args: |
             PUBLIC_API_URL=

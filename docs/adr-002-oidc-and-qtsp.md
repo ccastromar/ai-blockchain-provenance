@@ -44,7 +44,7 @@ the existing static keys and Mongo tokens. Opt-in via env; absent config, nothin
 > and is wired into `resolveAccess` and both guards; `whoami` reports the OIDC identity;
 > guards attach the resolved identity to the request (`request.ernestAccess`) for A4.
 > The SvelteKit frontend does Authorization Code + PKCE SSO
-> ([frontend-svelte/src/lib/oidc.ts](../frontend-svelte/src/lib/oidc.ts) + `/auth/callback`),
+> ([frontend/src/lib/oidc.ts](../frontend/src/lib/oidc.ts) + `/auth/callback`),
 > sends the token as `Authorization: Bearer`, and keeps the paste-a-key path as the
 > air-gap/demo fallback. A5 (binding emitter keys to an OIDC subject) remains
 > optional/deferred.
