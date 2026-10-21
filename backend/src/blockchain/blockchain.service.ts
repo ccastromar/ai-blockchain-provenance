@@ -23,6 +23,7 @@ import { buildCycloneDxMlBom } from './cyclonedx';
 import { EvidenceEvent, EvidenceEventDocument } from './models/evidence-event.schema';
 import { leafHashOf, merkleRoot, TREE_ALG } from './merkle-rfc6962';
 import { writesAllowed } from '../common/ernest-role';
+import { provenanceTypeCondition } from './provenance-type';
 
 const anchorAbi = abiJson.abi;
 const MAX_APPEND_RETRIES = 5;
@@ -496,7 +497,7 @@ export class BlockchainService implements OnModuleInit {
         const query: any = { 'data.modelId': modelId };
 
         if (filters?.type) {
-            query['data.type'] = filters.type;
+            Object.assign(query, provenanceTypeCondition(filters.type, { type: 'data.type', stage: 'data.metadata.stage' }));
         }
         if (filters?.from || filters?.to) {
             query.timestamp = {};
@@ -565,7 +566,8 @@ export class BlockchainService implements OnModuleInit {
     private async batchedEventHistory(modelId: string, filters?: { type?: string; from?: number; to?: number; organizationId?: string }) {
         if (!this.evidenceEventModel) return [];
         const query: any = this.notOwnBlock({ modelId });
-        if (filters?.type) query.type = filters.type;
+        // notOwnBlock() already uses $or, so the type condition joins it under $and.
+        if (filters?.type) query.$and = [provenanceTypeCondition(filters.type, { type: 'type', stage: 'data.metadata.stage' })];
         if (filters?.organizationId) query['data.organizationId'] = filters.organizationId;
         const events = await this.evidenceEventModel.find(query).sort({ seq: 1 }).lean();
         if (events.length === 0) return [];
