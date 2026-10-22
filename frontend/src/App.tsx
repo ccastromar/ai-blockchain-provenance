@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
-import { AppShell, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
+import { AppShell, Identity, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
 import AccessBadge from "./components/AccessBadge";
 import Audit from "./pages/Audit";
 import Connectors from "./pages/Connectors";
@@ -56,6 +56,12 @@ function Shell() {
       apps={APPS}
       actions={
         <>
+          {!auth.openAccess && auth.role !== "anonymous" && auth.role !== "loading" && (
+            <Identity
+              name={auth.label ?? auth.subject ?? auth.role}
+              detail={`Access: ${auth.role}`}
+            />
+          )}
           <AccessBadge />
           <ThemeToggle storageKey="ernest.theme" />
         </>

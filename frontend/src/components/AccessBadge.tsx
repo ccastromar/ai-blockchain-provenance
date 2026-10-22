@@ -16,16 +16,7 @@ export default function AccessBadge() {
   const { pathname } = useLocation();
   if (auth.role === "loading") return null;
   if (!auth.openAccess && auth.role !== "anonymous") {
-    const identity = auth.subject ?? auth.label ?? ROLE_LABEL[auth.role];
-    return (
-      <div className="er-auth-actions">
-        <span title={identity}>
-          Signed in as <strong>{identity}</strong>
-          {(auth.subject || auth.label) && <> · {ROLE_LABEL[auth.role]}</>}
-        </span>
-        <Button onClick={() => void signOutLocally()}>Sign out</Button>
-      </div>
-    );
+    return <Button onClick={() => void signOutLocally()}>Sign out</Button>;
   }
   if (auth.openAccess) return null;
   return (
