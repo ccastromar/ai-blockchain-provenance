@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
-import { env } from '../env';
+import { env } from '../env.ts';
 
 const SESSION_STORAGE_KEY = 'ernest_api_key';
 const BEARER_KEY = 'ernest_bearer';
 const BEARER_EXP_KEY = 'ernest_bearer_exp';
+const CONFIGURED_KEY_DISABLED_KEY = 'ernest_configured_key_disabled';
 
 export type ErnestRole = 'read-write' | 'read-only' | 'anonymous' | 'loading';
 
@@ -65,6 +66,7 @@ export function getActiveKey(): string {
   if (typeof sessionStorage !== 'undefined') {
     const stored = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (stored) return stored;
+    if (sessionStorage.getItem(CONFIGURED_KEY_DISABLED_KEY) === 'true') return '';
   }
   return env.PUBLIC_ERNEST_API_KEY ?? '';
 }
@@ -72,6 +74,7 @@ export function getActiveKey(): string {
 export function setActiveKey(key: string) {
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.setItem(SESSION_STORAGE_KEY, key);
+    sessionStorage.removeItem(CONFIGURED_KEY_DISABLED_KEY);
   }
 }
 
@@ -107,8 +110,14 @@ export function clearBearer() {
   sessionStorage.removeItem(BEARER_EXP_KEY);
 }
 
-/** Clears every stored credential (SSO bearer and pasted key). */
+/**
+ * Clears credentials for this tab and disables the build-time key fallback for the
+ * remainder of the tab session, so signing out cannot silently authenticate again.
+ */
 export function clearAllCredentials() {
   clearBearer();
   clearActiveKey();
+  if (typeof sessionStorage !== 'undefined') {
+    sessionStorage.setItem(CONFIGURED_KEY_DISABLED_KEY, 'true');
+  }
 }

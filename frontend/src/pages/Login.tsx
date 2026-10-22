@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Alert, Button, Card, Field, Input } from "@chestertown/design";
-import { refreshAuthRole } from "../lib/api";
-import { authState, clearAllCredentials, setActiveKey, useAuth } from "../lib/auth";
+import { refreshAuthRole, signOutLocally } from "../lib/api";
+import { authState, setActiveKey, useAuth } from "../lib/auth";
 import { beginLogin, oidcEnabled } from "../lib/oidc";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -52,12 +52,7 @@ export default function Login() {
     }
   }
 
-  async function signOut() {
-    clearAllCredentials();
-    await refreshAuthRole();
-  }
-
-  const signedIn = auth.role !== "loading" && auth.role !== "anonymous";
+  const signedIn = auth.role !== "loading" && auth.role !== "anonymous" && !auth.openAccess;
   return (
     <div className="ct-app er-centered">
       <div className="er-narrow">
@@ -76,7 +71,7 @@ export default function Login() {
               </Alert>
               <div className="ct-row">
                 <Link to={redirectTo} className="ct-btn ct-btn-primary">Continue</Link>
-                <Button onClick={signOut}>Sign out</Button>
+                <Button onClick={() => void signOutLocally()}>Sign out</Button>
               </div>
               {auth.role === "read-write" && <Link to="/settings/tokens">Manage access tokens →</Link>}
             </div>

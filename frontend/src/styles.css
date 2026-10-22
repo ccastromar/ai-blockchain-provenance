@@ -42,6 +42,8 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 .er-divider { display: flex; align-items: center; gap: var(--sp-3); color: var(--text-muted); font-size: var(--fs-xs); }
 .er-divider::before, .er-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
 .er-back { text-align: center; font-size: var(--fs-sm); }
+.er-auth-actions { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-sm); }
+.er-auth-actions > span { overflow-wrap: anywhere; }
 
 @media (max-width: 760px) {
   .er-grid-3 { grid-template-columns: 1fr; }

@@ -20,6 +20,10 @@ Configuration keeps the Svelte console's build-time variables (`envPrefix: "PUBL
 `PUBLIC_PRUDENCE_URL`, `PUBLIC_ERNEST_URL` for the module switcher. The backend's
 `CORS_ORIGIN` must include the dev server's origin.
 
+Runtime API keys and OIDC tokens are held in `sessionStorage`. Signing out clears Ernest's
+stored credentials and suppresses the configured API-key fallback for the rest of that tab;
+it does not sign out of the identity provider or affect sessions in other apps.
+
 ## Build and deploy
 
 `Dockerfile` builds from the repository root (`docker build -f frontend/Dockerfile .`) and serves

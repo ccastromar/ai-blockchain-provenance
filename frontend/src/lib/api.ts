@@ -1,6 +1,6 @@
 import axios, { type AxiosError } from 'axios';
 import { env } from '../env';
-import { authState, getActiveCredential } from './auth';
+import { authState, clearAllCredentials, getActiveCredential } from './auth';
 
 const configuredApiUrl = env.PUBLIC_API_URL ?? '';
 const apiUrl = configuredApiUrl === 'http://localhost:3001' ? '' : configuredApiUrl;
@@ -51,6 +51,13 @@ export async function refreshAuthRole() {
   } catch {
     authState.set({ role: 'anonymous', openAccess: false });
   }
+}
+
+/** Signs out of Ernest in this tab without ending the identity-provider session. */
+export async function signOutLocally() {
+  clearAllCredentials();
+  authState.set({ role: 'loading', openAccess: false });
+  await refreshAuthRole();
 }
 
 export type AccessTokenRole = 'read-write' | 'read-only';

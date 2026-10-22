@@ -1,4 +1,6 @@
+import { Button } from "@chestertown/design";
 import { Link, useLocation } from "react-router";
+import { signOutLocally } from "../lib/api";
 import { useAuth } from "../lib/auth";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -12,7 +14,20 @@ const ROLE_LABEL: Record<string, string> = {
 export default function AccessBadge() {
   const auth = useAuth();
   const { pathname } = useLocation();
-  if (auth.role === "loading" || auth.openAccess) return null;
+  if (auth.role === "loading") return null;
+  if (!auth.openAccess && auth.role !== "anonymous") {
+    const identity = auth.subject ?? auth.label ?? ROLE_LABEL[auth.role];
+    return (
+      <div className="er-auth-actions">
+        <span title={identity}>
+          Signed in as <strong>{identity}</strong>
+          {(auth.subject || auth.label) && <> · {ROLE_LABEL[auth.role]}</>}
+        </span>
+        <Button onClick={() => void signOutLocally()}>Sign out</Button>
+      </div>
+    );
+  }
+  if (auth.openAccess) return null;
   return (
     <Link
       to={`/login?redirect=${encodeURIComponent(pathname)}`}
