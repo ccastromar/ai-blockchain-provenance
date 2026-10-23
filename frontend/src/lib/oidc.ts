@@ -20,6 +20,7 @@ const STATE_KEY = 'ernest_oidc_state';
 const VERIFIER_KEY = 'ernest_oidc_verifier';
 const RETURN_KEY = 'ernest_oidc_return';
 const SILENT_KEY = 'ernest_oidc_silent';
+const FORCE_LOGIN_KEY = 'ernest_oidc_force_login';
 const SILENT_ATTEMPTED_KEY = 'ernest_oidc_silent_attempted';
 
 export const oidcEnabled = Boolean(issuer && clientId);
@@ -93,9 +94,19 @@ export async function beginLogin(returnTo: string, silent = false): Promise<void
     code_challenge_method: 'S256',
   });
   if (silent) params.set('prompt', 'none');
+  else if (sessionStorage.getItem(FORCE_LOGIN_KEY)) {
+    params.set('prompt', 'login');
+    sessionStorage.removeItem(FORCE_LOGIN_KEY);
+  }
   if (audience) params.set('audience', audience); // Auth0-style; harmless if the IdP ignores it
 
   window.location.assign(`${authorization_endpoint}?${params.toString()}`);
+}
+
+/** Explicit sign-out: no silent re-login, and the next interactive sign-in asks for credentials. */
+export function markSignedOut(): void {
+  sessionStorage.setItem(FORCE_LOGIN_KEY, 'true');
+  sessionStorage.setItem(SILENT_ATTEMPTED_KEY, 'true');
 }
 
 /** Attempt SSO once per tab without prompting a public visitor to sign in. */
