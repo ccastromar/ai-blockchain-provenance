@@ -7,8 +7,8 @@ import Connectors from "./pages/Connectors";
 import Demo from "./pages/Demo";
 import VerifyReceipt from "./pages/VerifyReceipt";
 import { refreshAuthRole } from "./lib/api";
-import { getActiveCredential, useAuth } from "./lib/auth";
-import { beginLogin, oidcEnabled, trySilentLogin } from "./lib/oidc";
+import { clearBearer, getActiveBearer, getActiveCredential, useAuth } from "./lib/auth";
+import { beginLogin, oidcEnabled, trySilentLogin, watchErnestSession } from "./lib/oidc";
 import { env } from "./env";
 import AuthCallback from "./pages/AuthCallback";
 import Blocks from "./pages/Blocks";
@@ -53,6 +53,17 @@ function Shell() {
         // Public browsing remains available if the identity provider is unreachable.
       });
     }
+  }, []);
+  // Another app of the suite signed out: the IdP session is gone, so drop the bearer we still hold.
+  useEffect(() => {
+    if (!oidcEnabled) return;
+    return watchErnestSession(
+      () => Boolean(getActiveBearer()),
+      () => {
+        clearBearer();
+        void refreshAuthRole();
+      },
+    );
   }, []);
   // Signed in, but the identity provider gave no role Ernest maps: say so instead of showing empty pages.
   const noRole = !auth.openAccess && auth.role === "anonymous" && !!getActiveCredential();

@@ -4,8 +4,10 @@ import { BrowserRouter } from "react-router";
 import "@chestertown/design/styles.css";
 import "./styles.css";
 import App from "./App";
+import { reportIdpSessionIfFramed } from "./lib/oidc";
 
-createRoot(document.getElementById("root")!).render(
+if (!reportIdpSessionIfFramed())
+  createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <App />
