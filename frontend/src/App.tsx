@@ -7,7 +7,8 @@ import Connectors from "./pages/Connectors";
 import Demo from "./pages/Demo";
 import VerifyReceipt from "./pages/VerifyReceipt";
 import { refreshAuthRole } from "./lib/api";
-import { useAuth } from "./lib/auth";
+import { getActiveCredential, useAuth } from "./lib/auth";
+import { trySilentLogin } from "./lib/oidc";
 import { env } from "./env";
 import AuthCallback from "./pages/AuthCallback";
 import Blocks from "./pages/Blocks";
@@ -47,6 +48,11 @@ function Shell() {
   const auth = useAuth();
   useEffect(() => {
     void refreshAuthRole();
+    if (!getActiveCredential()) {
+      void trySilentLogin(window.location.pathname + window.location.search + window.location.hash).catch(() => {
+        // Public browsing remains available if the identity provider is unreachable.
+      });
+    }
   }, []);
   const sections = auth.role === "read-write" ? [...SECTIONS, DEMO] : SECTIONS;
   return (

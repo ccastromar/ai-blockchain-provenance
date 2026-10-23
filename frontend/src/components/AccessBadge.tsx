@@ -18,14 +18,13 @@ export default function AccessBadge() {
   if (!auth.openAccess && auth.role !== "anonymous") {
     return <Button onClick={() => void signOutLocally()}>Sign out</Button>;
   }
-  if (auth.openAccess) return null;
   return (
     <Link
       to={`/login?redirect=${encodeURIComponent(pathname)}`}
       className={`ct-btn ct-btn-sm ${auth.role === "anonymous" ? "ct-btn-primary" : "ct-btn-outline"}`}
       title={auth.label ?? auth.subject ?? ""}
     >
-      {ROLE_LABEL[auth.role]}
+      {auth.openAccess ? "Sign in" : ROLE_LABEL[auth.role]}
     </Link>
   );
 }

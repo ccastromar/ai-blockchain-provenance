@@ -19,6 +19,8 @@ const explicitTokenEndpoint = env.PUBLIC_OIDC_TOKEN_ENDPOINT?.trim();
 const STATE_KEY = 'ernest_oidc_state';
 const VERIFIER_KEY = 'ernest_oidc_verifier';
 const RETURN_KEY = 'ernest_oidc_return';
+const SILENT_KEY = 'ernest_oidc_silent';
+const SILENT_ATTEMPTED_KEY = 'ernest_oidc_silent_attempted';
 
 export const oidcEnabled = Boolean(issuer && clientId);
 
@@ -67,7 +69,7 @@ async function challengeFrom(verifier: string): Promise<string> {
 }
 
 /** Redirects the browser to the IdP to begin an Authorization Code + PKCE login. */
-export async function beginLogin(returnTo: string): Promise<void> {
+export async function beginLogin(returnTo: string, silent = false): Promise<void> {
   if (!oidcEnabled) throw new Error('OIDC is not configured');
   const { authorization_endpoint } = await endpoints();
 
@@ -78,6 +80,8 @@ export async function beginLogin(returnTo: string): Promise<void> {
   sessionStorage.setItem(STATE_KEY, state);
   sessionStorage.setItem(VERIFIER_KEY, verifier);
   sessionStorage.setItem(RETURN_KEY, returnTo || '/');
+  if (silent) sessionStorage.setItem(SILENT_KEY, 'true');
+  else sessionStorage.removeItem(SILENT_KEY);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -88,9 +92,17 @@ export async function beginLogin(returnTo: string): Promise<void> {
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   });
+  if (silent) params.set('prompt', 'none');
   if (audience) params.set('audience', audience); // Auth0-style; harmless if the IdP ignores it
 
   window.location.assign(`${authorization_endpoint}?${params.toString()}`);
+}
+
+/** Attempt SSO once per tab without prompting a public visitor to sign in. */
+export async function trySilentLogin(returnTo: string): Promise<void> {
+  if (!oidcEnabled || sessionStorage.getItem(SILENT_ATTEMPTED_KEY)) return;
+  sessionStorage.setItem(SILENT_ATTEMPTED_KEY, 'true');
+  await beginLogin(returnTo, true);
 }
 
 /**
@@ -100,18 +112,23 @@ export async function beginLogin(returnTo: string): Promise<void> {
 export async function completeLogin(): Promise<string> {
   const url = new URL(window.location.href);
   const error = url.searchParams.get('error');
-  if (error) {
-    throw new Error(url.searchParams.get('error_description') || `IdP returned error: ${error}`);
-  }
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const expectedState = sessionStorage.getItem(STATE_KEY);
   const verifier = sessionStorage.getItem(VERIFIER_KEY);
   const returnTo = sessionStorage.getItem(RETURN_KEY) || '/';
+  const silent = sessionStorage.getItem(SILENT_KEY) === 'true';
 
   sessionStorage.removeItem(STATE_KEY);
   sessionStorage.removeItem(VERIFIER_KEY);
   sessionStorage.removeItem(RETURN_KEY);
+  sessionStorage.removeItem(SILENT_KEY);
+
+  if (error) {
+    if (!expectedState || state !== expectedState) throw new Error('OIDC state mismatch (possible CSRF)');
+    if (silent && ['login_required', 'interaction_required', 'consent_required', 'account_selection_required'].includes(error)) return returnTo;
+    throw new Error(url.searchParams.get('error_description') || `IdP returned error: ${error}`);
+  }
 
   if (!code || !state) throw new Error('Missing code/state in callback');
   if (!expectedState || state !== expectedState) throw new Error('OIDC state mismatch (possible CSRF)');
