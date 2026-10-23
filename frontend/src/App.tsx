@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
-import { AppShell, Identity, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
+import { Alert, AppShell, Identity, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
 import AccessBadge from "./components/AccessBadge";
 import Audit from "./pages/Audit";
 import Connectors from "./pages/Connectors";
@@ -54,6 +54,8 @@ function Shell() {
       });
     }
   }, []);
+  // Signed in, but the identity provider gave no role Ernest maps: say so instead of showing empty pages.
+  const noRole = !auth.openAccess && auth.role === "anonymous" && !!getActiveCredential();
   const sections = auth.role === "read-write" ? [...SECTIONS, DEMO] : SECTIONS;
   return (
     <AppShell
@@ -74,6 +76,11 @@ function Shell() {
       }
       nav={<NavTabs label="Ernest sections" items={sections} current={pathname} linkAs={RouterLink} />}
     >
+      {noRole && (
+        <Alert tone="danger">
+          You are signed in, but your account has no Ernest role, so Ernest shows you nothing. Ask an administrator to assign one, then sign in again.
+        </Alert>
+      )}
       <Outlet />
     </AppShell>
   );
