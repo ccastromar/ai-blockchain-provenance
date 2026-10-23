@@ -20,6 +20,7 @@ const STATE_KEY = 'ernest_oidc_state';
 const VERIFIER_KEY = 'ernest_oidc_verifier';
 const RETURN_KEY = 'ernest_oidc_return';
 const SILENT_KEY = 'ernest_oidc_silent';
+const ID_TOKEN_KEY = 'ernest_oidc_id_token';
 const FORCE_LOGIN_KEY = 'ernest_oidc_force_login';
 const SILENT_ATTEMPTED_KEY = 'ernest_oidc_silent_attempted';
 
@@ -28,6 +29,7 @@ export const oidcEnabled = Boolean(issuer && clientId);
 interface OidcEndpoints {
   authorization_endpoint: string;
   token_endpoint: string;
+  end_session_endpoint?: string;
 }
 let endpointsCache: OidcEndpoints | undefined;
 
@@ -44,7 +46,11 @@ async function endpoints(): Promise<OidcEndpoints> {
   if (!meta.authorization_endpoint || !meta.token_endpoint) {
     throw new Error('OIDC discovery document missing authorization_endpoint/token_endpoint');
   }
-  endpointsCache = { authorization_endpoint: meta.authorization_endpoint, token_endpoint: meta.token_endpoint };
+  endpointsCache = {
+    authorization_endpoint: meta.authorization_endpoint,
+    token_endpoint: meta.token_endpoint,
+    end_session_endpoint: meta.end_session_endpoint,
+  };
   return endpointsCache;
 }
 
@@ -107,6 +113,24 @@ export async function beginLogin(returnTo: string, silent = false): Promise<void
 export function markSignedOut(): void {
   sessionStorage.setItem(FORCE_LOGIN_KEY, 'true');
   sessionStorage.setItem(SILENT_ATTEMPTED_KEY, 'true');
+}
+
+/** Ends the IdP session too (RP-initiated logout) so the whole suite signs out. */
+export async function endIdpSession(): Promise<void> {
+  const idToken = sessionStorage.getItem(ID_TOKEN_KEY) ?? '';
+  sessionStorage.removeItem(ID_TOKEN_KEY);
+  if (!oidcEnabled) return;
+  try {
+    const { end_session_endpoint } = await endpoints();
+    if (!end_session_endpoint) return;
+    const url = new URL(end_session_endpoint);
+    url.searchParams.set('client_id', clientId!);
+    url.searchParams.set('post_logout_redirect_uri', `${window.location.origin}/`);
+    if (idToken) url.searchParams.set('id_token_hint', idToken);
+    window.location.assign(url.toString());
+  } catch {
+    /* local sign-out already done */
+  }
 }
 
 /** Attempt SSO once per tab without prompting a public visitor to sign in. */
@@ -176,6 +200,7 @@ export async function completeLogin(): Promise<string> {
     throw new Error(`IdP did not return the expected token (${audience ? 'access_token' : 'id_token'})`);
   }
   const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined;
+  if (tokens.id_token) sessionStorage.setItem(ID_TOKEN_KEY, tokens.id_token);
   setBearer(bearer, expiresAt);
   return returnTo;
 }

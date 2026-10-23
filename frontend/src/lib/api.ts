@@ -1,6 +1,6 @@
 import axios, { type AxiosError } from 'axios';
 import { env } from '../env';
-import { markSignedOut } from './oidc';
+import { endIdpSession, markSignedOut } from './oidc';
 import { authState, clearAllCredentials, getActiveCredential } from './auth';
 
 const configuredApiUrl = env.PUBLIC_API_URL ?? '';
@@ -54,11 +54,12 @@ export async function refreshAuthRole() {
   }
 }
 
-/** Signs out of Ernest in this tab without ending the identity-provider session. */
+/** Signs out of Ernest and ends the identity-provider session (suite-wide sign-out). */
 export async function signOutLocally() {
   clearAllCredentials();
   markSignedOut();
   authState.set({ role: 'loading', openAccess: false });
+  await endIdpSession();
   await refreshAuthRole();
 }
 
