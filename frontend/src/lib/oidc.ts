@@ -205,35 +205,55 @@ export async function completeLogin(): Promise<string> {
   return returnTo;
 }
 
-const SILENT_STATE = "idp-session-check";
-// Any well-formed S256 challenge: the code is never exchanged, only the prompt=none outcome matters.
-const DUMMY_CHALLENGE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+const CHECK_PREFIX = 'idp-check:';
+const RENEW_WINDOW_MS = 120000;
+
+/** Seconds-precision JWT expiry in ms, or 0 when unreadable. */
+function jwtExpiryMs(token: string): number {
+  try {
+    const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return (JSON.parse(atob(part + "===".slice((part.length + 3) % 4))).exp ?? 0) * 1000;
+  } catch {
+    return 0;
+  }
+}
 
 /** Runs inside the hidden iframe: reports the prompt=none outcome to the parent and stops. */
 export function reportIdpSessionIfFramed(): boolean {
   if (window.parent === window) return false;
   const params = new URLSearchParams(window.location.search);
-  if (params.get("state") !== SILENT_STATE) return false;
+  const state = params.get("state") ?? "";
+  if (!state.startsWith(CHECK_PREFIX)) return false;
   window.parent.postMessage(
-    { type: SILENT_STATE, active: !params.has("error") },
+    { type: "idp-check", state, active: !params.has("error"), code: params.get("code") },
     window.location.origin,
   );
   return true;
 }
 
-function idpSessionActive(authorizationEndpoint: string, clientId: string, redirectUri: string): Promise<boolean | null> {
+type CheckResult = { active: boolean; code: string | null };
+
+function idpCheck(
+  authorizationEndpoint: string,
+  clientId: string,
+  redirectUri: string,
+  challenge: string,
+): Promise<CheckResult | null> {
   return new Promise((resolve) => {
+    const state =
+      CHECK_PREFIX +
+      Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(16).padStart(2, "0")).join("");
     const iframe = document.createElement("iframe");
     iframe.style.display = "none";
-    const finish = (value: boolean | null) => {
+    const finish = (value: CheckResult | null) => {
       window.removeEventListener("message", onMessage);
       clearTimeout(timer);
       iframe.remove();
       resolve(value);
     };
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.data?.type !== SILENT_STATE) return;
-      finish(Boolean(event.data.active));
+      if (event.origin !== window.location.origin || event.data?.type !== "idp-check" || event.data.state !== state) return;
+      finish({ active: Boolean(event.data.active), code: event.data.code ?? null });
     };
     const timer = setTimeout(() => finish(null), 8000);
     window.addEventListener("message", onMessage);
@@ -241,11 +261,11 @@ function idpSessionActive(authorizationEndpoint: string, clientId: string, redir
     url.search = new URLSearchParams({
       client_id: clientId,
       response_type: "code",
-      scope: "openid",
+      scope: "openid profile email",
       redirect_uri: redirectUri,
       prompt: "none",
-      state: SILENT_STATE,
-      code_challenge: DUMMY_CHALLENGE,
+      state,
+      code_challenge: challenge,
       code_challenge_method: "S256",
     }).toString();
     iframe.src = url.toString();
@@ -253,24 +273,34 @@ function idpSessionActive(authorizationEndpoint: string, clientId: string, redir
   });
 }
 
+interface SessionWatch {
+  authorizationEndpoint: () => Promise<string>;
+  clientId: string;
+  redirectUri: string;
+  hasSession: () => boolean;
+  /** Current token's expiry in ms (0 = unknown). */
+  expiresAt: () => number;
+  pkce: () => Promise<{ verifier: string; challenge: string }>;
+  exchange: (code: string, verifier: string) => Promise<void>;
+  onEnded: () => void;
+}
+
 /**
- * Detects a sign-out done in another app of the suite: while this app holds a session, it asks
- * the IdP now and then (and when the tab regains focus) whether its own session is still alive.
+ * While this app holds a session, asks the IdP now and then (and when the tab regains focus)
+ * whether the SSO session is alive. A sign-out done in another app of the suite ends ours; a
+ * token about to expire is renewed silently from the same check, so users are not bounced.
  */
-export function watchIdpSession(
-  authorizationEndpoint: () => Promise<string>,
-  clientId: string,
-  redirectUri: string,
-  hasSession: () => boolean,
-  onEnded: () => void,
-): () => void {
+export function watchIdpSession(w: SessionWatch): () => void {
   let busy = false;
   const check = async () => {
-    if (busy || document.hidden || !hasSession()) return;
+    if (busy || document.hidden || !w.hasSession()) return;
     busy = true;
     try {
-      const active = await idpSessionActive(await authorizationEndpoint(), clientId, redirectUri);
-      if (active === false && hasSession()) onEnded();
+      const { verifier, challenge } = await w.pkce();
+      const result = await idpCheck(await w.authorizationEndpoint(), w.clientId, w.redirectUri, challenge);
+      if (!result || !w.hasSession()) return;
+      if (!result.active) w.onEnded();
+      else if (result.code && w.expiresAt() - Date.now() < RENEW_WINDOW_MS) await w.exchange(result.code, verifier);
     } catch {
       /* transient: try again later */
     } finally {
@@ -287,11 +317,37 @@ export function watchIdpSession(
   };
 }
 
+async function renewWithCode(code: string, verifier: string) {
+  const { token_endpoint } = await endpoints();
+  const res = await fetch(token_endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri(),
+      client_id: clientId!,
+      code_verifier: verifier,
+    }),
+  });
+  if (!res.ok) return;
+  const tokens = (await res.json()) as { access_token?: string; id_token?: string; expires_in?: number };
+  if (tokens.id_token) sessionStorage.setItem(ID_TOKEN_KEY, tokens.id_token);
+  const bearer = audience ? tokens.access_token : tokens.id_token;
+  if (bearer) setBearer(bearer, tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined);
+}
+
 export const watchErnestSession = (hasSession: () => boolean, onEnded: () => void) =>
-  watchIdpSession(
-    async () => (await endpoints()).authorization_endpoint,
-    clientId!,
-    redirectUri(),
+  watchIdpSession({
+    authorizationEndpoint: async () => (await endpoints()).authorization_endpoint,
+    clientId: clientId!,
+    redirectUri: redirectUri(),
     hasSession,
+    expiresAt: () => jwtExpiryMs(sessionStorage.getItem('ernest_bearer') ?? ''),
+    pkce: async () => {
+      const verifier = randomString(48);
+      return { verifier, challenge: await challengeFrom(verifier) };
+    },
+    exchange: renewWithCode,
     onEnded,
-  );
+  });
