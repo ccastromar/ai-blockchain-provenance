@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
-import { Alert, AppShell, Identity, NavTabs, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
+import { AppShell, Card, Identity, NavTabs, Page, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
 import AccessBadge from "./components/AccessBadge";
 import Audit from "./pages/Audit";
 import Connectors from "./pages/Connectors";
@@ -74,14 +74,21 @@ function Shell() {
           <ThemeToggle storageKey="ernest.theme" />
         </>
       }
-      nav={<NavTabs label="Ernest sections" items={sections} current={pathname} linkAs={RouterLink} />}
+      nav={noRole ? undefined : <NavTabs label="Ernest sections" items={sections} current={pathname} linkAs={RouterLink} />}
     >
-      {noRole && (
-        <Alert tone="danger">
-          You are signed in, but your account has no Ernest role, so Ernest shows you nothing. Ask an administrator to assign one, then sign in again.
-        </Alert>
+      {noRole ? (
+        <Page>
+          <Card style={{ maxWidth: 480, margin: "var(--sp-12) auto", textAlign: "center" }}>
+            <h1 className="ct-title">No access to Ernest</h1>
+            <p className="sub">
+              {auth.label ?? auth.subject ?? "Your account"} is signed in but has no Ernest role. Ask an administrator to assign one,
+              then sign in again.
+            </p>
+          </Card>
+        </Page>
+      ) : (
+        <Outlet />
       )}
-      <Outlet />
     </AppShell>
   );
 }
