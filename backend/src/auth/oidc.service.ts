@@ -149,8 +149,6 @@ function claimValues(claim: unknown): string[] {
 }
 
 function labelFromClaims(payload: JWTPayload): string | undefined {
-  const email = payload['email'];
-  if (typeof email === 'string' && email) return email;
   const preferred = payload['preferred_username'];
   if (typeof preferred === 'string' && preferred) return preferred;
   const name = payload['name'];
