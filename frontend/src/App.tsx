@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link, Navigate, Outlet, Route, Routes, useLocation } from "react-router";
-import { AppShell, Card, Identity, NavTabs, Page, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
+import { AppShell, Button, Card, Identity, NavTabs, Page, ThemeToggle, chestertownApps, type LinkComponent } from "@chestertown/design";
 import AccessBadge from "./components/AccessBadge";
 import Audit from "./pages/Audit";
 import Connectors from "./pages/Connectors";
@@ -8,7 +8,7 @@ import Demo from "./pages/Demo";
 import VerifyReceipt from "./pages/VerifyReceipt";
 import { refreshAuthRole } from "./lib/api";
 import { getActiveCredential, useAuth } from "./lib/auth";
-import { trySilentLogin } from "./lib/oidc";
+import { beginLogin, oidcEnabled, trySilentLogin } from "./lib/oidc";
 import { env } from "./env";
 import AuthCallback from "./pages/AuthCallback";
 import Blocks from "./pages/Blocks";
@@ -56,6 +56,8 @@ function Shell() {
   }, []);
   // Signed in, but the identity provider gave no role Ernest maps: say so instead of showing empty pages.
   const noRole = !auth.openAccess && auth.role === "anonymous" && !!getActiveCredential();
+  // No credential and no open access: the whole UI stays closed until the user signs in.
+  const signedOut = !auth.openAccess && auth.role === "anonymous" && !noRole;
   const sections = auth.role === "read-write" ? [...SECTIONS, DEMO] : SECTIONS;
   return (
     <AppShell
@@ -74,9 +76,25 @@ function Shell() {
           <ThemeToggle storageKey="ernest.theme" />
         </>
       }
-      nav={noRole ? undefined : <NavTabs label="Ernest sections" items={sections} current={pathname} linkAs={RouterLink} />}
+      nav={noRole || signedOut || auth.role === "loading" ? undefined : <NavTabs label="Ernest sections" items={sections} current={pathname} linkAs={RouterLink} />}
     >
-      {noRole ? (
+      {auth.role === "loading" ? null : signedOut ? (
+        <Page>
+          <Card style={{ maxWidth: 420, margin: "var(--sp-12) auto", textAlign: "center" }}>
+            <h1 className="ct-title">Sign in to Ernest</h1>
+            <p className="sub">Evidence is a controlled resource — sign in with your identity provider.</p>
+            {oidcEnabled ? (
+              <Button variant="primary" onClick={() => void beginLogin(pathname)}>
+                Sign in with SSO
+              </Button>
+            ) : (
+              <Link to={`/login?redirect=${encodeURIComponent(pathname)}`} className="ct-btn ct-btn-primary">
+                Sign in
+              </Link>
+            )}
+          </Card>
+        </Page>
+      ) : noRole ? (
         <Page>
           <Card style={{ maxWidth: 480, margin: "var(--sp-12) auto", textAlign: "center" }}>
             <h1 className="ct-title">No access to Ernest</h1>
