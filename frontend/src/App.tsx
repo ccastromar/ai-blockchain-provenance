@@ -64,10 +64,10 @@ function Shell() {
       apps={APPS}
       actions={
         <>
-          {!auth.openAccess && auth.role !== "anonymous" && auth.role !== "loading" && (
+          {!auth.openAccess && auth.role !== "loading" && (auth.role !== "anonymous" || noRole) && (
             <Identity
               name={auth.label ?? auth.subject ?? auth.role}
-              detail={`Access: ${auth.role}`}
+              detail={noRole ? "No Ernest role" : `Access: ${auth.role}`}
             />
           )}
           <AccessBadge />

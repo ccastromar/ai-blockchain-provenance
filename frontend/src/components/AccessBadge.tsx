@@ -1,7 +1,7 @@
 import { Button } from "@chestertown/design";
 import { Link, useLocation } from "react-router";
 import { signOutLocally } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { getActiveCredential, useAuth } from "../lib/auth";
 
 const ROLE_LABEL: Record<string, string> = {
   "read-write": "Full access",
@@ -15,7 +15,7 @@ export default function AccessBadge() {
   const auth = useAuth();
   const { pathname } = useLocation();
   if (auth.role === "loading") return null;
-  if (!auth.openAccess && auth.role !== "anonymous") {
+  if (!auth.openAccess && (auth.role !== "anonymous" || getActiveCredential())) {
     return <Button onClick={() => void signOutLocally()}>Sign out</Button>;
   }
   return (
