@@ -44,7 +44,7 @@ curl --fail --silent --show-error "${HEALTH_URL}" >/dev/null
 echo "Registering model ${MODEL_ID}..."
 curl --fail --silent --show-error \
   -X POST "${API_BASE}/models" \
-  "${AUTH_HEADERS[@]}" \
+  "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" \
   -H "Content-Type: application/json" \
   -d "{
     \"modelId\": \"${MODEL_ID}\",
@@ -68,7 +68,7 @@ curl --fail --silent --show-error \
 echo "Logging inference ${INFERENCE_ID}..."
 curl --fail --silent --show-error \
   -X POST "${API_BASE}/inferences" \
-  "${AUTH_HEADERS[@]}" \
+  "${AUTH_HEADERS[@]+"${AUTH_HEADERS[@]}"}" \
   -H "Content-Type: application/json" \
   -d "{
     \"modelId\": \"${MODEL_ID}\",
