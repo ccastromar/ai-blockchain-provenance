@@ -1,7 +1,7 @@
 # Ernest: Verifiable AI Provenance
 
 [![CI](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Status: Alpha](https://img.shields.io/badge/status-0.2.0--alpha-orange.svg)](CHANGELOG.md)
 
 AI systems are increasingly asked to prove what happened: which model version was used, which artifact hash was approved, which code commit produced it, whether inference evidence was recorded, and whether the audit trail was later changed.
@@ -460,7 +460,7 @@ Before proposing a release, check:
 
 ## License
 
-MIT License. See [LICENSE](LICENSE).
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
 ## Author
 
