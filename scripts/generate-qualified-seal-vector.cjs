@@ -47,6 +47,7 @@ eDAKBggqhkjOPQQDAgNIADBFAiEA8udMjCnYPf2vCRcY28h7Cs6PWkgQldxonLTi
 hBvK1UECICWtG/0wWwoNvq5HA9qNdV+WXAe8jfbXHr19yCVbVbL+
 -----END CERTIFICATE-----`;
 
+// TEST-ONLY key for a fictitious "Acme Bank" seal under a test QTSP CA. Not a real secret.
 const LEAF_KEY_PEM = `-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIFYM4HOt7K+beIr9IEZXRacgmmWULgb0KYBkKGeITZYFoAoGCCqGSM49
 AwEHoUQDQgAEEbgm+9Hd9iGAkJycGY03z+HESqhighp41Fk4C1uBwHPO4GpUSt3u
