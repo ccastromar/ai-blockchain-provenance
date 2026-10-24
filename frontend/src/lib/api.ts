@@ -27,9 +27,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// The API never answers with HTML. When it does, the request reached a web server that does not
+// forward /api (for example a dev server without the proxy) and got the console's own page back.
+// Treat that as "Ernest is unreachable" instead of letting a page read it as data: an empty
+// verification would otherwise show as a compromised chain.
 // Surface rate-limit errors clearly
 api.interceptors.response.use(
-  (r) => r,
+  (r) => {
+    if (String(r.headers?.['content-type'] ?? '').includes('text/html')) {
+      return Promise.reject(new Error('the API answered with a web page instead of Ernest data — check the API URL or proxy'));
+    }
+    return r;
+  },
   (err: AxiosError) => {
     if (err.response?.status === 429) {
       const e = new Error('Too many requests — please wait a moment and try again.');

@@ -102,6 +102,8 @@ export default function Overview() {
   })();
   const anchorKind = (mode?: string) => (mode === "ots" ? "OpenTimestamps · Bitcoin" : "EVM contract");
   const valid = verification?.isValid === true;
+  // Only a verification that ran and failed says the chain is compromised; no result says nothing.
+  const invalid = verification?.isValid === false;
 
   return (
     <Page
@@ -139,8 +141,12 @@ export default function Overview() {
               )
             }
           >
-            <Badge tone={valid ? "ok" : "danger"} dot>
-              {valid ? "Valid — the chain is intact" : "Invalid — chain integrity compromised"}
+            <Badge tone={valid ? "ok" : invalid ? "danger" : "neutral"} dot>
+              {valid
+                ? "Valid — the chain is intact"
+                : invalid
+                  ? "Invalid — chain integrity compromised"
+                  : "Unknown — no verification result"}
             </Badge>
             {stats?.lastBlockHash && (
               <div className="er-field">
@@ -197,7 +203,9 @@ export default function Overview() {
               </div>
               <div>
                 <dt>Verification</dt>
-                <dd className={valid ? "er-ok" : "er-danger"}>{valid ? "Passing" : "Failing"}</dd>
+                <dd className={valid ? "er-ok" : invalid ? "er-danger" : undefined}>
+                  {valid ? "Passing" : invalid ? "Failing" : "Unknown"}
+                </dd>
               </div>
             </dl>
           </Card>

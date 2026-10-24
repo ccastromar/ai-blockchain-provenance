@@ -269,6 +269,9 @@ npm ci
 npm run dev
 ```
 
+The dev server (http://localhost:5186) forwards `/api` to the backend at `http://localhost:3001`
+(`ERNEST_BACKEND_URL` to change it) and `/ingestor` to the event-ingestor at `http://localhost:3011`.
+
 Or install the backend and blockchain workspace dependencies from the repository root (the
 frontend is a standalone npm project):
 
