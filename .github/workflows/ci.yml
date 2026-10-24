@@ -47,6 +47,11 @@ jobs:
       - name: Run integrity tests
         run: pnpm --filter ernest-backend test:integrity
 
+      # Fails on any high or critical advisory in production dependencies (backend workspace and
+      # the console). Accepted exceptions live in pnpm-workspace.yaml (auditConfig.ignoreGhsas).
+      - name: Dependency audit (production, high and above)
+        run: pnpm run audit:prod
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest

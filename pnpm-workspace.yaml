@@ -16,12 +16,7 @@ allowBuilds:
   keccak: true
 
 overrides:
-  multer: 2.2.0
-
-auditConfig:
-  ignoreGhsas:
-    - GHSA-h25m-26qc-wcjf
-    - GHSA-q4gf-8mx6-v5v3
-    - GHSA-8h8q-6873-q5fj
-    - GHSA-c4j6-fc7j-m34r
-    - GHSA-36qx-fr4f-26g5
+  multer: 2.5.0
+  # opentimestamps still pulls the deprecated request, which pins form-data 2.3; 2.5.6 is the
+  # same API with the boundary-randomness fix.
+  'form-data@<2.5.6': 2.5.6
