@@ -47,7 +47,7 @@ Keep this slide simple: hash-only evidence, local verification, optional public 
 
 Core components:
 
-- SvelteKit dashboard.
+- React dashboard.
 - NestJS API.
 - MongoDB hashchain.
 - Optional Sepolia smart contract.
@@ -57,7 +57,7 @@ Core components:
 
 ```mermaid
 flowchart LR
-  UI["SvelteKit dashboard"] --> API["NestJS API"]
+  UI["React dashboard"] --> API["NestJS API"]
   API --> DB["MongoDB hashchain"]
   API --> Root["Merkle root"]
   Root --> Chain["Sepolia anchor"]

@@ -36,7 +36,7 @@ PUBLIC_API_URL=https://ernest.example.com
 PUBLIC_ERNEST_API_KEY=<same-key-only-for-browser-demo>
 ```
 
-For a browser-only demo, `PUBLIC_ERNEST_API_KEY` lets the frontend call protected write endpoints. It is public in the JavaScript bundle, so treat it as a demo convenience only. The SvelteKit frontend is a static image, so rebuild the frontend container after changing any `PUBLIC_*` value.
+For a browser-only demo, `PUBLIC_ERNEST_API_KEY` lets the frontend call protected write endpoints. It is public in the JavaScript bundle, so treat it as a demo convenience only. The React frontend is a static image, so rebuild the frontend container after changing any `PUBLIC_*` value.
 
 Generate a long API key with a local password manager or with:
 

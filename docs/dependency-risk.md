@@ -26,7 +26,7 @@ AUDIT_LEVEL=moderate pnpm run audit:all
 
 For an official release, `pnpm run audit:prod` should pass. A failing production audit blocks release unless the finding is documented, accepted, and clearly not reachable in the deployed demo path.
 
-`pnpm run audit:all` is a manual release review step. Development-only findings in toolchains such as Hardhat, SvelteKit, Vite, test runners, or compiler helpers may be accepted for an alpha release when all of these are true:
+`pnpm run audit:all` is a manual release review step. Development-only findings in toolchains such as Hardhat, Vite, test runners, or compiler helpers may be accepted for an alpha release when all of these are true:
 
 - The vulnerable package is not shipped in runtime containers.
 - The vulnerable path is only used by trusted maintainers during build, test, or contract compilation.

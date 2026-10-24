@@ -59,8 +59,9 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 - 🔜 **Signed submissions v1.1 — the ingestor path.** ADR-001 covers direct API writes;
   events coming through the Go ingestor (HF/SageMaker/…) still use the HMAC channel
   ladder. Needs its own "signed subset" contract because adapters enrich payloads.
-- 🔜 **Enterprise identity (OIDC/SSO)** layered on top of the built-in role/token model —
-  per-client identity, not just "whoever holds the key". Design: [docs/adr-002-oidc-and-qtsp.md](docs/adr-002-oidc-and-qtsp.md) (Decision A).
+- ✅ **Enterprise identity (OIDC/SSO)** layered on top of the built-in role/token model —
+  per-client identity, not just "whoever holds the key"; the console signs in through the shared
+  Chestertown SSO. Design: [docs/adr-002-oidc-and-qtsp.md](docs/adr-002-oidc-and-qtsp.md) (Decision A).
 - 🔜 **Real provider connectors.** Today 8 providers are *simulated* (the adapters are
   real parsers; only the *source* is faked) and the MLflow watcher is the one real
   integration. Two patterns cover all of them — **push** (native webhooks: HF, Databricks)
@@ -111,7 +112,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 |---|---|
 | A real model-registry / ML-platform integration demonstrated | ✅ MLflow watcher (one real; more would strengthen it) |
 | Write clients can sign provenance submissions | ✅ ADR-001 (direct API); 🔜 ingestor path |
-| Authentication delegated to an enterprise identity provider | 🔜 OIDC/SSO on top of roles/tokens |
+| Authentication delegated to an enterprise identity provider | ✅ OIDC/SSO on top of roles/tokens (shared suite sign-in and sign-out) |
 | Backup and restore tested on the target deployment shape | ✅ scripts + runbook (test on the real target during the pilot) |
 | A pilot threat model reviewed with security stakeholders | 🔜 needs the design-partner conversation (checklist in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md)) |
 | Data lifecycle: retention, legal hold, GDPR erasure | 🔜 designed in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md); not yet implemented |

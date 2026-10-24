@@ -21,7 +21,7 @@ Raw prompts, inference inputs, outputs, training datasets, and model binaries re
 
 ## Current Alpha Scope
 
-- SvelteKit dashboard for demos and operational inspection.
+- React dashboard for demos and operational inspection.
 - NestJS API for model registration, inference logging, chain verification, and anchoring.
 - MongoDB-backed hashchain with duplicate-key retry handling.
 - Optional Sepolia anchoring through `ErnestMerkleAnchor`.

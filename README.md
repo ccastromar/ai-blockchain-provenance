@@ -74,7 +74,7 @@ compliant; it makes your evidence provable.
 - Runs an hourly integrity check of the full chain automatically (plus once at startup), records the result, surfaces it in `/health`, and posts to `WEBHOOK_URL` if the chain is found broken — so tampering doesn't require someone to remember to check `/api/verify` manually.
 - Computes a Merkle root over hashchain block hashes.
 - Optionally anchors the Merkle root to the `ErnestMerkleAnchor` Solidity contract on Sepolia.
-- Provides a SvelteKit dashboard with a local audit add-on, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
+- Provides a React dashboard with a local audit add-on, NestJS API, Go CLI, Rust/WASM Merkle helper, Python demo sandbox, and optional auditor agent.
 
 ## What Ernest Is Not
 

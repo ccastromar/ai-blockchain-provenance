@@ -1,6 +1,6 @@
 # Architecture
 
-Ernest is a modular proof-of-concept for AI provenance. The default stack uses a SvelteKit dashboard, a NestJS API, MongoDB for local hashchain storage, and optional EVM anchoring through either a local Hardhat chain or Sepolia.
+Ernest is a modular proof-of-concept for AI provenance. The default stack uses a React dashboard, a NestJS API, MongoDB for local hashchain storage, and optional EVM anchoring through either a local Hardhat chain or Sepolia.
 
 The design intentionally separates the provenance control plane from raw AI data. Ernest records hashes, model metadata, and audit-oriented events; source systems remain responsible for raw prompts, inference payloads, training data, model binaries, access control, and retention policies.
 
@@ -9,7 +9,7 @@ The design intentionally separates the provenance control plane from raw AI data
 ```mermaid
 flowchart TD
   User["User or demo operator"]
-  UI["SvelteKit frontend"]
+  UI["React frontend"]
   API["NestJS backend API"]
   MLflow["MLflow demo server"]
   Mongo["MongoDB<br/>provenanceblocks + anchors + aimodels"]
@@ -144,7 +144,7 @@ These are useful for demos and experiments, but the core stack is backend, front
 | Hash-only event payloads | Avoids centralizing sensitive inference data | Ernest cannot prove the original raw data was hashed honestly |
 | MongoDB hashchain | Simple to inspect, query, and demo | High-throughput production use needs stronger serialization |
 | Optional public anchoring | External proof of existence without storing data on-chain | Requires RPC credentials and wallet operations |
-| Static SvelteKit frontend | Small deployable dashboard image | Runtime API URL changes should use same-origin proxying |
+| Static React frontend | Small deployable dashboard image | Runtime API URL changes should use same-origin proxying |
 | Key/token access control (read-write, read-only, revocable auditor tokens) | Scoped, revocable access without new infrastructure | No per-client identity; enterprise SSO/OIDC still needed on top |
 
 ## Incubation Roadmap

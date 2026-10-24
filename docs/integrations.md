@@ -6,7 +6,7 @@ Ernest is designed to sit beside existing AI platforms. Integrations should subm
 
 ### Audit Readiness
 
-The SvelteKit dashboard includes an evidence-readiness review at `/auditor`.
+The React dashboard includes an evidence-readiness review at `/auditor`.
 
 It can:
 

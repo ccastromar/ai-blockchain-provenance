@@ -33,7 +33,7 @@ The release bundle includes the README, changelog, license, security policy, env
 
 ## Screenshots
 
-Capture screenshots from the official SvelteKit frontend after `docker compose up --build`:
+Capture screenshots from the official React frontend after `docker compose up --build`:
 
 - Register AI model form.
 - Log inference form.
@@ -46,11 +46,11 @@ Save them under `docs/img/` with the existing filenames unless the README is upd
 
 Include:
 
-- SvelteKit dashboard is the official frontend.
+- The React dashboard (`frontend/`) is the official frontend.
 - NestJS 11 backend.
 - pnpm workspace and lockfile.
 - Docker Compose demo stack for a small VPS.
-- GHCR images for backend and SvelteKit frontend.
+- GHCR images for backend and React frontend.
 - Optional Sepolia anchoring.
 - Known alpha limitations: no full auth, no RBAC, no regulated-workload guarantees.
 
