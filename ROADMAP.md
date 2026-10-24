@@ -19,7 +19,8 @@ Status legend: ✅ shipped · 🔜 next (a pilot would likely need it) · 🕓 l
 ## Where we are
 
 Current tag: `v0.2.0-alpha`. A large batch of evidence features sits in `[Unreleased]`
-(see [CHANGELOG.md](CHANGELOG.md)) and would form `v0.3.0-alpha` — "the evidence release".
+(see [CHANGELOG.md](CHANGELOG.md)) and becomes `v0.3.0` — "the evidence release" — at the
+Chestertown 0.1.0 suite launch on 2026-11-16.
 
 Shipped this cycle (the four questions a receipt now answers — what / who / when / where):
 
@@ -40,8 +41,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
   Everything above exists to make that first meeting succeed.
 - 🔜 **One real end-to-end pilot**: a partner instruments a real model, and an auditor
   verifies a real receipt. This is the alpha-exit signal that matters most.
-- 🔜 **Cut `v0.3.0-alpha`** when there is someone to hand it to — a tag is most useful
-  with a recipient.
+- 🔜 **Cut `v0.3.0`** with the Chestertown 0.1.0 suite launch (2026-11-16).
 
 ## Next — engineering a pilot would pull
 

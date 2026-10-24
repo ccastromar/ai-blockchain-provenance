@@ -38,7 +38,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Ernest API')
     .setDescription('AI provenance, hashchain verification, and blockchain anchoring API.')
-    .setVersion('0.2.0-alpha')
+    .setVersion('0.3.0')
     .addApiKey(
       {
         type: 'apiKey',
