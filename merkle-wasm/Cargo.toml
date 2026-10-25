@@ -9,7 +9,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 wasm-bindgen = "0.2"
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 ed25519-dalek = { version = "2", default-features = false, features = ["alloc"] }
