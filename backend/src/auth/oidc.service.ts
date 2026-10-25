@@ -61,6 +61,8 @@ export class OidcService {
         issuer: this.issuer,
         audience: this.audience,
         clockTolerance: this.clockToleranceSec,
+        // A token without an expiry would be valid forever.
+        requiredClaims: ['exp'],
       });
 
       const subject = typeof payload.sub === 'string' ? payload.sub : undefined;
