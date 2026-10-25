@@ -6,9 +6,16 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## [Unreleased]
 
+Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (govern).
+
 ### Changed
 
+- **License: Apache-2.0** (was MIT).
+- **Authorization by governance function** (Chestertown contract `chestertown.governance/v1`). Every caller resolves to functions through the organization's governance model (`ERNEST_GOVERNANCE_MODEL`, or the packaged default that maps `ernest-editor` and `ernest-reader`): `evidence.write` writes evidence, `platform.admin` operates Ernest (access tokens, emitter keys, manual anchors, legal holds) and any function reads. Writing evidence no longer implies operating Ernest. `whoami` reports the functions; `OIDC_ROLE_CLAIM` and `OIDC_ROLE_MAP` are no longer read. Static keys keep working: the read-write key holds both functions and the read-only key `audit`.
 - The web console is now React 19 + Vite + TypeScript in `frontend/`, built on the shared Chestertown design system (`@chestertown/design`, vendored), with the same screens, URLs and `PUBLIC_*` build variables as the SvelteKit console it replaces; `frontend-svelte/` is removed. It is a standalone npm project outside the pnpm workspace.
+- Console: Overview is the landing page (chain, anchoring and service health, with when the next anchor fires); manual evidence entry moved to Demo, offered only to `evidence.write`; provenance filters and exports live on the model page; blocks list newest first; one navigation bar with the Chestertown app switcher on every page. The whole console stays behind sign-in, and a signed-in user without a function gets a no-access page.
+- Models: records from Prudence are listed apart from AI models and titled by the system's name; their status is managed in Prudence (a status change here is refused with 409), and "Governed by Prudence" opens the system in Prudence's registry. AOS execution events link to their run in the AOS console.
+- Dependencies: production advisories cleared (pnpm 11 audit gate in CI); Go 1.26.10 for the event-ingestor and CLI.
 
 ### Added
 
@@ -17,10 +24,20 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Signed submissions (ADR-001): per-emitter Ed25519 signatures over DSSE PAE of the same RFC 8785 canonical bytes the block hash uses. Emitter keys are registered/revocable via `POST/GET/DELETE /api/auth/emitters` (admission control only — the envelope embeds the key, so receipts, the CLI and the browser/WASM verifier check authorship fully offline, and history signed while a key was valid stays attributable after revocation). Enforcement via `SIGNED_SUBMISSIONS=off|optional|required`; invalid envelopes are never stored. Pinned cross-language by `testdata/signed-submission-golden.json` in backend, Go and Rust golden tests; tooling: `ernest emitter keygen` + `integrations/signing/sign-submission.mjs` (round-trip validated Go→Node→backend).
 - OpenTimestamps anchoring provider (`ANCHOR_PROVIDER=ots`): stamps Merkle roots against the public OTS calendars — free, keyless Bitcoin attestation with no crypto custody, eliminating the anchor-wallet threat-model gap for the recommended production configuration. Proofs start pending and are upgraded to confirmed (with the attested Bitcoin block height) by the existing anchor-confirmation cycle; the Merkle root is stamped with OTS `fromBytes` so the proof is verifiable with the official client against a raw file — `GET /api/anchors/:id/ots` serves the `.ots` proof and `GET /api/anchors/:id/ots/raw` the 32 root bytes, and `ots verify -f ernest-anchor-<id> ernest-anchor-<id>.ots` confirms it. Receipts and the stats card expose both download URLs. Interop validated end-to-end against the official Python `ots` client (no hash-mismatch; pending Bitcoin confirmation).
 - Continuous MLflow integration: `integrations/mlflow/watch_mlflow.py` polls the MLflow model registry (OSS MLflow has no webhooks) and mirrors every new model version into Ernest as tamper-evident provenance, reusing the adapter's artifact-hashing payload mapping. Crash-safe by design: Ernest's duplicate rejection makes re-submissions idempotent, and the watermark only advances past durably recorded versions. Ships as the `mlflow-watcher` compose service with `scripts/mlflow-watcher-e2e.sh` proving the hands-off path (train in MLflow only, assert Ernest provenance appears).
+- **OIDC caller identity and SSO** (ADR-002 Decision A): bearer JWTs validated against the issuer's JWKS (opt-in via `OIDC_ISSUER`/`OIDC_AUDIENCE`), alongside static keys and access tokens. The console signs in with authorization code + PKCE, renews tokens silently (15-minute tokens, 8-hour idle SSO), and signs out suite-wide (RP-initiated logout; a sign-out in another Chestertown app is detected by a silent session check).
+- **Qualified trust services** (ADR-002 Decision B): an RFC 3161 timestamp over each anchored Merkle root from a TSA (`ANCHOR_QTS_ENABLED`, `QTS_TSA_URL`; fail-soft, alerted, served at `GET /api/anchors/:id/tst`), and an eIDAS qualified electronic seal envelope (`SEAL_LEVEL=qualified`, X.509 chain to `QSEAL_TRUSTED_CA_PEM`) verified offline in the Go CLI and Rust/WASM, pinned by a golden fixture. Ernest is not a qualified trust service provider; it consumes one.
+- **Data lifecycle** (ADR-003): a retention floor (`RETENTION_MIN_DAYS`), legal holds (global, organization or model), a non-destructive retention plan and a verifiable archive export under `/api/lifecycle`. Pruning and crypto-shredding remain design-only.
+- **High-volume evidence**: process roles (`ERNEST_ROLE=reader|writer|chainer`) for read replicas, scalable writers and a single chainer; `POST /api/inferences/batch` and a bulk ingestor worker; a Kafka source for the event-ingestor (ADR-005; consumer group over `KAFKA_TOPICS`, TLS and SASL, offsets committed only after recording); chain-derived read models validated block by block as they are indexed (ADR-006); a per-key rate limit for authenticated ingest callers; `GET /api/stats/models` for many models in one call.
+- **Prudence evidence**: the ingestor understands `policy.decision` events and their `aiSystem` identity block; models record their system of record, AI system id and risk tier field by field, and an event only updates what it carries. Each AI system's latest execution time is reported.
+- Public read-only evidence access (`ERNEST_PUBLIC_READ_ONLY=true`): visitors may read with safe HTTP methods; every write still needs `evidence.write`.
+- Backend health also at `/api/health`, so the console reaches it through nginx.
 - Opt-in clock drift detection: when `NTP_CHECK_SERVER` is set, the hourly integrity check measures local clock offset via SNTP (dependency-free RFC 4330 client), records it with the check, and alerts `WEBHOOK_URL` (`clock.drift.exceeded`) beyond `NTP_MAX_DRIFT_MS` — drift is detected instead of silently notarized into block timestamps (threat model N3).
 
 ### Fixed
 
+- Signed submissions rejected valid signatures when optional fields were omitted.
+- The console no longer shows an unverified chain as compromised: only a verification that ran and failed does.
+- `scripts/smoke.sh` works on macOS bash 3.2.
 - CHANGELOG backfilled with the previously untracked `v0.1.1-alpha` tag; removed a stale duplicate env template; keyed `bson.D` literals in the CLI repositories (`go vet` clean).
 
 ## [0.2.0-alpha] - 2026-07-04
