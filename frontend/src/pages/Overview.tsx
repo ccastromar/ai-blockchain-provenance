@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Alert, Badge, Button, Card, Checkbox, Page, Spinner, Stat, type Tone } from "@chestertown/design";
 import { absoluteApiHref, anchorNow, getAnchorStatus, getChainStats, getHealth, verifyChain, type HealthStatus } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useCan } from "../lib/auth";
 
 // The stats endpoints are untyped.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -24,7 +24,7 @@ function subsystemTone(status?: string): Tone {
 }
 
 export default function Overview() {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("platform.admin");
   const [stats, setStats] = useState<Any>(null);
   const [verification, setVerification] = useState<Any>(null);
   const [health, setHealth] = useState<HealthStatus | null>(null);

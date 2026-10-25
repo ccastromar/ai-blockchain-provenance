@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose';
 import { governanceModel } from '../governance/governance-model';
-import type { ErnestRole } from './access-role.util';
+import { roleForFunctions, type ErnestRole } from './access-role.util';
 
 export interface OidcPrincipal {
   role: ErnestRole;
@@ -29,13 +29,9 @@ export class OidcService {
   private readonly issuer = process.env.OIDC_ISSUER?.trim();
   private readonly audience = process.env.OIDC_AUDIENCE?.trim();
   private readonly explicitJwksUri = process.env.OIDC_JWKS_URI?.trim();
-  // Claim to read the caller's groups/roles from (default matches most IdPs).
-  private readonly roleClaim = (process.env.OIDC_ROLE_CLAIM?.trim() || 'roles');
-  // "idp-group=ernest-role" pairs, e.g. "ernest-writers=read-write,ernest-auditors=read-only".
-  private readonly roleMap = parseRoleMap(process.env.OIDC_ROLE_MAP);
-  // Role granted to a validly authenticated caller whose groups match nothing in the map.
-  // Defaults to anonymous (authenticated but unauthorized) -- set to read-only to let any
-  // valid token read.
+  // Which groups or roles grant what is the governance model's job (ERNEST_GOVERNANCE_MODEL);
+  // OIDC_ROLE_CLAIM / OIDC_ROLE_MAP are no longer read. OIDC_DEFAULT_ROLE=read-only still lets
+  // a valid token that the model grants nothing read; the default, anonymous, grants nothing.
   private readonly defaultRole = normalizeRole(process.env.OIDC_DEFAULT_ROLE) ?? 'anonymous';
   // Allowed clock skew when validating exp/nbf/iat (seconds).
   private readonly clockToleranceSec = Number(process.env.OIDC_CLOCK_TOLERANCE_SECONDS ?? 30);
@@ -70,11 +66,15 @@ export class OidcService {
       const subject = typeof payload.sub === 'string' ? payload.sub : undefined;
       if (!subject) return null;
 
+      // The governance model decides what the token may do; OIDC_DEFAULT_ROLE=read-only still
+      // lets any valid token that the model grants nothing read (audit).
+      let functions = this.governance.resolve(payload as Record<string, unknown>, 'ernest');
+      if (functions.length === 0 && this.defaultRole === 'read-only') functions = ['audit'];
       return {
-        role: this.roleFromClaims(payload),
+        role: roleForFunctions(functions),
         subject,
         label: labelFromClaims(payload) ?? subject,
-        functions: this.governance.resolve(payload as Record<string, unknown>, 'ernest'),
+        functions,
       };
     } catch (err) {
       // Debug, not warn: an invalid bearer is an expected, non-fatal condition here
@@ -83,17 +83,6 @@ export class OidcService {
       this.logger.debug(`OIDC token rejected: ${(err as Error).message}`);
       return null;
     }
-  }
-
-  private roleFromClaims(payload: JWTPayload): ErnestRole {
-    const groups = claimValues(payload[this.roleClaim]);
-    let best: ErnestRole = this.defaultRole;
-    for (const g of groups) {
-      const mapped = this.roleMap.get(g);
-      if (mapped === 'read-write') return 'read-write'; // highest privilege wins immediately
-      if (mapped === 'read-only') best = 'read-only';
-    }
-    return best;
   }
 
   private getJwks(): Promise<JWTVerifyGetKey> {
@@ -131,29 +120,9 @@ export class OidcService {
   }
 }
 
-function parseRoleMap(raw: string | undefined): Map<string, ErnestRole> {
-  const map = new Map<string, ErnestRole>();
-  if (!raw) return map;
-  for (const pair of raw.split(',')) {
-    const [group, role] = pair.split('=').map((s) => s.trim());
-    const normalized = normalizeRole(role);
-    if (group && normalized && normalized !== 'anonymous') {
-      map.set(group, normalized);
-    }
-  }
-  return map;
-}
-
 function normalizeRole(role: string | undefined): ErnestRole | undefined {
   if (role === 'read-write' || role === 'read-only' || role === 'anonymous') return role;
   return undefined;
-}
-
-/** A role/groups claim may be a string, a space-delimited string, or an array. */
-function claimValues(claim: unknown): string[] {
-  if (Array.isArray(claim)) return claim.filter((v): v is string => typeof v === 'string');
-  if (typeof claim === 'string') return claim.split(/\s+/).filter(Boolean);
-  return [];
 }
 
 function labelFromClaims(payload: JWTPayload): string | undefined {

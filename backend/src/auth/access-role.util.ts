@@ -3,21 +3,37 @@ import { AccessTokenService } from './access-token.service';
 
 export type ErnestRole = 'read-write' | 'read-only' | 'anonymous';
 
+// Governance functions (contract v1) behind Ernest's two credential roles: a read-write key or
+// token writes evidence and administers; a read-only one audits. IdP tokens get their functions
+// from the governance model instead.
+export function functionsForRole(role: ErnestRole): string[] {
+  if (role === 'read-write') return ['evidence.write', 'platform.admin'];
+  if (role === 'read-only') return ['audit'];
+  return [];
+}
+
+// The role the console shows for a set of functions: writing evidence is read-write, any other
+// function reads.
+export function roleForFunctions(functions: string[]): ErnestRole {
+  if (functions.includes('evidence.write')) return 'read-write';
+  return functions.length > 0 ? 'read-only' : 'anonymous';
+}
+
 export interface ResolvedAccess {
   role: ErnestRole;
   label?: string;
   // OIDC subject (the IdP `sub`) when the caller was authenticated via a bearer token.
   // Present only for the OIDC path; absent for static keys and Mongo tokens.
   subject?: string;
-  // Governance functions in Ernest (contract v1); OIDC path only.
-  functions?: string[];
+  // Governance functions in Ernest (contract v1). The guards authorize by them.
+  functions: string[];
 }
 
 // Structural type to avoid a circular import with oidc.service.ts (which imports ErnestRole
 // from here). Any object with these members satisfies it -- in practice, OidcService.
 export interface OidcResolver {
   readonly enabled: boolean;
-  verify(bearer: string | undefined): Promise<{ role: ErnestRole; subject: string; label?: string; functions?: string[] } | null>;
+  verify(bearer: string | undefined): Promise<{ role: ErnestRole; subject: string; label?: string; functions: string[] } | null>;
 }
 
 export interface ResolveAccessOptions {
@@ -40,9 +56,9 @@ export async function resolveAccess(
 ): Promise<ResolvedAccess> {
   if (opts.oidc?.enabled && opts.bearer) {
     const principal = await opts.oidc.verify(opts.bearer);
-    // A valid token that maps to no usable role falls through, so a caller may still
-    // present an API key alongside it; an invalid token (null) falls through too.
-    if (principal && principal.role !== 'anonymous') {
+    // A valid token that grants no function falls through, so a caller may still present an
+    // API key alongside it; an invalid token (null) falls through too.
+    if (principal && principal.functions.length > 0) {
       return { role: principal.role, label: principal.label, subject: principal.subject, functions: principal.functions };
     }
   }
@@ -50,15 +66,19 @@ export async function resolveAccess(
   const writeKey = process.env.ERNEST_API_KEY;
   const readKey = process.env.ERNEST_READ_API_KEY;
 
-  if (writeKey && timingSafeKeyMatch(actualKey, writeKey)) return { role: 'read-write' };
-  if (readKey && timingSafeKeyMatch(actualKey, readKey)) return { role: 'read-only' };
+  if (writeKey && timingSafeKeyMatch(actualKey, writeKey)) {
+    return { role: 'read-write', functions: functionsForRole('read-write') };
+  }
+  if (readKey && timingSafeKeyMatch(actualKey, readKey)) {
+    return { role: 'read-only', functions: functionsForRole('read-only') };
+  }
 
   if (actualKey) {
     const resolved = await tokenService.resolve(actualKey);
-    if (resolved) return { role: resolved.role, label: resolved.label };
+    if (resolved) return { role: resolved.role, label: resolved.label, functions: functionsForRole(resolved.role) };
   }
 
-  return { role: 'anonymous' };
+  return { role: 'anonymous', functions: [] };
 }
 
 /** Extracts the raw token from an `Authorization: Bearer <token>` header value. */

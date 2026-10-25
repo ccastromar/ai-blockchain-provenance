@@ -6,7 +6,7 @@ import {
   simulateDatabricksEvent, simulateHuggingFaceEvent, simulateOpenLineageEvent, simulateOpenTelemetryLogs,
   simulateSageMakerEvent, simulateVertexAiEvent,
 } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useCan } from "../lib/auth";
 import { errorMessage, shortHash, type Any } from "../lib/types";
 
 interface Connector {
@@ -69,7 +69,7 @@ const CONNECTORS: Connector[] = [
 ];
 
 export default function Connectors() {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("evidence.write");
   const [stats, setStats] = useState<Any>(null);
   const [authStatus, setAuthStatus] = useState<Any>(null);
   const [health, setHealth] = useState<Any>(null);

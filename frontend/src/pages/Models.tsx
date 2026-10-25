@@ -8,7 +8,7 @@ import {
   exportProvenance, exportProvenanceCycloneDx, getModelById, getModelIntegrity, getModels, getProvenance, patchModel,
   type ModelKind, type ModelSort, type ModelStatus, type ProvenanceFilter,
 } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useCan } from "../lib/auth";
 import { errorMessage, type Any } from "../lib/types";
 import { env } from "../env";
 
@@ -64,7 +64,7 @@ const integrityValid = (result: Any) => (result?.valid ?? result?.isValid) === t
 const primaryName = (m: Any) => (governedBy(m) && m.name && m.name !== m.modelId ? m.name : m.modelId);
 
 export default function Models() {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("evidence.write");
   // Kind, order and the open model live in the URL: shareable, survive a reload, and let
   // Prudence and AOS link straight to an AI system's evidence (/models?model=<id>).
   const [params, setParams] = useSearchParams();

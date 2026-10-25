@@ -6,7 +6,7 @@ import {
   absoluteApiHref, getBlockByIndex, getEventFailureStats, getEventFailures, getIngestedEventStats, getIngestedEvents,
   getIngestorHealth, simulateHuggingFaceEvent,
 } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useCan } from "../lib/auth";
 import { errorMessage, formatDate, shortHash, type Any } from "../lib/types";
 
 const PAGE_SIZE = 20;
@@ -26,7 +26,7 @@ function filtersFrom(params: URLSearchParams): Filters {
 }
 
 export default function Events() {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("evidence.write");
   // Filters live in the URL, so "Failed events" and links from elsewhere open them directly.
   const [params, setParams] = useSearchParams();
   const applied = filtersFrom(params);

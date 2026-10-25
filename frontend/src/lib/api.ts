@@ -51,7 +51,7 @@ api.interceptors.response.use(
 
 // ── Auth ───────────────────────────────────────────────────────────────────
 
-export const getWhoAmI = async (): Promise<{ role: 'read-write' | 'read-only' | 'anonymous'; openAccess: boolean; label?: string; subject?: string }> =>
+export const getWhoAmI = async (): Promise<{ role: 'read-write' | 'read-only' | 'anonymous'; openAccess: boolean; label?: string; subject?: string; functions?: string[] }> =>
   (await api.get('/auth/whoami')).data;
 
 export async function refreshAuthRole() {

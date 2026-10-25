@@ -5,11 +5,14 @@ import { bearerFrom, resolveAccess } from '../auth/access-role.util';
 
 const API_KEY_HEADER = 'x-ernest-api-key';
 
-// Gates write routes (POST/PATCH). Only read-write access satisfies this guard -- a
-// caller authenticated with the read-only key, a read-only Mongo token, or an OIDC token
-// mapped to read-only (see ReadAccessGuard) must not be able to write.
+// Gates evidence writes (models, inferences, simulations): the caller needs the evidence.write
+// governance function (contract v1). A read-write key or token has it; a read-only one, or an
+// OIDC token whose groups grant only audit or platform.admin, does not.
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
+  protected readonly requiredFunction: string = 'evidence.write';
+  protected readonly refusal: string = 'Invalid or missing Ernest write credential';
+
   constructor(
     private readonly tokenService: AccessTokenService,
     private readonly oidcService: OidcService,
@@ -31,8 +34,8 @@ export class ApiKeyGuard implements CanActivate {
     // Already resolved by AccessResolutionMiddleware for this request; resolve here only if
     // the middleware did not run (e.g. a guard used outside the HTTP pipeline).
     const access = request.ernestAccess ?? await resolveAccess(actualKey, this.tokenService, { bearer, oidc: this.oidcService });
-    if (access.role !== 'read-write') {
-      throw new UnauthorizedException('Invalid or missing Ernest write credential');
+    if (!access.functions?.includes(this.requiredFunction)) {
+      throw new UnauthorizedException(this.refusal);
     }
 
     // Expose the resolved identity for request-level audit binding (ADR-002 A4).

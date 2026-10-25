@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Alert, Button, Card, EmptyState, Page, Tabs } from "@chestertown/design";
 import { InferenceLogger, ModelRegistration } from "../components/EvidenceForms";
 import { getChainStats, seedDemoData } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useCan } from "../lib/auth";
 import { errorMessage, type Any } from "../lib/types";
 
 // Manual evidence entry. In the Chestertown MVP evidence arrives on its own (Prudence decisions
@@ -11,7 +11,7 @@ import { errorMessage, type Any } from "../lib/types";
 type Tab = "register" | "inference";
 
 export default function Demo() {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("evidence.write");
   const [tab, setTab] = useState<Tab>("register");
   const [stats, setStats] = useState<Any>(null);
   const [selectedModelId, setSelectedModelId] = useState("");

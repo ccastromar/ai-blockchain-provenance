@@ -4,7 +4,7 @@ import { Alert, Badge, Button, Card, EmptyState, Field, Input, Page, Select, Spi
 import {
   createAccessToken, listAccessTokens, refreshAuthRole, revokeAccessToken, type AccessTokenRole, type AccessTokenSummary,
 } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useAuth, useCan } from "../lib/auth";
 import { errorMessage } from "../lib/types";
 
 function statusOf(t: AccessTokenSummary): { label: string; tone: Tone } {
@@ -15,7 +15,7 @@ function statusOf(t: AccessTokenSummary): { label: string; tone: Tone } {
 
 export default function Tokens() {
   const auth = useAuth();
-  const canWrite = auth.role === "read-write";
+  const canWrite = useCan("platform.admin");
 
   const [tokens, setTokens] = useState<AccessTokenSummary[]>([]);
   const [loading, setLoading] = useState(false);

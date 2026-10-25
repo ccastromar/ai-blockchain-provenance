@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { Alert, Button, Card, Field, Input } from "@chestertown/design";
 import { refreshAuthRole, signOutLocally } from "../lib/api";
-import { authState, setActiveKey, useAuth } from "../lib/auth";
+import { authState, setActiveKey, useAuth, useCan } from "../lib/auth";
 import { beginLogin, oidcEnabled } from "../lib/oidc";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -14,6 +14,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export default function Login() {
   const auth = useAuth();
+  const canAdmin = useCan("platform.admin");
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const redirectTo = params.get("redirect") || "/";
@@ -73,7 +74,7 @@ export default function Login() {
                 <Link to={redirectTo} className="ct-btn ct-btn-primary">Continue</Link>
                 <Button onClick={() => void signOutLocally()}>Sign out</Button>
               </div>
-              {auth.role === "read-write" && <Link to="/settings/tokens">Manage access tokens →</Link>}
+              {canAdmin && <Link to="/settings/tokens">Manage access tokens →</Link>}
             </div>
           ) : (
             <form

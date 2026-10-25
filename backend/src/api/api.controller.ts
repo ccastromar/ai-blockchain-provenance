@@ -9,6 +9,7 @@ import { LogInferenceBatchDto } from './dto/log-inference-batch.dto';
 import { LogInferenceDto } from './dto/log-inference.dto';
 import { AnchorEventsService } from './anchor-events.service';
 import { ApiKeyGuard } from '../common/api-key.guard';
+import { PlatformAdminGuard } from '../common/platform-admin.guard';
 
 /** `?wait=true|false` (ADR-004); absent or anything else = the batching mode's default. */
 function parseWait(raw?: string): boolean | undefined {
@@ -225,7 +226,7 @@ export class ApiController {
   }
 
   @Post('anchors')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Compute the current Merkle root and submit it to the configured anchor contract.' })

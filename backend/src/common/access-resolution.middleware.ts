@@ -26,7 +26,7 @@ export class AccessResolutionMiddleware implements NestMiddleware {
       const bearer = bearerFrom(req.headers.authorization);
       req.ernestAccess = await resolveAccess(actualKey, this.tokenService, { bearer, oidc: this.oidcService });
     } catch {
-      req.ernestAccess = { role: 'anonymous' } as ResolvedAccess;
+      req.ernestAccess = { role: 'anonymous', functions: [] } as ResolvedAccess;
     }
     next();
   }

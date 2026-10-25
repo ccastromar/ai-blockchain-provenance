@@ -15,6 +15,8 @@ export interface AuthState {
   label?: string;
   /** OIDC subject (IdP `sub`) when signed in via SSO. */
   subject?: string;
+  /** Governance functions (contract v1) Ernest grants an SSO identity; absent for keys and tokens. */
+  functions?: string[];
 }
 
 // Who the active credential is, as Ernest resolves it (/api/auth/whoami). A tiny store so
@@ -38,6 +40,19 @@ export const authState = {
 
 export function useAuth(): AuthState {
   return useSyncExternalStore(authState.subscribe, authState.get);
+}
+
+/** The functions behind a key's or token's role, as the backend resolves them. */
+function functionsForRole(role: ErnestRole): string[] {
+  if (role === 'read-write') return ['evidence.write', 'platform.admin'];
+  if (role === 'read-only') return ['audit'];
+  return [];
+}
+
+/** Whether the active credential holds a governance function: evidence.write, platform.admin, audit. */
+export function useCan(fn: string): boolean {
+  const auth = useAuth();
+  return (auth.functions ?? functionsForRole(auth.role)).includes(fn);
 }
 
 export type CredentialKind = 'bearer' | 'key';

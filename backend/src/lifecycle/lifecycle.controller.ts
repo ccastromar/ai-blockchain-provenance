@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiKeyGuard } from '../common/api-key.guard';
+import { PlatformAdminGuard } from '../common/platform-admin.guard';
 import { LifecycleService } from './lifecycle.service';
 
 class SetLegalHoldDto {
@@ -39,7 +39,7 @@ export class LifecycleController {
   }
 
   @Post('legal-holds')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Place a legal hold (global, or scoped to an organization/model). Exempts matching blocks from retention pruning.' })
   @ApiOkResponse({ description: 'The created legal hold.' })
   setHold(@Body() dto: SetLegalHoldDto, @Req() req: any) {
@@ -48,7 +48,7 @@ export class LifecycleController {
   }
 
   @Delete('legal-holds/:id')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Clear (deactivate) a legal hold. The record is kept for audit.' })
   @ApiOkResponse({ description: 'Whether an active hold was cleared.' })
   async clearHold(@Param('id') id: string, @Req() req: any) {

@@ -15,6 +15,7 @@ import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { LifecycleModule } from './lifecycle/lifecycle.module';
 import { ApiKeyGuard } from './common/api-key.guard';
+import { PlatformAdminGuard } from './common/platform-admin.guard';
 import { ReadAccessGuard } from './common/read-access.guard';
 import { Anchor, AnchorSchema } from './blockchain/models/anchor.schema';
 import { IntegrityCheck, IntegrityCheckSchema } from './blockchain/models/integrity-check.schema';
@@ -67,6 +68,7 @@ const envInt = (name: string, fallback: number) => {
     ApiService,
     AnchorEventsService,
     ApiKeyGuard,
+    PlatformAdminGuard,
     ReadAccessGuard,
     { provide: APP_GUARD, useClass: ErnestThrottlerGuard },
     { provide: APP_GUARD, useClass: ReadAccessGuard },

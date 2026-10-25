@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Alert, Button, Field, Input, Select, Textarea } from "@chestertown/design";
 import { getAllModelIds, getAllModels, logInference, registerModel } from "../lib/api";
-import { useAuth } from "../lib/auth";
+import { useCan } from "../lib/auth";
 import { errorMessage, type Any } from "../lib/types";
 
 const REGISTRATION_DEFAULTS = {
@@ -33,7 +33,7 @@ function ReadOnlyNote({ action }: { action: string }) {
 }
 
 export function ModelRegistration({ onSuccess }: { onSuccess?: (modelId: string) => void }) {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("evidence.write");
   const [existing, setExisting] = useState<Any[]>([]);
   const [preset, setPreset] = useState("");
   const [modelId, setModelId] = useState("");
@@ -149,7 +149,7 @@ export function ModelRegistration({ onSuccess }: { onSuccess?: (modelId: string)
 }
 
 export function InferenceLogger({ initialModelId = "", onSuccess }: { initialModelId?: string; onSuccess?: (modelId: string) => void }) {
-  const canWrite = useAuth().role === "read-write";
+  const canWrite = useCan("evidence.write");
   const [modelIds, setModelIds] = useState<string[]>([]);
   const [modelId, setModelId] = useState(initialModelId);
   // A fresh id per inference: Ernest treats a repeated (model, inference id) as the same event.

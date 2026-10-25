@@ -1,6 +1,6 @@
 import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, NotFoundException, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiSecurity, ApiTags } from '@nestjs/swagger';
-import { ApiKeyGuard } from '../common/api-key.guard';
+import { PlatformAdminGuard } from '../common/platform-admin.guard';
 import { AccessTokenService } from './access-token.service';
 import { OidcService } from './oidc.service';
 import { bearerFrom, resolveAccess } from './access-role.util';
@@ -52,12 +52,13 @@ export class AuthController {
       openAccess: false,
       ...(label ? { label } : {}),
       ...(subject ? { subject } : {}),
-      ...(functions ? { functions } : {}),
+      // Functions come with an IdP identity; key and token holders keep the role-only answer.
+      ...(subject ? { functions } : {}),
     };
   }
 
   @Post('tokens')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Issue a named, revocable access token (e.g. for a temporary external auditor). Requires read-write access.' })
@@ -70,7 +71,7 @@ export class AuthController {
   }
 
   @Get('tokens')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'List issued access tokens (never includes the raw token value). Requires read-write access.' })
   @ApiOkResponse({ description: 'Issued access tokens.' })
@@ -79,7 +80,7 @@ export class AuthController {
   }
 
   @Delete('tokens/:id')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Revoke an access token immediately. Requires read-write access.' })
   @ApiOkResponse({ description: 'Token revoked.' })
@@ -92,7 +93,7 @@ export class AuthController {
   // ── Emitter signing keys (ADR-001) ─────────────────────────────────────────
 
   @Post('emitters')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @HttpCode(HttpStatus.CREATED)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Register an emitter Ed25519 public key for signed submissions. Requires read-write access.' })
@@ -110,7 +111,7 @@ export class AuthController {
   }
 
   @Get('emitters')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'List registered emitter signing keys. Requires read-write access.' })
   @ApiOkResponse({ description: 'Registered emitter keys.' })
@@ -119,7 +120,7 @@ export class AuthController {
   }
 
   @Delete('emitters/:keyId')
-  @UseGuards(ApiKeyGuard)
+  @UseGuards(PlatformAdminGuard)
   @ApiSecurity('ernest-api-key')
   @ApiOperation({ summary: 'Revoke an emitter key: future submissions signed with it are rejected; history stays attributable. Requires read-write access.' })
   @ApiOkResponse({ description: 'Key revoked.' })
