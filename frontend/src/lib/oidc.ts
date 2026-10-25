@@ -261,7 +261,7 @@ function idpCheck(
     url.search = new URLSearchParams({
       client_id: clientId,
       response_type: "code",
-      scope: "openid profile email",
+      scope,
       redirect_uri: redirectUri,
       prompt: "none",
       state,
