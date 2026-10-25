@@ -42,13 +42,28 @@ jobs:
           (cd dist && zip -qr "${BUNDLE}.zip" "${BUNDLE}")
           (cd dist && shasum -a 256 "${BUNDLE}.tar.gz" "${BUNDLE}.zip" > SHA256SUMS)
 
+      # The release notes are the tag's section of CHANGELOG.md ("## [0.3.0] - …" for v0.3.0).
+      - name: Release notes from the changelog
+        run: |
+          VERSION="${{ steps.release.outputs.tag }}"
+          VERSION="${VERSION#v}"
+          awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > dist/RELEASE_NOTES.md
+          if [ ! -s dist/RELEASE_NOTES.md ]; then
+            echo "CHANGELOG.md has no section for $VERSION: rename [Unreleased] before tagging" >&2
+            exit 1
+          fi
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.release.outputs.tag }}
           name: Ernest ${{ steps.release.outputs.tag }}
-          body_path: docs/releases/v0.1.0-alpha.md
-          prerelease: true
+          body_path: dist/RELEASE_NOTES.md
+          prerelease: ${{ contains(steps.release.outputs.tag, '-') }}
           files: |
             dist/ernest-${{ steps.release.outputs.tag }}.tar.gz
             dist/ernest-${{ steps.release.outputs.tag }}.zip

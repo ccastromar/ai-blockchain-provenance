@@ -1,79 +1,82 @@
 name: Publish Images
 
+# A release tag (v*) publishes Ernest's images to GHCR with an SBOM and build provenance attached,
+# and signs each with Sigstore cosign (keyless: the identity is this workflow run). Run by hand it
+# only builds, unless "publish" is ticked. The console image is built without an identity
+# provider or app URLs (those are build arguments): it suits API-key access; a deployment with
+# SSO builds its own. How to verify an image: SECURITY.md.
 on:
-  workflow_dispatch:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Push, attest and sign (otherwise build only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  packages: write
+  packages: write   # push to GHCR
+  id-token: write   # keyless signing
 
 env:
-  REGISTRY: ghcr.io
-  BACKEND_IMAGE: ${{ github.repository }}-backend
-  FRONTEND_IMAGE: ${{ github.repository }}-frontend
+  PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
 
 jobs:
-  publish:
-    name: Build and Push Images
+  image:
+    name: ${{ matrix.name }} image
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            file: backend/Dockerfile
+          - name: event-ingestor
+            file: event-ingestor/Dockerfile
+          - name: frontend
+            file: frontend/Dockerfile
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
+      - name: Log in to GHCR
+        if: env.PUBLISH == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Backend metadata
-        id: backend-meta
+      - name: Tags and labels
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          images: ghcr.io/${{ github.repository }}-${{ matrix.name }}
           tags: |
-            type=sha,prefix=main-
-            type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
 
-      - name: Frontend metadata
-        id: frontend-meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=sha,prefix=main-
-            type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push backend
+      - name: Build (and push)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: backend/Dockerfile
-          push: true
-          tags: ${{ steps.backend-meta.outputs.tags }}
-          labels: ${{ steps.backend-meta.outputs.labels }}
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
+          file: ${{ matrix.file }}
+          push: ${{ env.PUBLISH == 'true' }}
+          sbom: ${{ env.PUBLISH == 'true' }}
+          provenance: ${{ env.PUBLISH == 'true' && 'mode=max' || 'false' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
-      - name: Build and push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          build-args: |
-            PUBLIC_API_URL=
-            PUBLIC_ERNEST_API_KEY=
-          tags: ${{ steps.frontend-meta.outputs.tags }}
-          labels: ${{ steps.frontend-meta.outputs.labels }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
+      - uses: sigstore/cosign-installer@v3
+        if: env.PUBLISH == 'true'
+
+      - name: Sign
+        if: env.PUBLISH == 'true'
+        run: cosign sign --yes "ghcr.io/${{ github.repository }}-${{ matrix.name }}@${{ steps.build.outputs.digest }}"
