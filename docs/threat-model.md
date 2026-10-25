@@ -140,7 +140,7 @@ The guarantees hold only if the deployment does its part:
 | Client identity on writes | Per-emitter Ed25519 signed submissions implemented ([adr-001-signed-submissions.md](adr-001-signed-submissions.md)): registry with revocation, offline-verifiable envelopes in blocks/receipts, `off/optional/required` modes | sigstore/OIDC keyless envelopes (v2); ingestor-path signing contract (v1.1) |
 | Browser demo key exposure | `PUBLIC_ERNEST_API_KEY` documented as public | Session auth or server-side write proxy |
 | Anchor key custody | Eliminated under the recommended `ANCHOR_PROVIDER=ots` (OpenTimestamps: keyless, free Bitcoin attestation); EVM contract anchoring remains optional with its wallet in an environment variable | Secrets manager or external signer for deployments that choose EVM anchoring |
-| Supply-chain drift | CI + GHCR publishing | Image signing, SBOM, provenance attestations |
+| Supply-chain drift | Release images signed with cosign (keyless), with SBOM and provenance attached (see SECURITY.md) | Verify signatures at deploy time |
 | Sensitive data in metadata | Caller responsibility | Metadata schema validation / DLP checks |
 | CLI verification transport | Read-only API (`--api`) and offline export (`--file`) modes; direct Mongo kept for forensic use; export is cursor-streamed with constant server memory | — |
 | Large-integer fidelity | Event-writer normalizes all numbers to doubles and rejects integers beyond 2^53 at ingest (loud failure to the DLQ instead of a silent consensus fork); the JS API is inherently double-typed | — |
