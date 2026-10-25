@@ -1,0 +1,79 @@
+# Dependency updates (Dependabot): weekly, minor and patch updates grouped into one pull request
+# per ecosystem so the queue stays reviewable; majors arrive one by one. Security updates are
+# separate and immediate once Dependabot alerts are enabled in the repository settings.
+version: 2
+updates:
+  # pnpm workspace: backend and blockchain
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # The console (standalone npm project)
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: gomod
+    directories:
+      - "/cli-ernest"
+      - "/event-ingestor"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: cargo
+    directory: "/merkle-wasm"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directories:
+      - "/agentic-auditor"
+      - "/ai-sandbox"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directories:
+      - "/backend"
+      - "/frontend"
+      - "/cli-ernest"
+      - "/event-ingestor"
+      - "/ai-sandbox"
+      - "/agentic-auditor/docker"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]

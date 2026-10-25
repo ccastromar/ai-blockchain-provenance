@@ -33,6 +33,12 @@ Security-sensitive areas include:
   its balance low.
 - Never bake an API key into a browser build (`PUBLIC_ERNEST_API_KEY` is a public value).
 
+## Automated checks
+
+Every push and pull request runs CodeQL static analysis and a secret scan of the whole history
+(`.github/workflows/security.yml`); Dependabot proposes dependency updates weekly; release images
+are scanned with Trivy and not published if a critical vulnerability with a fix is found.
+
 ## Verifying release images
 
 Release tags publish images to GHCR, each signed with Sigstore cosign (keyless, by the release

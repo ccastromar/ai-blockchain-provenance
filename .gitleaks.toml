@@ -1,0 +1,15 @@
+# Secret scanning (gitleaks, run in CI by .github/workflows/security.yml). The default rules apply;
+# the paths below hold known non-secrets and are excluded by path, so anything new still fails.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Known non-secrets"
+paths = [
+  # the test-only key that signs the qualified-seal golden vector
+  '''^scripts/generate-qualified-seal-vector\.cjs$''',
+  # the test-only seed of the signed-submission golden vector
+  '''^testdata/signed-submission-golden\.json$''',
+  # Hardhat's public default account, for the local chain only
+  '''^\.env\.local-chain\.example$''',
+]

@@ -1,6 +1,6 @@
 name: Publish Images
 
-# A release tag (v*) publishes Ernest's images to GHCR with an SBOM and build provenance attached,
+# A release tag (v*) scans (Trivy) and publishes Ernest's images to GHCR with an SBOM and build provenance attached,
 # and signs each with Sigstore cosign (keyless: the identity is this workflow run). Run by hand it
 # only builds, unless "publish" is ticked. The console image is built without an identity
 # provider or app URLs (those are build arguments): it suits API-key access; a deployment with
@@ -59,6 +59,24 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
+
+      # Scan before publishing: a critical vulnerability with a fix available stops the release.
+      - name: Build for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          load: true
+          tags: scan/${{ matrix.name }}:local
+          cache-from: type=gha,scope=${{ matrix.name }}
+
+      - name: Scan the image (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: scan/${{ matrix.name }}:local
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
 
       - name: Build (and push)
         id: build
