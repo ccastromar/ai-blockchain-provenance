@@ -145,3 +145,4 @@ scripts/dev-qtsp/
 # React console: the vendored design system is committed on purpose (see frontend/README.md).
 !frontend/vendor/*.tgz
 frontend/*.tsbuildinfo
+playwright-report/

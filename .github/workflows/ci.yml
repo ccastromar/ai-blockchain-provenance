@@ -79,6 +79,14 @@ jobs:
       - name: Type-check and build
         run: npm run build
 
+      # The console against a mocked API and identity provider: what each governance function
+      # sees, no access without one, and a switched identity-provider session ending ours.
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests
+        run: npm run test:e2e
+
   blockchain:
     name: Blockchain
     runs-on: ubuntu-latest
