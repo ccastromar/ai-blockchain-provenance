@@ -71,3 +71,14 @@ test('a read-write credential keeps both functions; read-only audits', () => {
   assert.equal(roleForFunctions(['platform.admin']), 'read-only');
   assert.equal(roleForFunctions(['evidence.write']), 'read-write');
 });
+
+test('a signed-in person without a function keeps their name and gets nothing', withWriteKey(async () => {
+  const { resolveAccess } = require('../dist/auth/access-role.util');
+  const oidc = {
+    enabled: true,
+    verify: async () => ({ role: 'anonymous', subject: 'sub-1', label: 'visitor', functions: [] }),
+  };
+  const access = await resolveAccess(undefined, { resolve: async () => null }, { bearer: 'token', oidc });
+  assert.deepEqual(access, { role: 'anonymous', functions: [], label: 'visitor', subject: 'sub-1' });
+  assert.equal(await allowed(read, access.functions), false);
+}));

@@ -54,10 +54,13 @@ export async function resolveAccess(
   tokenService: AccessTokenService,
   opts: ResolveAccessOptions = {},
 ): Promise<ResolvedAccess> {
+  // A valid token that grants no function falls through, so a caller may still present an API
+  // key alongside it; an invalid token (null) falls through too. Who it names is kept, so a
+  // signed-in person without a function is told so by name instead of shown as anonymous.
+  let identified: { label?: string; subject?: string } = {};
   if (opts.oidc?.enabled && opts.bearer) {
     const principal = await opts.oidc.verify(opts.bearer);
-    // A valid token that grants no function falls through, so a caller may still present an
-    // API key alongside it; an invalid token (null) falls through too.
+    if (principal) identified = { label: principal.label, subject: principal.subject };
     if (principal && principal.functions.length > 0) {
       return { role: principal.role, label: principal.label, subject: principal.subject, functions: principal.functions };
     }
@@ -78,7 +81,7 @@ export async function resolveAccess(
     if (resolved) return { role: resolved.role, label: resolved.label, functions: functionsForRole(resolved.role) };
   }
 
-  return { role: 'anonymous', functions: [] };
+  return { role: 'anonymous', functions: [], ...identified };
 }
 
 /** Extracts the raw token from an `Authorization: Bearer <token>` header value. */

@@ -23,6 +23,8 @@ const SILENT_KEY = 'ernest_oidc_silent';
 const ID_TOKEN_KEY = 'ernest_oidc_id_token';
 const FORCE_LOGIN_KEY = 'ernest_oidc_force_login';
 const SILENT_ATTEMPTED_KEY = 'ernest_oidc_silent_attempted';
+// The IdP session this sign-in belongs to (OIDC `session_state`; Keycloak and Entra send it).
+const SESSION_KEY = 'ernest_oidc_session';
 
 export const oidcEnabled = Boolean(issuer && clientId);
 
@@ -111,6 +113,7 @@ export async function beginLogin(returnTo: string, silent = false): Promise<void
 
 /** Explicit sign-out: no silent re-login, and the next interactive sign-in asks for credentials. */
 export function markSignedOut(): void {
+  sessionStorage.removeItem(SESSION_KEY);
   sessionStorage.setItem(FORCE_LOGIN_KEY, 'true');
   sessionStorage.setItem(SILENT_ATTEMPTED_KEY, 'true');
 }
@@ -149,6 +152,7 @@ export async function completeLogin(): Promise<string> {
   const error = url.searchParams.get('error');
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
+  const session = url.searchParams.get('session_state');
   const expectedState = sessionStorage.getItem(STATE_KEY);
   const verifier = sessionStorage.getItem(VERIFIER_KEY);
   const returnTo = sessionStorage.getItem(RETURN_KEY) || '/';
@@ -201,6 +205,8 @@ export async function completeLogin(): Promise<string> {
   }
   const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined;
   if (tokens.id_token) sessionStorage.setItem(ID_TOKEN_KEY, tokens.id_token);
+  if (session) sessionStorage.setItem(SESSION_KEY, session);
+  else sessionStorage.removeItem(SESSION_KEY);
   setBearer(bearer, expiresAt);
   return returnTo;
 }
@@ -225,13 +231,19 @@ export function reportIdpSessionIfFramed(): boolean {
   const state = params.get("state") ?? "";
   if (!state.startsWith(CHECK_PREFIX)) return false;
   window.parent.postMessage(
-    { type: "idp-check", state, active: !params.has("error"), code: params.get("code") },
+    {
+      type: "idp-check",
+      state,
+      active: !params.has("error"),
+      code: params.get("code"),
+      session: params.get("session_state"),
+    },
     window.location.origin,
   );
   return true;
 }
 
-type CheckResult = { active: boolean; code: string | null };
+type CheckResult = { active: boolean; code: string | null; session: string | null };
 
 function idpCheck(
   authorizationEndpoint: string,
@@ -253,7 +265,7 @@ function idpCheck(
     };
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.data?.type !== "idp-check" || event.data.state !== state) return;
-      finish({ active: Boolean(event.data.active), code: event.data.code ?? null });
+      finish({ active: Boolean(event.data.active), code: event.data.code ?? null, session: event.data.session ?? null });
     };
     const timer = setTimeout(() => finish(null), 8000);
     window.addEventListener("message", onMessage);
@@ -278,10 +290,12 @@ interface SessionWatch {
   clientId: string;
   redirectUri: string;
   hasSession: () => boolean;
+  /** The IdP session the current sign-in belongs to, when the IdP reported one. */
+  session: () => string | null;
   /** Current token's expiry in ms (0 = unknown). */
   expiresAt: () => number;
   pkce: () => Promise<{ verifier: string; challenge: string }>;
-  exchange: (code: string, verifier: string) => Promise<void>;
+  exchange: (code: string, verifier: string, session: string | null) => Promise<void>;
   onEnded: () => void;
 }
 
@@ -299,8 +313,11 @@ export function watchIdpSession(w: SessionWatch): () => void {
       const { verifier, challenge } = await w.pkce();
       const result = await idpCheck(await w.authorizationEndpoint(), w.clientId, w.redirectUri, challenge);
       if (!result || !w.hasSession()) return;
-      if (!result.active) w.onEnded();
-      else if (result.code && w.expiresAt() - Date.now() < RENEW_WINDOW_MS) await w.exchange(result.code, verifier);
+      // No IdP session, or another one (someone else signed in after a sign-out elsewhere).
+      const known = w.session();
+      const switched = Boolean(known && result.session && result.session !== known);
+      if (!result.active || switched) w.onEnded();
+      else if (result.code && w.expiresAt() - Date.now() < RENEW_WINDOW_MS) await w.exchange(result.code, verifier, result.session);
     } catch {
       /* transient: try again later */
     } finally {
@@ -317,7 +334,7 @@ export function watchIdpSession(w: SessionWatch): () => void {
   };
 }
 
-async function renewWithCode(code: string, verifier: string) {
+async function renewWithCode(code: string, verifier: string, session: string | null) {
   const { token_endpoint } = await endpoints();
   const res = await fetch(token_endpoint, {
     method: 'POST',
@@ -335,6 +352,7 @@ async function renewWithCode(code: string, verifier: string) {
   if (tokens.id_token) sessionStorage.setItem(ID_TOKEN_KEY, tokens.id_token);
   const bearer = audience ? tokens.access_token : tokens.id_token;
   if (bearer) setBearer(bearer, tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined);
+  if (session) sessionStorage.setItem(SESSION_KEY, session);
 }
 
 export const watchErnestSession = (hasSession: () => boolean, onEnded: () => void) =>
@@ -343,6 +361,7 @@ export const watchErnestSession = (hasSession: () => boolean, onEnded: () => voi
     clientId: clientId!,
     redirectUri: redirectUri(),
     hasSession,
+    session: () => sessionStorage.getItem(SESSION_KEY),
     expiresAt: () => jwtExpiryMs(sessionStorage.getItem('ernest_bearer') ?? ''),
     pkce: async () => {
       const verifier = randomString(48);
