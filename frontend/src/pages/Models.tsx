@@ -308,7 +308,7 @@ export default function Models() {
                       aria-label="Change status"
                       value={model.status ?? "active"}
                       disabled={patchingStatus || !canWrite}
-                      title={canWrite ? "Change the model's status" : "Read-only access — changing model status requires a read-write key"}
+                      title={canWrite ? "Change the model's status" : "Read-only access — changing model status needs the evidence.write function"}
                       onChange={(e) => void changeStatus(e.target.value as ModelStatus)}
                     >
                       {STATUSES.map((s) => (

@@ -29,7 +29,7 @@ function randomHash() {
 }
 
 function ReadOnlyNote({ action }: { action: string }) {
-  return <Alert tone="warn">Read-only access — {action} requires a read-write key.</Alert>;
+  return <Alert tone="warn">Read-only access — {action} needs the evidence.write function.</Alert>;
 }
 
 export function ModelRegistration({ onSuccess }: { onSuccess?: (modelId: string) => void }) {

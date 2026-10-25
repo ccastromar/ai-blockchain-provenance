@@ -7,7 +7,7 @@ import Connectors from "./pages/Connectors";
 import Demo from "./pages/Demo";
 import VerifyReceipt from "./pages/VerifyReceipt";
 import { refreshAuthRole } from "./lib/api";
-import { clearBearer, getActiveBearer, getActiveCredential, useAuth } from "./lib/auth";
+import { clearBearer, getActiveBearer, getActiveCredential, useAuth, useCan } from "./lib/auth";
 import { beginLogin, oidcEnabled, trySilentLogin, watchErnestSession } from "./lib/oidc";
 import { env } from "./env";
 import AuthCallback from "./pages/AuthCallback";
@@ -37,7 +37,7 @@ const SECTIONS = [
   { href: "/verify-receipt", label: "Verify receipt" },
   { href: "/settings/tokens", label: "Tokens" },
 ];
-// Demo (manual evidence entry) writes to the chain: only offered to read-write users, so
+// Demo (manual evidence entry) writes to the chain: only offered with evidence.write, so
 // visitors of the public portal see real evidence only.
 const DEMO = { href: "/demo", label: "Demo" };
 
@@ -46,6 +46,7 @@ const RouterLink: LinkComponent = ({ href, ...rest }) => <Link to={href} {...res
 function Shell() {
   const { pathname } = useLocation();
   const auth = useAuth();
+  const canWriteEvidence = useCan("evidence.write");
   useEffect(() => {
     void refreshAuthRole();
     if (!getActiveCredential()) {
@@ -69,7 +70,7 @@ function Shell() {
   const noRole = !auth.openAccess && auth.role === "anonymous" && !!getActiveCredential();
   // No credential and no open access: the whole UI stays closed until the user signs in.
   const signedOut = !auth.openAccess && auth.role === "anonymous" && !noRole;
-  const sections = auth.role === "read-write" ? [...SECTIONS, DEMO] : SECTIONS;
+  const sections = canWriteEvidence ? [...SECTIONS, DEMO] : SECTIONS;
   return (
     <AppShell
       vertex="assure"

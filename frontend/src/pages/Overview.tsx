@@ -227,7 +227,7 @@ export default function Overview() {
                 title={
                   canWrite
                     ? "Force an anchor now, ignoring the block-count threshold"
-                    : "Read-only access — anchoring requires a read-write key"
+                    : "Read-only access — anchoring needs the platform.admin function"
                 }
               >
                 {anchoring ? "Anchoring…" : "Anchor now"}

@@ -188,7 +188,7 @@ export default function Audit() {
             ) : (
               models.length === 0 && (
                 <Alert tone="warn">
-                  No models available yet. Evidence arrives from AOS and Prudence; to try it by hand, use Demo (read-write sign-in).
+                  No models available yet. Evidence arrives from AOS and Prudence; to try it by hand, use Demo (evidence.write).
                 </Alert>
               )
             )}

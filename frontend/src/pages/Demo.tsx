@@ -69,9 +69,9 @@ export default function Demo() {
 
         {!canWrite ? (
           <Card>
-            <EmptyState title="Read-write access needed"
+            <EmptyState title="Evidence writing needed"
                         action={<Link to="/login?redirect=/demo" className="ct-btn ct-btn-outline">Sign in</Link>}>
-              Manual entry writes to the chain, so it needs a read-write sign-in.
+              Manual entry writes to the chain, so it needs the evidence.write function.
             </EmptyState>
           </Card>
         ) : (

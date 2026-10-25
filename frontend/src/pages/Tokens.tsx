@@ -94,9 +94,9 @@ export default function Tokens() {
         <Card><Spinner /></Card>
       ) : !canWrite ? (
         <Card>
-          <EmptyState title="Read-write access needed"
+          <EmptyState title="Platform administration needed"
                       action={<Link to="/login?redirect=/settings/tokens" className="ct-btn ct-btn-primary">Sign in</Link>}>
-            Managing access tokens requires a read-write sign-in.
+            Managing access tokens needs the platform.admin function.
           </EmptyState>
         </Card>
       ) : (
