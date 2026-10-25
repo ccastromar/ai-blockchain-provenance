@@ -337,7 +337,7 @@ export default function Models() {
                     data && Object.keys(data).length ? (
                       <div key={label} className="er-span">
                         <dt className="ct-label">{label}</dt>
-                        <dd><pre className="er-pre">{JSON.stringify(data, null, 2)}</pre></dd>
+                        <dd><pre tabIndex={0} className="er-pre">{JSON.stringify(data, null, 2)}</pre></dd>
                       </div>
                     ) : null,
                   )}

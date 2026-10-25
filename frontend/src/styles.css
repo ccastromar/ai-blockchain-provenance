@@ -1,7 +1,7 @@
 /* Ernest-specific layout on top of @chestertown/design. Prefixed er- (ct- is the package's). */
 
 body { margin: 0; background: var(--bg); }
-a { color: var(--accent); }
+a { color: var(--accent-text); }
 code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 
 .er-stack { display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 1fr); }
@@ -29,8 +29,8 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 .er-facts { margin: 0; display: grid; gap: var(--sp-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .er-facts dd { margin: 0; font-weight: var(--fw-medium); overflow-wrap: anywhere; }
 .er-span { grid-column: 1 / -1; }
-.er-ok { color: var(--ok); }
-.er-danger { color: var(--danger); }
+.er-ok { color: var(--ok-text); }
+.er-danger { color: var(--danger-text); }
 .er-empty-line { text-align: center; padding: var(--sp-6) 0; margin: 0; }
 
 
@@ -72,7 +72,7 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 .er-inline .ct-input { flex: 1; }
 .er-pager { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); }
 .er-detail-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-4); flex-wrap: wrap; }
-.er-detail-id { font-weight: var(--fw-semibold); color: var(--accent); font-size: var(--fs-md); overflow-wrap: anywhere; }
+.er-detail-id { font-weight: var(--fw-semibold); color: var(--accent-text); font-size: var(--fs-md); overflow-wrap: anywhere; }
 .er-pre { background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--sp-3);
   font-family: var(--font-mono); font-size: var(--fs-xs); overflow: auto; margin: 0; max-height: 320px; color: var(--text); }
 .er-timeline { display: grid; gap: var(--sp-2); max-height: 320px; overflow-y: auto; padding-right: 2px; }
@@ -130,8 +130,8 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 .er-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); font-size: var(--fs-sm); }
 .er-check-line { display: flex; gap: var(--sp-2); }
 .er-check-line > div { min-width: 0; overflow-wrap: anywhere; }
-.er-check-ok { color: var(--ok); }
-.er-check-fail { color: var(--danger); }
+.er-check-ok { color: var(--ok-text); }
+.er-check-fail { color: var(--danger-text); }
 .er-check-pending { color: var(--text-muted); }
 .er-verdict { font-size: var(--fs-md); }
 .er-verdict-facts { border-top: 1px solid var(--border); padding-top: var(--sp-3); display: grid; gap: var(--sp-1); font-size: var(--fs-sm); overflow-wrap: anywhere; }
@@ -142,7 +142,7 @@ code, .er-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
 @media (max-width: 600px) {
   .er-grid-2 { grid-template-columns: minmax(0, 1fr); }
 }
-.er-chip { font-family: var(--font-mono); font-size: var(--fs-xs); background: var(--accent-weak); color: var(--accent);
+.er-chip { font-family: var(--font-mono); font-size: var(--fs-xs); background: var(--accent-weak); color: var(--accent-text);
   border-radius: var(--radius-sm); padding: 2px 8px; }
 
 /* Tokens, Demo */

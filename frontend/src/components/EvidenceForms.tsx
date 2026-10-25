@@ -245,7 +245,7 @@ export function InferenceLogger({ initialModelId = "", onSuccess }: { initialMod
               </>
             )}
           </dl>
-          {result.output && <pre className="er-pre">{JSON.stringify(result.output, null, 2)}</pre>}
+          {result.output && <pre tabIndex={0} className="er-pre">{JSON.stringify(result.output, null, 2)}</pre>}
         </Alert>
       )}
     </div>

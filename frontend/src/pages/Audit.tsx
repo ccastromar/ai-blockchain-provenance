@@ -305,7 +305,7 @@ export default function Audit() {
               </div>
               <p className="ct-hint er-gap">Status: <strong>{webLlmStatus}</strong>{webLlmProgress ? ` — ${webLlmProgress}` : ""}</p>
               {webLlmError && <div className="er-gap"><Alert tone="danger">{webLlmError}</Alert></div>}
-              <pre className="er-pre er-pre-tall">{memo || report.evidencePacket}</pre>
+              <pre tabIndex={0} className="er-pre er-pre-tall">{memo || report.evidencePacket}</pre>
             </Card>
           </>
         )}

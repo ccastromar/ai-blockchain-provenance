@@ -324,7 +324,7 @@ export default function Events() {
                           </div>
                         )}
                       </div>
-                      <pre className="er-pre">{JSON.stringify(linkedBlock.data ?? {}, null, 2)}</pre>
+                      <pre tabIndex={0} className="er-pre">{JSON.stringify(linkedBlock.data ?? {}, null, 2)}</pre>
                     </div>
                   )
                 )}

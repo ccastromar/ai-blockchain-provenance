@@ -185,7 +185,7 @@ export default function Blocks() {
                   </div>
                   <div className="er-span">
                     <dt className="ct-label">Data</dt>
-                    <dd><pre className="er-pre">{JSON.stringify(block.data, null, 2)}</pre></dd>
+                    <dd><pre tabIndex={0} className="er-pre">{JSON.stringify(block.data, null, 2)}</pre></dd>
                   </div>
                 </dl>
               </Card>
