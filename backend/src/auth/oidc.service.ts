@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { createRemoteJWKSet, jwtVerify, type JWTPayload, type JWTVerifyGetKey } from 'jose';
+import { governanceModel } from '../governance/governance-model';
 import type { ErnestRole } from './access-role.util';
 
 export interface OidcPrincipal {
   role: ErnestRole;
   subject: string;
   label?: string;
+  // Governance functions (contract v1) the token grants in Ernest. Nothing authorizes by them
+  // yet: they ride along with the role until each guard moves to its function.
+  functions: string[];
 }
 
 /**
@@ -39,6 +43,9 @@ export class OidcService {
   private jwks?: JWTVerifyGetKey;
   private jwksInit?: Promise<JWTVerifyGetKey>;
 
+  // Loaded (and validated) at start: an invalid governance model stops Ernest.
+  private readonly governance = governanceModel();
+
   get enabled(): boolean {
     return Boolean(this.issuer && this.audience);
   }
@@ -67,6 +74,7 @@ export class OidcService {
         role: this.roleFromClaims(payload),
         subject,
         label: labelFromClaims(payload) ?? subject,
+        functions: this.governance.resolve(payload as Record<string, unknown>, 'ernest'),
       };
     } catch (err) {
       // Debug, not warn: an invalid bearer is an expected, non-fatal condition here

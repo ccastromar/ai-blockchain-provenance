@@ -25,6 +25,7 @@
     "class-validator": "^0.14.4",
     "ethers": "^6.17.0",
     "jose": "^6.2.13",
+    "js-yaml": "4.3.2",
     "json-canonicalize": "2.0.0",
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.6.0",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.24",
     "@nestjs/schematics": "^11.1.0",
+    "@types/js-yaml": "4.0.9",
     "@types/node": "^20.19.43",
     "@types/swagger-ui-express": "^4.1.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",

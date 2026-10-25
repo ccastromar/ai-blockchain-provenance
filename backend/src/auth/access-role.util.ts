@@ -9,13 +9,15 @@ export interface ResolvedAccess {
   // OIDC subject (the IdP `sub`) when the caller was authenticated via a bearer token.
   // Present only for the OIDC path; absent for static keys and Mongo tokens.
   subject?: string;
+  // Governance functions in Ernest (contract v1); OIDC path only.
+  functions?: string[];
 }
 
 // Structural type to avoid a circular import with oidc.service.ts (which imports ErnestRole
 // from here). Any object with these members satisfies it -- in practice, OidcService.
 export interface OidcResolver {
   readonly enabled: boolean;
-  verify(bearer: string | undefined): Promise<{ role: ErnestRole; subject: string; label?: string } | null>;
+  verify(bearer: string | undefined): Promise<{ role: ErnestRole; subject: string; label?: string; functions?: string[] } | null>;
 }
 
 export interface ResolveAccessOptions {
@@ -41,7 +43,7 @@ export async function resolveAccess(
     // A valid token that maps to no usable role falls through, so a caller may still
     // present an API key alongside it; an invalid token (null) falls through too.
     if (principal && principal.role !== 'anonymous') {
-      return { role: principal.role, label: principal.label, subject: principal.subject };
+      return { role: principal.role, label: principal.label, subject: principal.subject, functions: principal.functions };
     }
   }
 

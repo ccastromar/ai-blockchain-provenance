@@ -27,8 +27,8 @@ export class AuthController {
 
   @Get('whoami')
   @ApiOperation({ summary: 'Return the access role granted by the provided credential (X-Ernest-Api-Key header or OIDC bearer token).' })
-  @ApiOkResponse({ description: '"role" is one of read-write, read-only, or anonymous; "subject" is present when authenticated via OIDC.' })
-  async whoami(@Req() request: any): Promise<{ role: ErnestRole; openAccess: boolean; label?: string; subject?: string }> {
+  @ApiOkResponse({ description: '"role" is one of read-write, read-only, or anonymous; "subject" and "functions" (governance functions, contract v1) are present when authenticated via OIDC.' })
+  async whoami(@Req() request: any): Promise<{ role: ErnestRole; openAccess: boolean; label?: string; subject?: string; functions?: string[] }> {
     const writeKey = process.env.ERNEST_API_KEY;
     const readKey = process.env.ERNEST_READ_API_KEY;
 
@@ -40,14 +40,20 @@ export class AuthController {
     const actualKey = Array.isArray(headerValue) ? headerValue[0] : headerValue;
     const bearer = bearerFrom(request.headers.authorization);
 
-    const { role, label, subject } = await resolveAccess(actualKey, this.tokenService, {
+    const { role, label, subject, functions } = await resolveAccess(actualKey, this.tokenService, {
       bearer,
       oidc: this.oidcService,
     });
     if (role === 'anonymous' && publicReadOnlyEnabled()) {
       return { role: 'read-only', openAccess: true, label: 'Public visitor' };
     }
-    return { role, openAccess: false, ...(label ? { label } : {}), ...(subject ? { subject } : {}) };
+    return {
+      role,
+      openAccess: false,
+      ...(label ? { label } : {}),
+      ...(subject ? { subject } : {}),
+      ...(functions ? { functions } : {}),
+    };
   }
 
   @Post('tokens')
