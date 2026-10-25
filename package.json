@@ -1,6 +1,7 @@
 {
   "name": "ernest-workspace",
   "version": "0.3.0",
+  "license": "Apache-2.0",
   "private": true,
   "packageManager": "pnpm@11.7.0",
   "engines": {

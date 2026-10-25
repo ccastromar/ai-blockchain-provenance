@@ -209,7 +209,7 @@ Then open:
 - Ingested events: `http://localhost:3000/events`
 - Local auditor: `http://localhost:3000/auditor`
 
-For a quick product demo, click **Seed demo** on the dashboard. It creates a credit-risk model registration plus two hash-only inference events, then you can open Audit Readiness immediately.
+For a quick product demo, click **Seed demo** on the **Demo** page. It creates a credit-risk model registration plus two hash-only inference events, then you can open Audit Readiness immediately.
 
 Run a minimal API smoke test:
 

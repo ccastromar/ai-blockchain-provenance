@@ -55,7 +55,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## Demo Flow
 
-1. Open the dashboard and click **Seed demo** for a ready-to-audit credit-risk packet.
+1. Open the **Demo** page and click **Seed demo** for a ready-to-audit credit-risk packet.
 2. Open Audit Readiness and review the score, checks, and recommended actions.
 3. Export the evidence packet.
 4. View model provenance.

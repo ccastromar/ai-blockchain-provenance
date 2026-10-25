@@ -2,6 +2,7 @@
   "name": "ernest-frontend",
   "private": true,
   "version": "0.3.0",
+  "license": "Apache-2.0",
   "description": "Ernest console (assure vertex): AI provenance, evidence and audit",
   "type": "module",
   "scripts": {
