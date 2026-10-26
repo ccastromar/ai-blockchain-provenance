@@ -26,6 +26,7 @@
     "@opentelemetry/instrumentation-http": "^0.300.0",
     "@opentelemetry/instrumentation-mongodb": "^0.77.0",
     "@opentelemetry/instrumentation-nestjs-core": "^0.71.0",
+    "@opentelemetry/instrumentation-runtime-node": "^0.37.0",
     "@opentelemetry/sdk-node": "^0.300.0",
     "axios": "^1.20.0",
     "class-transformer": "^0.5.1",

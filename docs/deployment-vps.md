@@ -107,7 +107,9 @@ exports metrics over OTLP (`OTEL_METRICS_EXPORTER=none` turns them off): HTTP se
 acceptance to chaining) and `ernest.proof.duration` (`operation`: generate or verify, `outcome`:
 success, invalid or failure), with buckets for the suite's service-level indicators. In
 Prometheus they are `ernest_evidence_received_total`, `ernest_evidence_chaining_delay_seconds` and
-`ernest_proof_duration_seconds`. Logs are not sent over OTLP.
+`ernest_proof_duration_seconds`. The Node runtime is measured too: event loop delay
+(`nodejs_eventloop_delay_p99_seconds`) and utilization, V8 heap (`v8js_memory_heap_used_bytes`)
+and GC (`v8js_gc_duration_seconds`). Logs are not sent over OTLP.
 
 ## Logs
 

@@ -12,6 +12,7 @@ import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
 import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core';
 import { MongoDBInstrumentation } from '@opentelemetry/instrumentation-mongodb';
+import { RuntimeNodeInstrumentation } from '@opentelemetry/instrumentation-runtime-node';
 
 const UNTRACED = new Set(['/health', '/api/health', '/metrics']);
 
@@ -44,6 +45,8 @@ function startTracing(): void {
       new NestInstrumentation(),
       // Statement text would carry evidence content: only the operation is recorded.
       new MongoDBInstrumentation({ enhancedDatabaseReporting: false }),
+      // The runtime's saturation (USE): event loop delay and utilization, heap, GC. Metrics only.
+      new RuntimeNodeInstrumentation(),
     ],
   });
   sdk.start();
