@@ -1,4 +1,5 @@
-# Copied from prudence-governance contract/ernest at 5a04fd23abd4 by sync.sh. Do not edit:
+# Copied from prudence-governance contract/ernest at 5911c73fd150 by sync.sh. Do not edit:
 # change the contract there and run sync.sh again. Ernest's verification checks these sums.
-cdb7e7e2cdfe51f578cee9f252be965761b425cb2f653a4634c6c5b38f930bae  README.md
+b49fdc4c4d341497f16866af4afb6a94d0fa12fb619544692e379b14f716faf6  README.md
 9e79323c453cfaf53f06e69d3e4d530d962d760aacf088188fb3392ac451d474  interactions.json
+1f95f6ecd71a06e901b022381bc789ec8457a71b8b3ccb3f5cef51c6e55d6c21  interactions-unbatched.json

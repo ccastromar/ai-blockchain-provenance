@@ -29,7 +29,8 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
   (`testdata/prudence-decision-events/`, synced with SHA-256 sums) and checks the deduplication
   id, the `policy_decision` inference and its hashes, and Prudence as the system of record.
 - **Prudence's evidence contract, verified.** `backend/test/prudence-contract.test.js` boots the
-  backend with batching on, as the suite deploys it, and replays what Prudence sends and reads
+  backend with batching on, as the suite deploys it (and `prudence-contract-unbatched.test.js`
+  with it off), and replays what Prudence sends and reads
   (`backend/test/contracts/prudence-evidence/`, synced from prudence-governance with SHA-256
   sums): duplicates, conflicts, the inclusion proof Prudence verifies, Posture's reads. A field
   Prudence reads cannot be removed or retyped without failing it.
@@ -49,6 +50,11 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Fixed
 
+- **`GET /api/stats/executions` answered 500 with batching off** as soon as an execution block had
+  no `occurredAt` (prudence-core's executions): the fallback converted the block's Unix-seconds
+  `timestamp` with `$toDate`, which refuses a 32-bit int. It now converts seconds to milliseconds
+  as a long. Found by Prudence's evidence contract run with batching off
+  (`backend/test/prudence-contract-unbatched.test.js`).
 - Signed submissions rejected valid signatures when optional fields were omitted.
 - The console no longer shows an unverified chain as compromised: only a verification that ran and failed does.
 - `scripts/smoke.sh` works on macOS bash 3.2.

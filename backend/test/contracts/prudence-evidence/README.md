@@ -7,13 +7,14 @@ Prudence is the consumer and writes this contract; Ernest is the provider and ve
 | File | What it is |
 | --- | --- |
 | `README.md` | This contract (normative) |
-| `interactions.json` | The interactions, in the order Ernest replays them |
+| `interactions.json` | The interactions, in the order Ernest replays them, with batching on (as the suite deploys Ernest) |
+| `interactions-unbatched.json` | The same conversation with batching off (Ernest's default) |
 | `sync.sh` | Copies this directory into Ernest with a `SOURCE` of SHA-256 sums |
 
 | Side | Test |
 | --- | --- |
 | Consumer: Prudence's adapters (`ReviewSealAdapter`, `ErnestEvidenceAdapter`, `ErnestAttestationAdapter`, `ErnestEvidenceHealthAdapter`) | `ErnestEvidenceContractTest`: the adapters against a stub that answers each interaction with its example |
-| Provider: Ernest's backend | `backend/test/prudence-contract.test.js`: the real application (MongoDB, `EVIDENCE_BATCHING=on`, as the suite deploys it) answers every interaction |
+| Provider: Ernest's backend | `backend/test/prudence-contract.test.js` (`EVIDENCE_BATCHING=on`) and `prudence-contract-unbatched.test.js` (`off`): the real application on MongoDB answers every interaction |
 
 ## 1. Interactions
 
@@ -51,9 +52,18 @@ the previous ones left.
 - Posture reads: `GET /api/verify`, `/api/stats/models`, `/api/models/{id}/integrity`,
   `/api/stats/executions`.
 
-Not covered yet: the fallbacks for an Ernest without batching or older than v0.3
-(`/api/provenances/{m}`, paging `/api/blocks`), the decision transports through the
-event-ingestor or Kafka, and qualified seals (QTSP).
+With batching off, writes are chained at once (`200`/`201` with `blockIndex`), there is no event
+store (`GET /api/events/…/proof` is `404`), and Prudence confirms an attestation through the
+model's provenance (`GET /api/provenances/{m}`: `chainValid`, `history[].inputHash`,
+`blockIndex`).
+
+**Not guaranteed with batching off:** Ernest does not deduplicate. A record re-sent by Prudence's
+outbox is chained again as a new block, and one re-sent with other content is accepted (`200`)
+instead of refused (`409`). Run Ernest with `EVIDENCE_BATCHING=on` (or `events`) wherever
+Prudence delivers evidence to it; the unbatched interactions leave those two cases out.
+
+Not covered: paging `/api/blocks` (the fallback for an Ernest older than v0.3), and qualified
+seals (QTSP). The decision transports through the event-ingestor are `contract/decision-events/`.
 
 ## 4. Changing it
 

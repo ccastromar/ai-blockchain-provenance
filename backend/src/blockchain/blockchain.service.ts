@@ -807,6 +807,7 @@ export class BlockchainService implements OnModuleInit {
     async executionCountsBySystem(sinceIndex = -1): Promise<{ counts: Record<string, number>; lastExecutionAt: Record<string, string>; sinceIndex: number; upToIndex: number }> {
         const tip = await this.provenanceBlockModel.findOne({}, { index: 1 }).sort({ index: -1 }).lean();
         const upToIndex = tip?.index ?? 0;
+        const blockTime = { $toDate: { $multiply: [{ $toLong: '$timestamp' }, 1000] } };
         const rows = await this.provenanceBlockModel.aggregate([
             { $match: {
                 'data.metadata.stage': 'execution',
@@ -816,8 +817,9 @@ export class BlockchainService implements OnModuleInit {
             { $group: {
                 _id: '$data.metadata.aiSystemId',
                 count: { $sum: 1 },
-                // The event's stated time when it parses as a date, else the block's own time.
-                last: { $max: { $convert: { input: '$data.occurredAt', to: 'date', onError: { $toDate: '$timestamp' }, onNull: { $toDate: '$timestamp' } } } },
+                // The event's stated time when it parses as a date, else the block's own time
+                // (Unix seconds, stored as a 32-bit int: $toDate takes only milliseconds as a long).
+                last: { $max: { $convert: { input: '$data.occurredAt', to: 'date', onError: blockTime, onNull: blockTime } } },
             } },
         ]);
         const counts: Record<string, number> = Object.fromEntries(rows.map((r: any) => [r._id, r.count]));
