@@ -4,7 +4,9 @@ WORKDIR /src
 COPY event-ingestor/go.mod event-ingestor/go.sum* ./
 RUN go mod download
 COPY event-ingestor/ ./
-RUN CGO_ENABLED=0 GOOS=linux go build -o /out/event-ingestor ./cmd/event-ingestor
+# The release, for service.version in logs (docker build --build-arg VERSION=0.3.0).
+ARG VERSION=dev
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X event-ingestor/internal/logging.Version=${VERSION}" -o /out/event-ingestor ./cmd/event-ingestor
 
 FROM alpine:3.22
 RUN adduser -D -H ernest

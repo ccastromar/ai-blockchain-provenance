@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"event-ingestor/internal/logging"
 	"event-ingestor/internal/telemetry"
 	"log"
 	"net/http"
@@ -23,16 +24,17 @@ import (
 )
 
 func main() {
+	logging.Setup()
 	cfg := config.Load()
 	if len(os.Args) < 2 {
-		log.Fatalf("usage: event-ingestor <serve|worker|kafka>")
+		logging.Fatalf("usage: event-ingestor <serve|worker|kafka>")
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	shutdownTracing, err := telemetry.Setup(ctx)
 	if err != nil {
-		log.Fatalf("opentelemetry: %v", err)
+		logging.Fatalf("opentelemetry: %v", err)
 	}
 	defer func() {
 		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -48,7 +50,7 @@ func main() {
 	case "kafka":
 		runKafka(ctx, cfg)
 	default:
-		log.Fatalf("unknown command %q; expected serve, worker or kafka", os.Args[1])
+		logging.Fatalf("unknown command %q; expected serve, worker or kafka", os.Args[1])
 	}
 }
 
@@ -59,7 +61,7 @@ func runServer(ctx context.Context, cfg config.Config) {
 	go handler.RunRateLimitCleanup(ctx)
 	go func() {
 		if err := metrics.Serve(ctx, ":"+cfg.MetricsPort); err != nil {
-			log.Printf("metrics server failed: %v", err)
+			logging.Warnf("metrics server failed: %v", err)
 		}
 	}()
 
@@ -80,14 +82,14 @@ func runServer(ctx context.Context, cfg config.Config) {
 
 	log.Printf("event ingestor listening on :%s", cfg.Port)
 	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("event ingestor failed: %v", err)
+		logging.Fatalf("event ingestor failed: %v", err)
 	}
 }
 
 func runWorker(ctx context.Context, cfg config.Config) {
 	client, err := mongo.Connect(ctx, cfg.MongoURI)
 	if err != nil {
-		log.Fatalf("mongo connect failed: %v", err)
+		logging.Fatalf("mongo connect failed: %v", err)
 	}
 	defer func() {
 		disconnectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -97,7 +99,7 @@ func runWorker(ctx context.Context, cfg config.Config) {
 
 	go func() {
 		if err := metrics.Serve(ctx, ":"+cfg.MetricsPort); err != nil {
-			log.Printf("metrics server failed: %v", err)
+			logging.Warnf("metrics server failed: %v", err)
 		}
 	}()
 
@@ -106,7 +108,7 @@ func runWorker(ctx context.Context, cfg config.Config) {
 	runner := worker.New(stream, writer, cfg)
 
 	if err := runner.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-		log.Fatalf("worker failed: %v", err)
+		logging.Fatalf("worker failed: %v", err)
 	}
 }
 
@@ -115,7 +117,7 @@ func runWorker(ctx context.Context, cfg config.Config) {
 func runKafka(ctx context.Context, cfg config.Config) {
 	client, err := mongo.Connect(ctx, cfg.MongoURI)
 	if err != nil {
-		log.Fatalf("mongo connect failed: %v", err)
+		logging.Fatalf("mongo connect failed: %v", err)
 	}
 	defer func() {
 		disconnectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -125,7 +127,7 @@ func runKafka(ctx context.Context, cfg config.Config) {
 
 	go func() {
 		if err := metrics.Serve(ctx, ":"+cfg.MetricsPort); err != nil {
-			log.Printf("metrics server failed: %v", err)
+			logging.Warnf("metrics server failed: %v", err)
 		}
 	}()
 
@@ -144,7 +146,7 @@ func runKafka(ctx context.Context, cfg config.Config) {
 		},
 	}, writer)
 	if err != nil && !errors.Is(err, context.Canceled) {
-		log.Fatalf("kafka source failed: %v", err)
+		logging.Fatalf("kafka source failed: %v", err)
 	}
 }
 

@@ -408,6 +408,14 @@ when the consumer connects with SASL, `unverified` otherwise (a warning is logge
 A record that cannot be parsed goes to `event_failures` (`sourceStreamId = kafka:<topic>/<partition>@<offset>`)
 and is committed past; a MongoDB outage retries the same poll without committing.
 
+### Logs
+
+Every command writes one JSON object per line on stdout (`LOG_FORMAT=text` for plain text):
+`timestamp`, `severity`, `service.name` (`ernest-ingestor`, or `OTEL_SERVICE_NAME`),
+`service.version` (the image's `VERSION` build argument), `deployment.environment.name` (from
+`OTEL_RESOURCE_ATTRIBUTES`) and `message`; failures are `WARN` (retried or skipped) or `ERROR`
+(the process stops) with `error.type`.
+
 ### Tracing
 
 With `OTEL_EXPORTER_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) set, every

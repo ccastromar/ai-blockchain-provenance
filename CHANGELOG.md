@@ -24,6 +24,9 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Added
 
+- **JSON logs in the event-ingestor** (`LOG_FORMAT=text` for plain text): the same fields as
+  the backend, with failures as `WARN` or `ERROR` and their `error.type`; `service.version` from
+  the image's `VERSION` build argument.
 - **JSON logs in the backend** (`LOG_FORMAT`, JSON by default with `NODE_ENV=production`): one
   object per line with the Chestertown fields (`timestamp`, `severity`, `service.*`,
   `deployment.environment.name`, `message`, `component`), the active span's `trace_id` and

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"event-ingestor/internal/logging"
 	"event-ingestor/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
@@ -85,12 +86,12 @@ func (w Worker) Run(ctx context.Context) error {
 		}
 
 		if err := w.processRejected(ctx); err != nil {
-			log.Printf("rejected event processing failed: %v", err)
+			logging.Warnf("rejected event processing failed: %v", err)
 		}
 
 		if reclaimInterval > 0 && time.Since(lastReclaim) >= reclaimInterval {
 			if err := w.reclaimStale(ctx); err != nil {
-				log.Printf("reclaim stale pending messages failed: %v", err)
+				logging.Warnf("reclaim stale pending messages failed: %v", err)
 			}
 			lastReclaim = time.Now()
 		}
@@ -102,7 +103,7 @@ func (w Worker) Run(ctx context.Context) error {
 
 		messages, err := w.stream.XReadGroup(ctx, w.cfg.RedisGroup, w.cfg.RedisConsumer, w.cfg.RedisStream, w.cfg.WorkerBatchCount, w.cfg.WorkerBlockMS)
 		if err != nil {
-			log.Printf("redis read failed: %v", err)
+			logging.Warnf("redis read failed: %v", err)
 			time.Sleep(time.Second)
 			continue
 		}
@@ -145,7 +146,7 @@ func (w Worker) handleMessages(ctx context.Context, messages []redisstream.Messa
 		case errors.Is(err, hashchain.ErrDuplicateEvent):
 			duplicates++
 			if markErr := w.writer.MarkDuplicate(ctx, event); markErr != nil {
-				log.Printf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
+				logging.Warnf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
 			}
 			metrics.EventsDuplicate.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
 		default:
@@ -166,13 +167,13 @@ func (w Worker) ackAll(ctx context.Context, messages []redisstream.Message) {
 	}
 	if acker, ok := w.stream.(multiAcker); ok {
 		if err := acker.XAckMany(ctx, w.cfg.RedisStream, w.cfg.RedisGroup, ids); err != nil {
-			log.Printf("ack of %d messages failed: %v", len(ids), err)
+			logging.Warnf("ack of %d messages failed: %v", len(ids), err)
 		}
 		return
 	}
 	for _, id := range ids {
 		if err := w.stream.XAck(ctx, w.cfg.RedisStream, w.cfg.RedisGroup, id); err != nil {
-			log.Printf("ack %s failed: %v", id, err)
+			logging.Warnf("ack %s failed: %v", id, err)
 		}
 	}
 }
@@ -192,7 +193,7 @@ func (w Worker) trimAcknowledged(ctx context.Context) {
 	}
 	for _, stream := range []string{w.cfg.RedisStream, w.cfg.RedisRejectedStream} {
 		if _, err := t.TrimAcknowledged(ctx, stream, w.cfg.RedisGroup); err != nil {
-			log.Printf("trim of acknowledged entries in %s failed: %v", stream, err)
+			logging.Warnf("trim of acknowledged entries in %s failed: %v", stream, err)
 		}
 	}
 }
@@ -230,7 +231,7 @@ func (w Worker) handleMessage(ctx context.Context, message redisstream.Message) 
 		w.fail(ctx, message, err)
 	}
 	if err := w.stream.XAck(ctx, w.cfg.RedisStream, w.cfg.RedisGroup, message.ID); err != nil {
-		log.Printf("ack %s failed: %v", message.ID, err)
+		logging.Warnf("ack %s failed: %v", message.ID, err)
 	}
 }
 
@@ -241,11 +242,11 @@ func (w Worker) processRejected(ctx context.Context) error {
 	}
 	for _, message := range messages {
 		if err := w.writer.RecordFailure(ctx, message.ID, message.Fields, errors.New(message.Fields["error"])); err != nil {
-			log.Printf("record rejected event %s failed: %v", message.ID, err)
+			logging.Warnf("record rejected event %s failed: %v", message.ID, err)
 			continue
 		}
 		if err := w.stream.XAck(ctx, w.cfg.RedisRejectedStream, w.cfg.RedisGroup, message.ID); err != nil {
-			log.Printf("ack rejected %s failed: %v", message.ID, err)
+			logging.Warnf("ack rejected %s failed: %v", message.ID, err)
 		}
 	}
 	return nil
@@ -253,10 +254,10 @@ func (w Worker) processRejected(ctx context.Context) error {
 
 // fail records a message that could not be processed and sends it to the DLQ.
 func (w Worker) fail(ctx context.Context, message redisstream.Message, err error) {
-	log.Printf("event %s failed: %v", message.ID, err)
+	logging.Warnf("event %s failed: %v", message.ID, err)
 	metrics.EventsProcessingFailed.WithLabelValues(metrics.SafeSourceLabel(message.Fields["source"])).Inc()
 	if recordErr := w.writer.RecordFailure(ctx, message.ID, message.Fields, err); recordErr != nil {
-		log.Printf("record failure %s failed: %v", message.ID, recordErr)
+		logging.Warnf("record failure %s failed: %v", message.ID, recordErr)
 	}
 	_, _ = w.stream.XAdd(ctx, w.cfg.RedisDLQStream, w.cfg.RedisMaxLen, map[string]string{
 		"sourceStreamId": message.ID,
@@ -314,7 +315,7 @@ func (w Worker) process(ctx context.Context, message redisstream.Message) error 
 	if err != nil {
 		if errors.Is(err, hashchain.ErrDuplicateEvent) {
 			if markErr := w.writer.MarkDuplicate(ctx, canonical); markErr != nil {
-				log.Printf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
+				logging.Warnf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
 			}
 			metrics.EventsDuplicate.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
 			log.Printf("skipping duplicate external event %s", event.SourceEventID)

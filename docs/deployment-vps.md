@@ -109,9 +109,11 @@ only traces unless `OTEL_METRICS_EXPORTER` or `OTEL_LOGS_EXPORTER` asks for more
 With `NODE_ENV=production` the backend writes one JSON object per line on stdout (set
 `LOG_FORMAT=text` for plain text): `timestamp`, `severity`, `service.name`, `service.version`,
 `deployment.environment.name`, `message`, `component`, plus `trace_id`/`span_id` inside a traced
-request and `correlation_id` when the caller sent `X-Correlation-Id`. The event-ingestor does the
-same with `LOG_FORMAT=json` (its default outside development, see below). Error messages are not
-written, only their type and frames: they may carry what a caller sent.
+request and `correlation_id` when the caller sent `X-Correlation-Id`. The event-ingestor writes
+the same fields always (`LOG_FORMAT=text` for plain text), with `severity` `WARN` on a failure it
+recovers from and `ERROR` on one that stops it, plus `error.type`; its `service.version` comes
+from the image's `VERSION` build argument. In the backend, error messages are not written, only
+their type and frames: they may carry what a caller sent.
 
 ## Optional Local Blockchain
 

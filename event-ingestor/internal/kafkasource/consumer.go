@@ -16,6 +16,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"event-ingestor/internal/logging"
 	"event-ingestor/internal/telemetry"
 	"fmt"
 	"go.opentelemetry.io/otel/attribute"
@@ -152,7 +153,7 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 	if authenticated {
 		status = VerificationStatus
 	} else {
-		log.Printf("kafka source: WARNING clients are not authenticated (%s): events are recorded %q; use SASL_SSL in production",
+		logging.Warnf("kafka source: clients are not authenticated (%s): events are recorded %q; use SASL_SSL in production",
 			firstNonEmpty(cfg.Security.Protocol, "PLAINTEXT"), UnverifiedStatus)
 	}
 	// The client's own context: cancelling it aborts in-flight group requests, which bounds a
@@ -203,7 +204,7 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 			return ctx.Err()
 		}
 		fetches.EachError(func(topic string, partition int32, err error) {
-			log.Printf("kafka fetch %s[%d] failed: %v", topic, partition, err)
+			logging.Warnf("kafka fetch %s[%d] failed: %v", topic, partition, err)
 		})
 		records := fetches.Records()
 		if len(records) == 0 {
@@ -230,7 +231,7 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 		}
 		if err := client.CommitRecords(ctx, records...); err != nil {
 			// Not fatal: the records are recorded; a replay after a crash is deduplicated.
-			log.Printf("kafka source: commit of %d records failed: %v", len(records), err)
+			logging.Warnf("kafka source: commit of %d records failed: %v", len(records), err)
 		}
 		client.AllowRebalance()
 	}
@@ -347,7 +348,7 @@ func ingestedEvent(rec *kgo.Record, status string) (events.IngestedEvent, error)
 func recordFailure(ctx context.Context, writer Writer, rec *kgo.Record, cause error) error {
 	metrics.EventsProcessingFailed.WithLabelValues("kafka").Inc()
 	id := "kafka:" + rec.Topic + "/" + strconv.Itoa(int(rec.Partition)) + "@" + strconv.FormatInt(rec.Offset, 10)
-	log.Printf("event %s failed: %v", id, cause)
+	logging.Warnf("event %s failed: %v", id, cause)
 	fields := map[string]string{"payload": string(rec.Value), "kafkaTopic": rec.Topic}
 	for _, h := range rec.Headers {
 		fields[h.Key] = string(h.Value)
