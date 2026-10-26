@@ -1,410 +1,592 @@
 {
-  "version": "prudence.decision-events/v1",
-  "description": "A PDP decision -> the Kafka record Prudence publishes (`record`, exact; the same body travels to the ingestor's POST /events) -> what Ernest's event-ingestor makes of it (`ernest`). See README.md.",
-  "cases": [
-    {
-      "name": "an ALLOW, with the system's name, tier and causal ids",
-      "decisionId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
-      "context": {
-        "subject": "aos-runtime",
-        "pipeline": "credit_prescreening",
-        "aiSystemId": "sys-credit",
-        "action": "run",
-        "policyVersion": "lab",
-        "policyHash": "sha256:policy",
-        "systemVersion": "1.0.0",
-        "modelHash": "sha256:model",
-        "causationId": "trace-7f3a9c",
-        "correlationId": "case-12",
-        "systemSequence": 7,
-        "aiSystemName": "Credit scoring",
-        "riskTier": "HIGH",
-        "decisionId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90"
+  "version" : "prudence.decision-events/v1",
+  "description" : "A PDP decision -> the Kafka record Prudence publishes (`record`, exact; the same body travels to the ingestor's POST /events) -> what Ernest's event-ingestor makes of it (`ernest`). See README.md.",
+  "http" : {
+    "ingestKey" : "contract-ingest-key",
+    "description" : "decision-transport=ingestor: POST /events on Ernest's event-ingestor, with the shared ingest key (a test value here). `http` in each case is the exact request; Ernest makes of it what `ernest` says, verified as shared_secret."
+  },
+  "cases" : [ {
+    "name" : "an ALLOW, with the system's name, tier and causal ids",
+    "decisionId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+    "context" : {
+      "subject" : "aos-runtime",
+      "pipeline" : "credit_prescreening",
+      "aiSystemId" : "sys-credit",
+      "action" : "run",
+      "policyVersion" : "lab",
+      "policyHash" : "sha256:policy",
+      "systemVersion" : "1.0.0",
+      "modelHash" : "sha256:model",
+      "causationId" : "trace-7f3a9c",
+      "correlationId" : "case-12",
+      "systemSequence" : 7,
+      "aiSystemName" : "Credit scoring",
+      "riskTier" : "HIGH",
+      "decisionId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90"
+    },
+    "verdict" : "ALLOW",
+    "reason" : null,
+    "record" : {
+      "key" : "sys-credit",
+      "headers" : {
+        "source" : "prudence-pdp",
+        "eventType" : "policy.decision",
+        "sourceEventId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90"
       },
-      "verdict": "ALLOW",
-      "reason": null,
-      "record": {
-        "key": "sys-credit",
-        "headers": {
-          "source": "prudence-pdp",
-          "eventType": "policy.decision",
-          "sourceEventId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90"
+      "value" : {
+        "modelId" : "sys-credit",
+        "modelName" : "Credit scoring",
+        "aiSystem" : {
+          "id" : "sys-credit",
+          "name" : "Credit scoring",
+          "riskTier" : "HIGH",
+          "systemOfRecord" : "prudence"
         },
-        "value": {
-          "modelId": "sys-credit",
-          "modelName": "Credit scoring",
-          "aiSystem": {
-            "id": "sys-credit",
-            "name": "Credit scoring",
-            "riskTier": "HIGH",
-            "systemOfRecord": "prudence"
-          },
-          "decisionId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
-          "inferenceId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
-          "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-          "outputHash": "24096ec1ad6e916f786bf1c886dcd9ebb54987dfb9c80bcb9a8e608401b0a64f",
-          "metadata": {
-            "stage": "governance_decision",
-            "subject": "aos-runtime",
-            "pipeline": "credit_prescreening",
-            "action": "run",
-            "aiSystemId": "sys-credit",
-            "policyVersion": "lab",
-            "policyHash": "sha256:policy",
-            "systemVersion": "1.0.0",
-            "modelHash": "sha256:model",
-            "causationId": "trace-7f3a9c",
-            "correlationId": "case-12",
-            "systemSequence": 7,
-            "decision": "ALLOW"
-          }
-        }
-      },
-      "ernest": {
-        "source": "prudence-pdp",
-        "eventType": "policy.decision",
-        "canonicalType": "policy_decision",
-        "sourceEventId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
-        "evidenceEventId": "policy.decision:4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
-        "modelId": "sys-credit",
-        "modelName": "Credit scoring",
-        "inferenceId": "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
-        "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-        "outputHash": "24096ec1ad6e916f786bf1c886dcd9ebb54987dfb9c80bcb9a8e608401b0a64f",
-        "aiSystem": {
-          "id": "sys-credit",
-          "name": "Credit scoring",
-          "riskTier": "HIGH",
-          "systemOfRecord": "prudence"
-        },
-        "metadata": {
-          "stage": "governance_decision",
-          "decision": "ALLOW",
-          "aiSystemId": "sys-credit",
-          "reason": null
+        "decisionId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+        "inferenceId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "24096ec1ad6e916f786bf1c886dcd9ebb54987dfb9c80bcb9a8e608401b0a64f",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-credit",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "causationId" : "trace-7f3a9c",
+          "correlationId" : "case-12",
+          "systemSequence" : 7,
+          "decision" : "ALLOW"
         }
       }
     },
-    {
-      "name": "a DENY carries its reason",
-      "decisionId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
-      "context": {
-        "subject": "aos-runtime",
-        "pipeline": "credit_prescreening",
-        "aiSystemId": "sys-social",
-        "action": "run",
-        "policyVersion": "lab",
-        "policyHash": "sha256:policy",
-        "systemVersion": "1.0.0",
-        "modelHash": "sha256:model",
-        "causationId": null,
-        "correlationId": null,
-        "systemSequence": null,
-        "aiSystemName": "Social scoring",
-        "riskTier": "PROHIBITED",
-        "decisionId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+    "ernest" : {
+      "source" : "prudence-pdp",
+      "eventType" : "policy.decision",
+      "canonicalType" : "policy_decision",
+      "sourceEventId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+      "evidenceEventId" : "policy.decision:4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+      "modelId" : "sys-credit",
+      "modelName" : "Credit scoring",
+      "inferenceId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+      "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+      "outputHash" : "24096ec1ad6e916f786bf1c886dcd9ebb54987dfb9c80bcb9a8e608401b0a64f",
+      "aiSystem" : {
+        "id" : "sys-credit",
+        "name" : "Credit scoring",
+        "riskTier" : "HIGH",
+        "systemOfRecord" : "prudence"
       },
-      "verdict": "DENY",
-      "reason": "prohibited AI system",
-      "record": {
-        "key": "sys-social",
-        "headers": {
-          "source": "prudence-pdp",
-          "eventType": "policy.decision",
-          "sourceEventId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
-        },
-        "value": {
-          "modelId": "sys-social",
-          "modelName": "Social scoring",
-          "aiSystem": {
-            "id": "sys-social",
-            "name": "Social scoring",
-            "riskTier": "PROHIBITED",
-            "systemOfRecord": "prudence"
-          },
-          "decisionId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
-          "inferenceId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
-          "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-          "outputHash": "ca1d2c4dc14349a299445e4b12193ecedecc922d80b93394a7a21d817a016156",
-          "metadata": {
-            "stage": "governance_decision",
-            "subject": "aos-runtime",
-            "pipeline": "credit_prescreening",
-            "action": "run",
-            "aiSystemId": "sys-social",
-            "policyVersion": "lab",
-            "policyHash": "sha256:policy",
-            "systemVersion": "1.0.0",
-            "modelHash": "sha256:model",
-            "decision": "DENY",
-            "reason": "prohibited AI system"
-          }
-        }
-      },
-      "ernest": {
-        "source": "prudence-pdp",
-        "eventType": "policy.decision",
-        "canonicalType": "policy_decision",
-        "sourceEventId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
-        "evidenceEventId": "policy.decision:7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
-        "modelId": "sys-social",
-        "modelName": "Social scoring",
-        "inferenceId": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
-        "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-        "outputHash": "ca1d2c4dc14349a299445e4b12193ecedecc922d80b93394a7a21d817a016156",
-        "aiSystem": {
-          "id": "sys-social",
-          "name": "Social scoring",
-          "riskTier": "PROHIBITED",
-          "systemOfRecord": "prudence"
-        },
-        "metadata": {
-          "stage": "governance_decision",
-          "decision": "DENY",
-          "aiSystemId": "sys-social",
-          "reason": "prohibited AI system"
-        }
+      "metadata" : {
+        "stage" : "governance_decision",
+        "decision" : "ALLOW",
+        "aiSystemId" : "sys-credit",
+        "reason" : null
       }
     },
-    {
-      "name": "an APPROVAL_REQUIRED",
-      "decisionId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
-      "context": {
-        "subject": "aos-runtime",
-        "pipeline": "credit_prescreening",
-        "aiSystemId": "sys-credit",
-        "action": "run",
-        "policyVersion": "lab",
-        "policyHash": "sha256:policy",
-        "systemVersion": "1.0.0",
-        "modelHash": "sha256:model",
-        "causationId": null,
-        "correlationId": null,
-        "systemSequence": null,
-        "aiSystemName": "Credit scoring",
-        "riskTier": "HIGH",
-        "decisionId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b"
+    "http" : {
+      "method" : "POST",
+      "path" : "/events",
+      "headers" : {
+        "x-ernest-event-source" : "prudence-pdp",
+        "x-ernest-event-type" : "policy.decision",
+        "x-ernest-ingest-key" : "contract-ingest-key",
+        "x-ernest-source-event-id" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90"
       },
-      "verdict": "APPROVAL_REQUIRED",
-      "reason": "high-risk system awaiting governance approval",
-      "record": {
-        "key": "sys-credit",
-        "headers": {
-          "source": "prudence-pdp",
-          "eventType": "policy.decision",
-          "sourceEventId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b"
+      "body" : {
+        "modelId" : "sys-credit",
+        "modelName" : "Credit scoring",
+        "aiSystem" : {
+          "id" : "sys-credit",
+          "name" : "Credit scoring",
+          "riskTier" : "HIGH",
+          "systemOfRecord" : "prudence"
         },
-        "value": {
-          "modelId": "sys-credit",
-          "modelName": "Credit scoring",
-          "aiSystem": {
-            "id": "sys-credit",
-            "name": "Credit scoring",
-            "riskTier": "HIGH",
-            "systemOfRecord": "prudence"
-          },
-          "decisionId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
-          "inferenceId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
-          "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-          "outputHash": "a38534d70fc7bb06baa7296b3d6d69e147354e9d3b8b82e539e55922ea4dbff5",
-          "metadata": {
-            "stage": "governance_decision",
-            "subject": "aos-runtime",
-            "pipeline": "credit_prescreening",
-            "action": "run",
-            "aiSystemId": "sys-credit",
-            "policyVersion": "lab",
-            "policyHash": "sha256:policy",
-            "systemVersion": "1.0.0",
-            "modelHash": "sha256:model",
-            "decision": "APPROVAL_REQUIRED",
-            "reason": "high-risk system awaiting governance approval"
-          }
-        }
-      },
-      "ernest": {
-        "source": "prudence-pdp",
-        "eventType": "policy.decision",
-        "canonicalType": "policy_decision",
-        "sourceEventId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
-        "evidenceEventId": "policy.decision:0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
-        "modelId": "sys-credit",
-        "modelName": "Credit scoring",
-        "inferenceId": "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
-        "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-        "outputHash": "a38534d70fc7bb06baa7296b3d6d69e147354e9d3b8b82e539e55922ea4dbff5",
-        "aiSystem": {
-          "id": "sys-credit",
-          "name": "Credit scoring",
-          "riskTier": "HIGH",
-          "systemOfRecord": "prudence"
-        },
-        "metadata": {
-          "stage": "governance_decision",
-          "decision": "APPROVAL_REQUIRED",
-          "aiSystemId": "sys-credit",
-          "reason": "high-risk system awaiting governance approval"
-        }
-      }
-    },
-    {
-      "name": "an ERROR is evidence too",
-      "decisionId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
-      "context": {
-        "subject": "aos-runtime",
-        "pipeline": "credit_prescreening",
-        "aiSystemId": "sys-credit",
-        "action": "run",
-        "policyVersion": "lab",
-        "policyHash": "sha256:policy",
-        "systemVersion": "1.0.0",
-        "modelHash": "sha256:model",
-        "causationId": null,
-        "correlationId": null,
-        "systemSequence": null,
-        "aiSystemName": "Credit scoring",
-        "riskTier": "HIGH",
-        "decisionId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a"
-      },
-      "verdict": "ERROR",
-      "reason": "policy engine unavailable",
-      "record": {
-        "key": "sys-credit",
-        "headers": {
-          "source": "prudence-pdp",
-          "eventType": "policy.decision",
-          "sourceEventId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a"
-        },
-        "value": {
-          "modelId": "sys-credit",
-          "modelName": "Credit scoring",
-          "aiSystem": {
-            "id": "sys-credit",
-            "name": "Credit scoring",
-            "riskTier": "HIGH",
-            "systemOfRecord": "prudence"
-          },
-          "decisionId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
-          "inferenceId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
-          "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-          "outputHash": "11f41403c4ac22dac5b468be588b5fc6cdf44ee11a7c1de8823fec3cf8d74652",
-          "metadata": {
-            "stage": "governance_decision",
-            "subject": "aos-runtime",
-            "pipeline": "credit_prescreening",
-            "action": "run",
-            "aiSystemId": "sys-credit",
-            "policyVersion": "lab",
-            "policyHash": "sha256:policy",
-            "systemVersion": "1.0.0",
-            "modelHash": "sha256:model",
-            "decision": "ERROR",
-            "reason": "policy engine unavailable"
-          }
-        }
-      },
-      "ernest": {
-        "source": "prudence-pdp",
-        "eventType": "policy.decision",
-        "canonicalType": "policy_decision",
-        "sourceEventId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
-        "evidenceEventId": "policy.decision:9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
-        "modelId": "sys-credit",
-        "modelName": "Credit scoring",
-        "inferenceId": "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
-        "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-        "outputHash": "11f41403c4ac22dac5b468be588b5fc6cdf44ee11a7c1de8823fec3cf8d74652",
-        "aiSystem": {
-          "id": "sys-credit",
-          "name": "Credit scoring",
-          "riskTier": "HIGH",
-          "systemOfRecord": "prudence"
-        },
-        "metadata": {
-          "stage": "governance_decision",
-          "decision": "ERROR",
-          "aiSystemId": "sys-credit",
-          "reason": "policy engine unavailable"
-        }
-      }
-    },
-    {
-      "name": "an unregistered system: no name or tier",
-      "decisionId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-      "context": {
-        "subject": "aos-runtime",
-        "pipeline": "credit_prescreening",
-        "aiSystemId": "not-registered",
-        "action": "run",
-        "policyVersion": "lab",
-        "policyHash": "sha256:policy",
-        "systemVersion": "1.0.0",
-        "modelHash": "sha256:model",
-        "causationId": null,
-        "correlationId": null,
-        "systemSequence": null,
-        "aiSystemName": null,
-        "riskTier": null,
-        "decisionId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
-      },
-      "verdict": "DENY",
-      "reason": "unknown AI system: not-registered",
-      "record": {
-        "key": "not-registered",
-        "headers": {
-          "source": "prudence-pdp",
-          "eventType": "policy.decision",
-          "sourceEventId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
-        },
-        "value": {
-          "modelId": "not-registered",
-          "aiSystem": {
-            "id": "not-registered",
-            "systemOfRecord": "prudence"
-          },
-          "decisionId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-          "inferenceId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-          "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-          "outputHash": "93eb6b16b970efefbc832ee12443d9611275dc207719dff167a4c0e7606a6503",
-          "metadata": {
-            "stage": "governance_decision",
-            "subject": "aos-runtime",
-            "pipeline": "credit_prescreening",
-            "action": "run",
-            "aiSystemId": "not-registered",
-            "policyVersion": "lab",
-            "policyHash": "sha256:policy",
-            "systemVersion": "1.0.0",
-            "modelHash": "sha256:model",
-            "decision": "DENY",
-            "reason": "unknown AI system: not-registered"
-          }
-        }
-      },
-      "ernest": {
-        "source": "prudence-pdp",
-        "eventType": "policy.decision",
-        "canonicalType": "policy_decision",
-        "sourceEventId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-        "evidenceEventId": "policy.decision:1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-        "modelId": "not-registered",
-        "modelName": "",
-        "inferenceId": "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-        "inputHash": "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
-        "outputHash": "93eb6b16b970efefbc832ee12443d9611275dc207719dff167a4c0e7606a6503",
-        "aiSystem": {
-          "id": "not-registered",
-          "name": "",
-          "riskTier": "",
-          "systemOfRecord": "prudence"
-        },
-        "metadata": {
-          "stage": "governance_decision",
-          "decision": "DENY",
-          "aiSystemId": "not-registered",
-          "reason": "unknown AI system: not-registered"
+        "decisionId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+        "inferenceId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "24096ec1ad6e916f786bf1c886dcd9ebb54987dfb9c80bcb9a8e608401b0a64f",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-credit",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "causationId" : "trace-7f3a9c",
+          "correlationId" : "case-12",
+          "systemSequence" : 7,
+          "decision" : "ALLOW"
         }
       }
     }
-  ]
+  }, {
+    "name" : "a DENY carries its reason",
+    "decisionId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+    "context" : {
+      "subject" : "aos-runtime",
+      "pipeline" : "credit_prescreening",
+      "aiSystemId" : "sys-social",
+      "action" : "run",
+      "policyVersion" : "lab",
+      "policyHash" : "sha256:policy",
+      "systemVersion" : "1.0.0",
+      "modelHash" : "sha256:model",
+      "causationId" : null,
+      "correlationId" : null,
+      "systemSequence" : null,
+      "aiSystemName" : "Social scoring",
+      "riskTier" : "PROHIBITED",
+      "decisionId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+    },
+    "verdict" : "DENY",
+    "reason" : "prohibited AI system",
+    "record" : {
+      "key" : "sys-social",
+      "headers" : {
+        "source" : "prudence-pdp",
+        "eventType" : "policy.decision",
+        "sourceEventId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "value" : {
+        "modelId" : "sys-social",
+        "modelName" : "Social scoring",
+        "aiSystem" : {
+          "id" : "sys-social",
+          "name" : "Social scoring",
+          "riskTier" : "PROHIBITED",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "inferenceId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "ca1d2c4dc14349a299445e4b12193ecedecc922d80b93394a7a21d817a016156",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-social",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "DENY",
+          "reason" : "prohibited AI system"
+        }
+      }
+    },
+    "ernest" : {
+      "source" : "prudence-pdp",
+      "eventType" : "policy.decision",
+      "canonicalType" : "policy_decision",
+      "sourceEventId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+      "evidenceEventId" : "policy.decision:7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+      "modelId" : "sys-social",
+      "modelName" : "Social scoring",
+      "inferenceId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+      "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+      "outputHash" : "ca1d2c4dc14349a299445e4b12193ecedecc922d80b93394a7a21d817a016156",
+      "aiSystem" : {
+        "id" : "sys-social",
+        "name" : "Social scoring",
+        "riskTier" : "PROHIBITED",
+        "systemOfRecord" : "prudence"
+      },
+      "metadata" : {
+        "stage" : "governance_decision",
+        "decision" : "DENY",
+        "aiSystemId" : "sys-social",
+        "reason" : "prohibited AI system"
+      }
+    },
+    "http" : {
+      "method" : "POST",
+      "path" : "/events",
+      "headers" : {
+        "x-ernest-event-source" : "prudence-pdp",
+        "x-ernest-event-type" : "policy.decision",
+        "x-ernest-ingest-key" : "contract-ingest-key",
+        "x-ernest-source-event-id" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "body" : {
+        "modelId" : "sys-social",
+        "modelName" : "Social scoring",
+        "aiSystem" : {
+          "id" : "sys-social",
+          "name" : "Social scoring",
+          "riskTier" : "PROHIBITED",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "inferenceId" : "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "ca1d2c4dc14349a299445e4b12193ecedecc922d80b93394a7a21d817a016156",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-social",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "DENY",
+          "reason" : "prohibited AI system"
+        }
+      }
+    }
+  }, {
+    "name" : "an APPROVAL_REQUIRED",
+    "decisionId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+    "context" : {
+      "subject" : "aos-runtime",
+      "pipeline" : "credit_prescreening",
+      "aiSystemId" : "sys-credit",
+      "action" : "run",
+      "policyVersion" : "lab",
+      "policyHash" : "sha256:policy",
+      "systemVersion" : "1.0.0",
+      "modelHash" : "sha256:model",
+      "causationId" : null,
+      "correlationId" : null,
+      "systemSequence" : null,
+      "aiSystemName" : "Credit scoring",
+      "riskTier" : "HIGH",
+      "decisionId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b"
+    },
+    "verdict" : "APPROVAL_REQUIRED",
+    "reason" : "high-risk system awaiting governance approval",
+    "record" : {
+      "key" : "sys-credit",
+      "headers" : {
+        "source" : "prudence-pdp",
+        "eventType" : "policy.decision",
+        "sourceEventId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b"
+      },
+      "value" : {
+        "modelId" : "sys-credit",
+        "modelName" : "Credit scoring",
+        "aiSystem" : {
+          "id" : "sys-credit",
+          "name" : "Credit scoring",
+          "riskTier" : "HIGH",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+        "inferenceId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "a38534d70fc7bb06baa7296b3d6d69e147354e9d3b8b82e539e55922ea4dbff5",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-credit",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "APPROVAL_REQUIRED",
+          "reason" : "high-risk system awaiting governance approval"
+        }
+      }
+    },
+    "ernest" : {
+      "source" : "prudence-pdp",
+      "eventType" : "policy.decision",
+      "canonicalType" : "policy_decision",
+      "sourceEventId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+      "evidenceEventId" : "policy.decision:0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+      "modelId" : "sys-credit",
+      "modelName" : "Credit scoring",
+      "inferenceId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+      "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+      "outputHash" : "a38534d70fc7bb06baa7296b3d6d69e147354e9d3b8b82e539e55922ea4dbff5",
+      "aiSystem" : {
+        "id" : "sys-credit",
+        "name" : "Credit scoring",
+        "riskTier" : "HIGH",
+        "systemOfRecord" : "prudence"
+      },
+      "metadata" : {
+        "stage" : "governance_decision",
+        "decision" : "APPROVAL_REQUIRED",
+        "aiSystemId" : "sys-credit",
+        "reason" : "high-risk system awaiting governance approval"
+      }
+    },
+    "http" : {
+      "method" : "POST",
+      "path" : "/events",
+      "headers" : {
+        "x-ernest-event-source" : "prudence-pdp",
+        "x-ernest-event-type" : "policy.decision",
+        "x-ernest-ingest-key" : "contract-ingest-key",
+        "x-ernest-source-event-id" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b"
+      },
+      "body" : {
+        "modelId" : "sys-credit",
+        "modelName" : "Credit scoring",
+        "aiSystem" : {
+          "id" : "sys-credit",
+          "name" : "Credit scoring",
+          "riskTier" : "HIGH",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+        "inferenceId" : "0b7e3d21-55a4-4f0e-9c3b-1a2d3e4f5a6b",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "a38534d70fc7bb06baa7296b3d6d69e147354e9d3b8b82e539e55922ea4dbff5",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-credit",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "APPROVAL_REQUIRED",
+          "reason" : "high-risk system awaiting governance approval"
+        }
+      }
+    }
+  }, {
+    "name" : "an ERROR is evidence too",
+    "decisionId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+    "context" : {
+      "subject" : "aos-runtime",
+      "pipeline" : "credit_prescreening",
+      "aiSystemId" : "sys-credit",
+      "action" : "run",
+      "policyVersion" : "lab",
+      "policyHash" : "sha256:policy",
+      "systemVersion" : "1.0.0",
+      "modelHash" : "sha256:model",
+      "causationId" : null,
+      "correlationId" : null,
+      "systemSequence" : null,
+      "aiSystemName" : "Credit scoring",
+      "riskTier" : "HIGH",
+      "decisionId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a"
+    },
+    "verdict" : "ERROR",
+    "reason" : "policy engine unavailable",
+    "record" : {
+      "key" : "sys-credit",
+      "headers" : {
+        "source" : "prudence-pdp",
+        "eventType" : "policy.decision",
+        "sourceEventId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a"
+      },
+      "value" : {
+        "modelId" : "sys-credit",
+        "modelName" : "Credit scoring",
+        "aiSystem" : {
+          "id" : "sys-credit",
+          "name" : "Credit scoring",
+          "riskTier" : "HIGH",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+        "inferenceId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "11f41403c4ac22dac5b468be588b5fc6cdf44ee11a7c1de8823fec3cf8d74652",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-credit",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "ERROR",
+          "reason" : "policy engine unavailable"
+        }
+      }
+    },
+    "ernest" : {
+      "source" : "prudence-pdp",
+      "eventType" : "policy.decision",
+      "canonicalType" : "policy_decision",
+      "sourceEventId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+      "evidenceEventId" : "policy.decision:9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+      "modelId" : "sys-credit",
+      "modelName" : "Credit scoring",
+      "inferenceId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+      "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+      "outputHash" : "11f41403c4ac22dac5b468be588b5fc6cdf44ee11a7c1de8823fec3cf8d74652",
+      "aiSystem" : {
+        "id" : "sys-credit",
+        "name" : "Credit scoring",
+        "riskTier" : "HIGH",
+        "systemOfRecord" : "prudence"
+      },
+      "metadata" : {
+        "stage" : "governance_decision",
+        "decision" : "ERROR",
+        "aiSystemId" : "sys-credit",
+        "reason" : "policy engine unavailable"
+      }
+    },
+    "http" : {
+      "method" : "POST",
+      "path" : "/events",
+      "headers" : {
+        "x-ernest-event-source" : "prudence-pdp",
+        "x-ernest-event-type" : "policy.decision",
+        "x-ernest-ingest-key" : "contract-ingest-key",
+        "x-ernest-source-event-id" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a"
+      },
+      "body" : {
+        "modelId" : "sys-credit",
+        "modelName" : "Credit scoring",
+        "aiSystem" : {
+          "id" : "sys-credit",
+          "name" : "Credit scoring",
+          "riskTier" : "HIGH",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+        "inferenceId" : "9d8c7b6a-5f4e-4d3c-8b2a-1f0e9d8c7b6a",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "11f41403c4ac22dac5b468be588b5fc6cdf44ee11a7c1de8823fec3cf8d74652",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "sys-credit",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "ERROR",
+          "reason" : "policy engine unavailable"
+        }
+      }
+    }
+  }, {
+    "name" : "an unregistered system: no name or tier",
+    "decisionId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+    "context" : {
+      "subject" : "aos-runtime",
+      "pipeline" : "credit_prescreening",
+      "aiSystemId" : "not-registered",
+      "action" : "run",
+      "policyVersion" : "lab",
+      "policyHash" : "sha256:policy",
+      "systemVersion" : "1.0.0",
+      "modelHash" : "sha256:model",
+      "causationId" : null,
+      "correlationId" : null,
+      "systemSequence" : null,
+      "aiSystemName" : null,
+      "riskTier" : null,
+      "decisionId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
+    },
+    "verdict" : "DENY",
+    "reason" : "unknown AI system: not-registered",
+    "record" : {
+      "key" : "not-registered",
+      "headers" : {
+        "source" : "prudence-pdp",
+        "eventType" : "policy.decision",
+        "sourceEventId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
+      },
+      "value" : {
+        "modelId" : "not-registered",
+        "aiSystem" : {
+          "id" : "not-registered",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+        "inferenceId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "93eb6b16b970efefbc832ee12443d9611275dc207719dff167a4c0e7606a6503",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "not-registered",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "DENY",
+          "reason" : "unknown AI system: not-registered"
+        }
+      }
+    },
+    "ernest" : {
+      "source" : "prudence-pdp",
+      "eventType" : "policy.decision",
+      "canonicalType" : "policy_decision",
+      "sourceEventId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+      "evidenceEventId" : "policy.decision:1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+      "modelId" : "not-registered",
+      "modelName" : "",
+      "inferenceId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+      "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+      "outputHash" : "93eb6b16b970efefbc832ee12443d9611275dc207719dff167a4c0e7606a6503",
+      "aiSystem" : {
+        "id" : "not-registered",
+        "name" : "",
+        "riskTier" : "",
+        "systemOfRecord" : "prudence"
+      },
+      "metadata" : {
+        "stage" : "governance_decision",
+        "decision" : "DENY",
+        "aiSystemId" : "not-registered",
+        "reason" : "unknown AI system: not-registered"
+      }
+    },
+    "http" : {
+      "method" : "POST",
+      "path" : "/events",
+      "headers" : {
+        "x-ernest-event-source" : "prudence-pdp",
+        "x-ernest-event-type" : "policy.decision",
+        "x-ernest-ingest-key" : "contract-ingest-key",
+        "x-ernest-source-event-id" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
+      },
+      "body" : {
+        "modelId" : "not-registered",
+        "aiSystem" : {
+          "id" : "not-registered",
+          "systemOfRecord" : "prudence"
+        },
+        "decisionId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+        "inferenceId" : "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
+        "inputHash" : "d380385dd52048ee6e69175aedc2cd24f318a7982237e34fc4a4fda0c4c13f4b",
+        "outputHash" : "93eb6b16b970efefbc832ee12443d9611275dc207719dff167a4c0e7606a6503",
+        "metadata" : {
+          "stage" : "governance_decision",
+          "subject" : "aos-runtime",
+          "pipeline" : "credit_prescreening",
+          "action" : "run",
+          "aiSystemId" : "not-registered",
+          "policyVersion" : "lab",
+          "policyHash" : "sha256:policy",
+          "systemVersion" : "1.0.0",
+          "modelHash" : "sha256:model",
+          "decision" : "DENY",
+          "reason" : "unknown AI system: not-registered"
+        }
+      }
+    }
+  } ]
 }

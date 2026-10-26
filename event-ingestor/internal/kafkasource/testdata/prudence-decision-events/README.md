@@ -13,8 +13,8 @@ consumes it.
 
 | Side | Test |
 | --- | --- |
-| Producer: Prudence (`ErnestEvidenceAdapter`, `ErnestKafkaPublisher`) | `DecisionEventsContractTest`: every case gives exactly its `record` |
-| Consumer: Ernest's event-ingestor (`kafkasource`, `events.Normalize`) | `kafkasource/decision_events_contract_test.go`: every `record` is read as its `ernest` says |
+| Producer: Prudence (`ErnestEvidenceAdapter`, `ErnestKafkaPublisher`) | `DecisionEventsContractTest`: every case gives exactly its `record` and its `http` request |
+| Consumer: Ernest's event-ingestor (`kafkasource`, `ingest`, `events.Normalize`) | `kafkasource/decision_events_contract_test.go` and `ingest/prudence_contract_test.go`: every `record` and every `http` request is read as its `ernest` says |
 
 ## 1. The record
 
@@ -29,8 +29,11 @@ consumes it.
   decision, its reason, the policy version and digest, the system version and model hash, and
   causal ids when known).
 
-Over HTTP (`POST /events`) the same value travels, with the headers as `X-Ernest-Event-Source`,
-`X-Ernest-Event-Type` and `X-Ernest-Source-Event-Id`.
+Over HTTP (`decision-transport=ingestor`, `POST /events` on the ingestor) the same body travels,
+with the headers as `X-Ernest-Event-Source`, `X-Ernest-Event-Type` and `X-Ernest-Source-Event-Id`,
+and the shared `X-Ernest-Ingest-Key`. Each case pins that request too (`http`, header names in
+lower case, the key a test value); Ernest checks it through its HTTP handler, verified as
+`shared_secret`.
 
 Only workload identities, ids, verdicts and digests travel: no prompt, input or output.
 

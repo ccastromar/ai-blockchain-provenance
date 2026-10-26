@@ -34,6 +34,8 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
   `kafkasource/decision_events_contract_test.go` reads every decision record Prudence publishes
   (`testdata/prudence-decision-events/`, synced with SHA-256 sums) and checks the deduplication
   id, the `policy_decision` inference and its hashes, and Prudence as the system of record.
+  `ingest/prudence_contract_test.go` does the same for Prudence's `POST /events` requests
+  (decision-transport=ingestor), authenticated with the shared ingest key.
 - **Prudence's evidence contract, verified.** `backend/test/prudence-contract.test.js` boots the
   backend with batching on, as the suite deploys it (and `prudence-contract-unbatched.test.js`
   with it off), and replays what Prudence sends and reads
