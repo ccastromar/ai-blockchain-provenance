@@ -24,6 +24,10 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
   (`testdata/aos-audit-events/`, synced from AOS with SHA-256 sums) through the Kafka source and
   `events.Normalize`, and checks the deduplication id, the model, and `stage: execution` with
   the AI system for a governed pipeline's start.
+- **Prudence's decision events contract, checked in the event-ingestor.**
+  `kafkasource/decision_events_contract_test.go` reads every decision record Prudence publishes
+  (`testdata/prudence-decision-events/`, synced with SHA-256 sums) and checks the deduplication
+  id, the `policy_decision` inference and its hashes, and Prudence as the system of record.
 - **Prudence's evidence contract, verified.** `backend/test/prudence-contract.test.js` boots the
   backend with batching on, as the suite deploys it, and replays what Prudence sends and reads
   (`backend/test/contracts/prudence-evidence/`, synced from prudence-governance with SHA-256

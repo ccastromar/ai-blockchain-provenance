@@ -96,9 +96,15 @@ func TestAOSAuditEventsContract(t *testing.T) {
 	}
 }
 
-// The copy is the one synced from AOS; an edit made here fails this test.
-func TestAOSAuditEventsContractCopyIsUnmodified(t *testing.T) {
-	f, err := os.Open(filepath.Join(aosContract, "SOURCE"))
+// The copies are the ones synced from their owners; an edit made here fails this test.
+func TestContractCopiesAreUnmodified(t *testing.T) {
+	for _, dir := range []string{aosContract, prudenceDecisionContract} {
+		t.Run(dir, func(t *testing.T) { checkSyncedCopy(t, dir) })
+	}
+}
+
+func checkSyncedCopy(t *testing.T, dir string) {
+	f, err := os.Open(filepath.Join(dir, "SOURCE"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,12 +120,12 @@ func TestAOSAuditEventsContractCopyIsUnmodified(t *testing.T) {
 		if !ok {
 			t.Fatalf("bad SOURCE line %q", line)
 		}
-		data, err := os.ReadFile(filepath.Join(aosContract, name))
+		data, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if got := sha256.Sum256(data); hex.EncodeToString(got[:]) != sum {
-			t.Errorf("%s differs from the synced copy: change the contract in AOS and run its sync.sh", name)
+			t.Errorf("%s/%s differs from the synced copy: change the contract where it is owned and run its sync.sh", dir, name)
 		}
 		checked++
 	}

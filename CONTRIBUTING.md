@@ -28,6 +28,7 @@ and Rust: a change that moves one is a format change, not a refactor.
 | --- | --- | --- |
 | `backend/test/contracts/prudence-evidence/` | What Prudence sends to Ernest and reads back | Prudence (synced copy) |
 | `event-ingestor/internal/kafkasource/testdata/aos-audit-events/` | The Kafka records AOS publishes | AOS (synced copy) |
+| `event-ingestor/internal/kafkasource/testdata/prudence-decision-events/` | The Kafka records Prudence publishes for its decisions | Prudence (synced copy) |
 | `backend/src/governance/contract/` | Governance functions v1 | Prudence (synced copy) |
 
 Never edit a synced copy: tests check its SHA-256 sums. A change Ernest needs in one of them
