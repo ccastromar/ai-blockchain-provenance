@@ -31,10 +31,13 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // Server faults get the full stack. Client errors are expected traffic: one line, no
     // stack — and rate-limit rejections are not logged at all, or a client hammering a
     // throttled route writes gigabytes of identical stack traces (seen under load).
+    // The route, not the URL: a query string or a path segment may carry what was sent. A
+    // server fault is logged as its error (in JSON logs: its type and frames, not its message).
+    const route = request.route?.path || request.path;
     if (status >= 500) {
-      console.error(`GlobalExceptionFilter [${request.method} ${request.url}]:`, message, exception?.stack || exception);
+      console.error(`GlobalExceptionFilter [${request.method} ${route}]:`, exception instanceof Error ? exception : message);
     } else if (status !== HttpStatus.TOO_MANY_REQUESTS) {
-      console.warn(`GlobalExceptionFilter [${request.method} ${request.url}] ${status}: ${message}`);
+      console.warn(`GlobalExceptionFilter [${request.method} ${route}] ${status}: ${message}`);
     }
 
     response.status(status).json({

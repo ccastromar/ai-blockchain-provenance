@@ -104,6 +104,15 @@ processing of an event is a new span linked to the request or Kafka record that 
 Spans carry routes, ids and the MongoDB operation, never evidence content. The backend exports
 only traces unless `OTEL_METRICS_EXPORTER` or `OTEL_LOGS_EXPORTER` asks for more.
 
+## Logs
+
+With `NODE_ENV=production` the backend writes one JSON object per line on stdout (set
+`LOG_FORMAT=text` for plain text): `timestamp`, `severity`, `service.name`, `service.version`,
+`deployment.environment.name`, `message`, `component`, plus `trace_id`/`span_id` inside a traced
+request and `correlation_id` when the caller sent `X-Correlation-Id`. The event-ingestor does the
+same with `LOG_FORMAT=json` (its default outside development, see below). Error messages are not
+written, only their type and frames: they may carry what a caller sent.
+
 ## Optional Local Blockchain
 
 For a self-contained PoC, run Hardhat as another background service and anchor against a local `ErnestMerkleAnchor` contract instead of Sepolia:

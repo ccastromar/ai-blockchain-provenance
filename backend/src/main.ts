@@ -1,4 +1,6 @@
-// Must stay first: instrumentations patch http, express and mongodb before they are loaded.
+// Must stay first: JSON logs from the first line, then instrumentations that patch http,
+// express and mongodb before they are loaded.
+import { correlationMiddleware, jsonLogs, logger } from './logging';
 import './tracing';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -18,7 +20,11 @@ process.on('unhandledRejection', (reason: any) => {
 async function bootstrap() {
   assertProductionSecurity();
   assertRolesConsistent();
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(
+    AppModule,
+    jsonLogs() ? { logger } : {},
+  );
+  app.use(correlationMiddleware);
   // Express defaults to 100 kB JSON bodies; POST /api/inferences/batch carries up to 500
   // records (~250 kB). MAX_JSON_BODY overrides (e.g. "4mb").
   app.useBodyParser('json', { limit: process.env.MAX_JSON_BODY || '2mb' });

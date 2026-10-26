@@ -24,6 +24,11 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Added
 
+- **JSON logs in the backend** (`LOG_FORMAT`, JSON by default with `NODE_ENV=production`): one
+  object per line with the Chestertown fields (`timestamp`, `severity`, `service.*`,
+  `deployment.environment.name`, `message`, `component`), the active span's `trace_id` and
+  `span_id`, and the caller's `X-Correlation-Id` as `correlation_id`. Errors are written as their
+  type and frames, never their message, and server faults log the route instead of the URL.
 - **OpenTelemetry tracing in the backend** (`src/tracing.ts`, loaded before Nest). With
   `OTEL_EXPORTER_OTLP_ENDPOINT` set, HTTP, Express, Nest and MongoDB spans are exported over
   OTLP, continuing the caller's `traceparent`; health checks are not traced and MongoDB
