@@ -30,9 +30,11 @@ test('received evidence is counted by a bounded source and its outcome', () => {
   const seen = install();
   m.evidenceReceived('prudence-pdp', 'recorded');
   m.evidenceReceived('someone-made-this-up-123', 'duplicate');
+  m.evidenceReceived('api/sys-7f3a', 'recorded');
   assert.deepEqual(seen.counters['ernest.evidence.received'].map((c) => c.attributes), [
     { source: 'prudence-pdp', outcome: 'recorded' },
     { source: 'other', outcome: 'duplicate' },
+    { source: 'api', outcome: 'recorded' },
   ]);
 });
 

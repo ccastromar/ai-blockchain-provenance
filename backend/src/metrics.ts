@@ -24,7 +24,10 @@ export const CHAINING_BUCKETS = [0.5, 1, 2, 5, 10, 30, 60, 120, 300, 900, 3600];
 export const PROOF_BUCKETS = [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30];
 
 export function sourceLabel(source: string | undefined): string {
-  return source && KNOWN_SOURCES.has(source) ? source : 'other';
+  if (!source) return 'other';
+  // Submissions through the API are keyed api/<model>: one label, not one per model.
+  if (source.startsWith('api/')) return 'api';
+  return KNOWN_SOURCES.has(source) ? source : 'other';
 }
 
 // Created on first use: the global meter provider is set when tracing starts, and a meter
