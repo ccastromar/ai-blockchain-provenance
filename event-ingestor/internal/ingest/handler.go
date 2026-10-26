@@ -196,15 +196,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 	attachVerification(payload, verificationStatus)
 	normalizedBody := []byte(mustJSON(payload))
 
-	event := events.IngestedEvent{
-		Source:        firstNonEmpty(r.Header.Get("X-Ernest-Event-Source"), stringFrom(payload, "source"), "unknown"),
-		EventType:     firstNonEmpty(r.Header.Get("X-Ernest-Event-Type"), stringFrom(payload, "eventType"), stringFrom(payload, "type"), "unknown"),
-		SourceEventID: firstNonEmpty(r.Header.Get("X-Ernest-Source-Event-Id"), stringFrom(payload, "sourceEventId"), stringFrom(payload, "id"), hash(body)),
-		ReceivedAt:    time.Now().UTC(),
-		RawEventHash:  hash(body),
-		Payload:       payload,
-		Headers:       selectedHeaders(r),
-	}
+	event := ingestedFromRequest(r, body, payload)
 
 	id, err := h.enqueue(context.Background(), map[string]string{
 		"source":        event.Source,
@@ -226,6 +218,20 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 		"rawEventHash":       event.RawEventHash,
 		"verificationStatus": verificationStatus,
 	})
+}
+
+// ingestedFromRequest is the event a POST /events request becomes: the X-Ernest-* headers first,
+// then the body's own fields. Shared with the contract tests of the producers (AOS, Prudence).
+func ingestedFromRequest(r *http.Request, body []byte, payload map[string]any) events.IngestedEvent {
+	return events.IngestedEvent{
+		Source:        firstNonEmpty(r.Header.Get("X-Ernest-Event-Source"), stringFrom(payload, "source"), "unknown"),
+		EventType:     firstNonEmpty(r.Header.Get("X-Ernest-Event-Type"), stringFrom(payload, "eventType"), stringFrom(payload, "type"), "unknown"),
+		SourceEventID: firstNonEmpty(r.Header.Get("X-Ernest-Source-Event-Id"), stringFrom(payload, "sourceEventId"), stringFrom(payload, "id"), hash(body)),
+		ReceivedAt:    time.Now().UTC(),
+		RawEventHash:  hash(body),
+		Payload:       payload,
+		Headers:       selectedHeaders(r),
+	}
 }
 
 func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
