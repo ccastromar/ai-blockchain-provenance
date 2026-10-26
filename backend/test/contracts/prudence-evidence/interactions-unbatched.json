@@ -38,12 +38,12 @@
         "body": {
           "modelId": "prudence-reviews",
           "inferenceId": "rev-1",
-          "inputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
-          "outputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "inputHash": "84fcf9beaab5496cf068f74692ca09223f76021a80e0da1292b9a798de21e727",
+          "outputHash": "84fcf9beaab5496cf068f74692ca09223f76021a80e0da1292b9a798de21e727",
           "metadata": {
             "aiSystemId": "sys-credit",
             "action": "APPROVE",
-            "reviewer": "carol",
+            "reviewerPseudonym": "82fb758793cf309500eb75e287f2354b75b5098967b1132b1349a3600ccffb15",
             "reason": null,
             "at": "2026-10-26T08:00:00Z",
             "previousStatus": "PENDING_REVIEW",
@@ -94,12 +94,12 @@
         "body": {
           "modelId": "prudence-reviews",
           "inferenceId": "rev-2",
-          "inputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
-          "outputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "inputHash": "84fcf9beaab5496cf068f74692ca09223f76021a80e0da1292b9a798de21e727",
+          "outputHash": "84fcf9beaab5496cf068f74692ca09223f76021a80e0da1292b9a798de21e727",
           "metadata": {
             "aiSystemId": "sys-credit",
             "action": "APPROVE",
-            "reviewer": "carol",
+            "reviewerPseudonym": "82fb758793cf309500eb75e287f2354b75b5098967b1132b1349a3600ccffb15",
             "reason": null,
             "at": "2026-10-26T08:00:00Z",
             "previousStatus": "PENDING_REVIEW",

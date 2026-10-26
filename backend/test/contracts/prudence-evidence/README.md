@@ -48,6 +48,8 @@ the previous ones left.
 - A record re-sent with the same content is a duplicate (`200`); with other content, a `409`
   whose message says "already recorded with different content" (Prudence dead-letters it).
 - Registering a model twice answers `400` "already exists" (Prudence treats it as done).
+- People travel only as keyed pseudonyms (`reviewerPseudonym`; see `EvidencePseudonyms`): the
+  consumer test fails if a reviewer's name reaches a request.
 - A chained event's proof carries what Prudence verifies itself: the event's data, the RFC 6962
   inclusion path and the block. The example proof is a real one from Ernest v0.3.
 - Posture reads: `GET /api/verify`, `/api/stats/models`, `/api/models/{id}/integrity`,
