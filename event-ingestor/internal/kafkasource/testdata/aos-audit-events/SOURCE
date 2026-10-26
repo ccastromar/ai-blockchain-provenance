@@ -1,4 +1,4 @@
-# Copied from aos-agentic-orchestration-system contract/audit-events at f6e1bbd8b7b4 by sync.sh.
+# Copied from aos-agentic-orchestration-system contract/audit-events at ca72fd62d122 by sync.sh.
 # Do not edit: change the contract there and sync again. Ernest's test checks these sums.
-e2e1da669b9430b2c52f9a5fa7e44735b08024925214c7c13042e205b4db6488  README.md
-af4739cbbe09b6a7c9165f25c68f74532512ce0abddb489a53252dddb0b245e6  vectors.json
+c01256bdfc8d3a7d78b061120556de2017752a293138ddb32d4ec4e4c0d47277  README.md
+6ef1354b4d2ba192fcf26dff283e805a15e0eaafc11e4f1f13cd850daa628dc6  vectors.json
