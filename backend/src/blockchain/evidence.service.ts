@@ -14,6 +14,7 @@ import { EvidenceEvent, EvidenceEventDocument } from './models/evidence-event.sc
 import { BatcherLease, BatcherLeaseDocument } from './models/batcher-lease.schema';
 import { auditPath, canonicalEventData, leafHashOf, merkleRoot, TREE_ALG, verifyInclusion } from './merkle-rfc6962';
 import { hasRole, writesAllowed } from '../common/ernest-role';
+import { evidenceChained, evidenceReceived, timeProof } from '../metrics';
 
 /**
  * EVIDENCE_BATCHING (ADR-004 rollout; `events` when unset or unknown, so submissions are
@@ -133,10 +134,23 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
                 leafHash: leafHashOf(cleaned),
                 state: 'pending',
             });
+            evidenceReceived(key.source, 'recorded');
             return { event: created.toObject(), duplicate: false };
         } catch (err) {
             if (err?.code !== 11000) throw err;
-            return this.resolveDuplicate(cleaned, key, err);
+            return this.countedDuplicate(cleaned, key, err);
+        }
+    }
+
+    /** resolveDuplicate, counted: the same content again, or other content under the same id. */
+    private async countedDuplicate(cleaned: Record<string, any>, key: { source: string; eventId: string }, cause: unknown) {
+        try {
+            const result = await this.resolveDuplicate(cleaned, key, cause);
+            evidenceReceived(key.source, 'duplicate');
+            return result;
+        } catch (err) {
+            if (err instanceof ConflictException) evidenceReceived(key.source, 'conflict');
+            throw err;
         }
     }
 
@@ -176,10 +190,13 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
         }
         return Promise.all(docs.map(async (doc, i) => {
             const we = failed.get(i);
-            if (!we) return { event: doc, duplicate: false };
+            if (!we) {
+                evidenceReceived(doc.source, 'recorded');
+                return { event: doc, duplicate: false };
+            }
             if (we.code !== 11000) return { error: new Error(we.errmsg ?? `insert failed (code ${we.code})`) };
             try {
-                return await this.resolveDuplicate(doc.data, items[i].key, we);
+                return await this.countedDuplicate(doc.data, items[i].key, we);
             } catch (error) {
                 return { error };
             }
@@ -382,6 +399,8 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
                     update: { $set: { state: 'chained', blockIndex, leafIndex: e.leafIndex } },
                 },
             })), { ordered: false });
+            const now = Date.now();
+            for (const e of group) evidenceChained(e.createdAt, now);
         }
     }
 
@@ -419,6 +438,10 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
      * existing anchor inclusion receipt from the block to the public anchor.
      */
     async getProof(source: string, eventId: string): Promise<any | null> {
+        return timeProof('generate', () => this.buildProof(source, eventId));
+    }
+
+    private async buildProof(source: string, eventId: string): Promise<any | null> {
         const event = await this.findEvent(source, eventId);
         if (!event) return null;
 

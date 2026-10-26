@@ -101,8 +101,13 @@ unset, they record nothing. `service.name` is `ernest-backend` and `ernest-inges
 `OTEL_SERVICE_NAME` says otherwise; add `OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=production`.
 Requests continue the caller's `traceparent` (Prudence and AOS send one), and the ingestor's
 processing of an event is a new span linked to the request or Kafka record that brought it.
-Spans carry routes, ids and the MongoDB operation, never evidence content. The backend exports
-only traces unless `OTEL_METRICS_EXPORTER` or `OTEL_LOGS_EXPORTER` asks for more.
+Spans carry routes, ids and the MongoDB operation, never evidence content. The backend also
+exports metrics over OTLP (`OTEL_METRICS_EXPORTER=none` turns them off): HTTP server durations and
+`ernest.evidence.received` (`source`, `outcome`), `ernest.evidence.chaining.delay` (seconds from
+acceptance to chaining) and `ernest.proof.duration` (`operation`: generate or verify, `outcome`:
+success, invalid or failure), with buckets for the suite's service-level indicators. In
+Prometheus they are `ernest_evidence_received_total`, `ernest_evidence_chaining_delay_seconds` and
+`ernest_proof_duration_seconds`. Logs are not sent over OTLP.
 
 ## Logs
 

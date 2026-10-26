@@ -8,6 +8,7 @@ import { EmitterKeyService } from 'src/auth/emitter-key.service';
 import { SignatureEnvelope, verifyEnvelope, isQsealAlg, validateSealTrustChain } from '../common/signing.util';
 import { EvidenceService } from '../blockchain/evidence.service';
 import { ChainIndexerService } from '../blockchain/chain-indexer.service';
+import { timeProof } from '../metrics';
 
 /** Caller preference for ADR-004 submissions; undefined = the mode's default. */
 export type SubmitOptions = { wait?: boolean };
@@ -557,11 +558,13 @@ export class ApiService {
   }
 
   async verifyChain(mode?: string) {
-    if (mode === 'full') {
-      const full = await this.blockchainService.verifyChain();
-      return { ...full, mode: 'full' as const, fromIndex: 0 };
-    }
-    return await this.blockchainService.verifyChainFromCheckpoint();
+    return timeProof('verify', async () => {
+      if (mode === 'full') {
+        const full = await this.blockchainService.verifyChain();
+        return { ...full, mode: 'full' as const, fromIndex: 0 };
+      }
+      return await this.blockchainService.verifyChainFromCheckpoint();
+    }, (result: any) => result?.isValid === false);
   }
 
   async anchorMerkleRoot() {

@@ -5,8 +5,8 @@
 // Configured by the standard OTEL_* variables. Without OTEL_EXPORTER_OTLP_ENDPOINT (or
 // OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) nothing starts and nothing is recorded. When it runs,
 // requests continue the caller's trace (Prudence and AOS send `traceparent`); spans carry
-// routes and ids, never request bodies. Metrics and logs are not exported this way: Ernest
-// does not send them over OTLP unless OTEL_METRICS_EXPORTER or OTEL_LOGS_EXPORTER asks for it.
+// routes and ids, never request bodies. Metrics go the same way (HTTP server durations and
+// Ernest's domain metrics, src/metrics.ts); logs stay on stdout unless OTEL_LOGS_EXPORTER asks.
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
 import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
@@ -28,7 +28,7 @@ export function applyTracingDefaults(env: NodeJS.ProcessEnv = process.env): void
       .filter(Boolean)
       .join(',');
   }
-  env.OTEL_METRICS_EXPORTER ||= 'none';
+  env.OTEL_METRICS_EXPORTER ||= 'otlp';
   env.OTEL_LOGS_EXPORTER ||= 'none';
 }
 
