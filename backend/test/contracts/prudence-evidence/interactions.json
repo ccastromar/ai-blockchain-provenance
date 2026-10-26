@@ -1,0 +1,511 @@
+{
+  "version": "prudence.ernest-evidence/v1",
+  "provider": "Ernest",
+  "consumer": "Prudence",
+  "description": "What Prudence sends to Ernest and the fields it reads back, in the order Ernest's verification replays them (README.md).",
+  "interactions": [
+    {
+      "id": "register-reviews",
+      "consumer": "ReviewSealAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/models",
+        "body": {
+          "modelId": "prudence-reviews",
+          "modelName": "Prudence governance reviews",
+          "version": "1",
+          "mlflow": {
+            "gitCommit": "0000000",
+            "modelHash": "9426804aabd0aee7173535d495ac68325c7f65fb3159480068535abfeb3eaa87"
+          },
+          "metadata": {
+            "kind": "governance-register",
+            "systemOfRecord": "prudence"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      }
+    },
+    {
+      "id": "seal-review",
+      "consumer": "ReviewSealAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences",
+        "body": {
+          "modelId": "prudence-reviews",
+          "inferenceId": "rev-1",
+          "inputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "outputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "metadata": {
+            "aiSystemId": "sys-credit",
+            "action": "APPROVE",
+            "reviewer": "carol",
+            "reason": null,
+            "at": "2026-10-26T08:00:00Z",
+            "previousStatus": "PENDING_REVIEW",
+            "newStatus": "APPROVED",
+            "stage": "governance_review",
+            "reviewId": "rev-1"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      }
+    },
+    {
+      "id": "seal-review-again",
+      "consumer": "ReviewSealAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences",
+        "body": {
+          "modelId": "prudence-reviews",
+          "inferenceId": "rev-1",
+          "inputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "outputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "metadata": {
+            "aiSystemId": "sys-credit",
+            "action": "APPROVE",
+            "reviewer": "carol",
+            "reason": null,
+            "at": "2026-10-26T08:00:00Z",
+            "previousStatus": "PENDING_REVIEW",
+            "newStatus": "APPROVED",
+            "stage": "governance_review",
+            "reviewId": "rev-1"
+          }
+        }
+      },
+      "response": {
+        "status": 200
+      }
+    },
+    {
+      "id": "seal-review-conflict",
+      "consumer": "ReviewSealAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences",
+        "body": {
+          "modelId": "prudence-reviews",
+          "inferenceId": "rev-1",
+          "inputHash": "010e1f67f0b45bf43457a4e55ccdb968c35806a79386bc28ed07b1d1f05b3331",
+          "outputHash": "010e1f67f0b45bf43457a4e55ccdb968c35806a79386bc28ed07b1d1f05b3331",
+          "metadata": {
+            "aiSystemId": "sys-credit",
+            "action": "APPROVE",
+            "reviewer": "carol",
+            "reason": "changed",
+            "at": "2026-10-26T08:00:00Z",
+            "previousStatus": "PENDING_REVIEW",
+            "newStatus": "APPROVED",
+            "stage": "governance_review",
+            "reviewId": "rev-1"
+          }
+        }
+      },
+      "response": {
+        "status": 409,
+        "contains": "already recorded with different content"
+      }
+    },
+    {
+      "id": "register-reviews-again",
+      "consumer": "ReviewSealAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/models",
+        "body": {
+          "modelId": "prudence-reviews",
+          "modelName": "Prudence governance reviews",
+          "version": "1",
+          "mlflow": {
+            "gitCommit": "0000000",
+            "modelHash": "9426804aabd0aee7173535d495ac68325c7f65fb3159480068535abfeb3eaa87"
+          },
+          "metadata": {
+            "kind": "governance-register",
+            "systemOfRecord": "prudence"
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "contains": "already exists"
+      }
+    },
+    {
+      "id": "seal-second-review",
+      "consumer": "ReviewSealAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences",
+        "body": {
+          "modelId": "prudence-reviews",
+          "inferenceId": "rev-2",
+          "inputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "outputHash": "244550552b91f5eace65c54788cf26b46f0a673f9adc2861676c040779e6d7e4",
+          "metadata": {
+            "aiSystemId": "sys-credit",
+            "action": "APPROVE",
+            "reviewer": "carol",
+            "reason": null,
+            "at": "2026-10-26T08:00:00Z",
+            "previousStatus": "PENDING_REVIEW",
+            "newStatus": "APPROVED",
+            "stage": "governance_review",
+            "reviewId": "rev-2"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      }
+    },
+    {
+      "id": "register-decision-system",
+      "consumer": "ErnestEvidenceAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/models",
+        "body": {
+          "modelId": "sys-credit",
+          "modelName": "AI system sys-credit",
+          "version": "1",
+          "mlflow": {
+            "gitCommit": "0000000",
+            "modelHash": "67bdae1953aaddba85049e9926e8072b446162310afedb38e707d54c7b91d8f3"
+          },
+          "metadata": {
+            "source": "prudence-pdp",
+            "aiSystemId": "sys-credit"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      }
+    },
+    {
+      "id": "decisions-batch",
+      "consumer": "ErnestEvidenceAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences/batch",
+        "body": {
+          "items": [
+            {
+              "modelId": "sys-credit",
+              "inferenceId": "dec-1",
+              "inputHash": "1494169a0e62748fb53b88e702e21d3b211f5f3e2b8f93853a9281b4f0ef9759",
+              "outputHash": "24096ec1ad6e916f786bf1c886dcd9ebb54987dfb9c80bcb9a8e608401b0a64f",
+              "metadata": {
+                "stage": "governance_decision",
+                "subject": "aos",
+                "pipeline": "credit_prescreening",
+                "action": "run",
+                "aiSystemId": "sys-credit",
+                "policyVersion": "lab",
+                "policyHash": "sha256:policy",
+                "systemVersion": "1.0.0",
+                "modelHash": "sha256:model",
+                "decision": "ALLOW"
+              }
+            },
+            {
+              "modelId": "sys-credit",
+              "inferenceId": "dec-2",
+              "inputHash": "1494169a0e62748fb53b88e702e21d3b211f5f3e2b8f93853a9281b4f0ef9759",
+              "outputHash": "ca1d2c4dc14349a299445e4b12193ecedecc922d80b93394a7a21d817a016156",
+              "metadata": {
+                "stage": "governance_decision",
+                "subject": "aos",
+                "pipeline": "credit_prescreening",
+                "action": "run",
+                "aiSystemId": "sys-credit",
+                "policyVersion": "lab",
+                "policyHash": "sha256:policy",
+                "systemVersion": "1.0.0",
+                "modelHash": "sha256:model",
+                "decision": "DENY",
+                "reason": "prohibited AI system"
+              }
+            }
+          ]
+        }
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "results": [
+            {
+              "status": 202
+            },
+            {
+              "status": 202
+            }
+          ]
+        },
+        "oneOf": {
+          "results[].status": [
+            200,
+            202
+          ]
+        }
+      }
+    },
+    {
+      "id": "register-attestations",
+      "consumer": "ErnestAttestationAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/models",
+        "body": {
+          "modelId": "prudence-attestations",
+          "modelName": "Prudence attestations",
+          "version": "1",
+          "mlflow": {
+            "gitCommit": "0000000",
+            "modelHash": "f7b822fff133410f33933640342b65e40b30fb408590e8c1800fc7d0eb7190a5"
+          },
+          "metadata": {
+            "kind": "governance-register",
+            "systemOfRecord": "prudence"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      }
+    },
+    {
+      "id": "seal-attestation",
+      "consumer": "ErnestAttestationAdapter",
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences",
+        "body": {
+          "modelId": "prudence-attestations",
+          "inferenceId": "att-1",
+          "inputHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "outputHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "metadata": {
+            "overallPosture": "GREEN",
+            "stage": "attestation",
+            "attestationId": "att-1"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      }
+    },
+    {
+      "id": "attestation-proof",
+      "consumer": "ErnestAttestationAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/events/api%2Fprudence-attestations/att-1/proof"
+      },
+      "response": {
+        "status": 200,
+        "eventually": true,
+        "body": {
+          "status": "chained",
+          "event": {
+            "source": "api/prudence-attestations",
+            "eventId": "att-1",
+            "seq": 8,
+            "data": {
+              "type": "inference",
+              "modelId": "prudence-attestations",
+              "inferenceId": "att-1",
+              "inputHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "outputHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "metadata": {
+                "overallPosture": "GREEN",
+                "stage": "attestation",
+                "attestationId": "att-1"
+              },
+              "executedAt": "2026-10-26T06:45:02.676Z"
+            },
+            "leafHash": "3c250c3e9c11fbcea022efad67ef46cf623306f80d729c28301d307edfde824a"
+          },
+          "inclusion": {
+            "kind": "batch",
+            "treeAlg": "rfc6962-sha256",
+            "leafHash": "3c250c3e9c11fbcea022efad67ef46cf623306f80d729c28301d307edfde824a",
+            "leafIndex": 7,
+            "treeSize": 8,
+            "auditPath": [
+              "d9f631db92bab339f75e37960da0bf8d6999fdcb7d7ab10520af5da0040e9a17",
+              "b62b40c02a989cb251aa80528c38a2fbd124c188bda31dd6b899b89a0b0b7c82",
+              "ebd5e113547bf3a28822719e789873a08005dc4f7162be4f10d56f783f6d5511"
+            ],
+            "root": "fbcfe75d45e7e1252426d8cdaa6417fe4bec129c1df966775cbf61ef8a20176f"
+          },
+          "block": {
+            "index": 1,
+            "timestamp": 1792997102,
+            "data": {
+              "type": "batch",
+              "root": "fbcfe75d45e7e1252426d8cdaa6417fe4bec129c1df966775cbf61ef8a20176f",
+              "size": 8,
+              "firstSeq": 1,
+              "lastSeq": 8,
+              "treeAlg": "rfc6962-sha256"
+            },
+            "previousHash": "344b64ba259303df31f10b38e02142785a22728f4a0c78ba73cbdef678bce9df",
+            "hash": "3337fbccf9085435515fa63c8e7f8729957942b43fd69aa9596bc1c5918ea377"
+          }
+        },
+        "equal": [
+          "status"
+        ]
+      },
+      "note": "The example is a real proof from Ernest v0.3 (EVIDENCE_BATCHING=on): Prudence verifies its block hash and RFC 6962 audit path itself, so the example must stay verifiable."
+    },
+    {
+      "id": "verify-for-attestation",
+      "consumer": "ErnestAttestationAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/verify"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "isValid": true
+        },
+        "equal": [
+          "isValid"
+        ]
+      }
+    },
+    {
+      "id": "runtime-execution",
+      "consumer": null,
+      "request": {
+        "method": "POST",
+        "path": "/api/inferences",
+        "body": {
+          "modelId": "sys-credit",
+          "inferenceId": "exec-1",
+          "inputHash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+          "outputHash": "1e5d2c8f7e8a5b1b3c3f1c7d6e2a9b8c4d5e6f708192a3b4c5d6e7f8091a2b3c",
+          "metadata": {
+            "stage": "execution",
+            "aiSystemId": "sys-credit",
+            "pipeline": "credit_prescreening",
+            "runtime": "langgraph",
+            "decisionId": "dec-1"
+          }
+        }
+      },
+      "response": {
+        "status": [
+          201,
+          202
+        ]
+      },
+      "note": "Written by a runtime (prudence-core log_execution, AOS), not by Prudence: it gives the execution counts something to count."
+    },
+    {
+      "id": "verify-for-posture",
+      "consumer": "ErnestEvidenceHealthAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/verify"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "isValid": true,
+          "chainLength": 2
+        },
+        "equal": [
+          "isValid"
+        ]
+      }
+    },
+    {
+      "id": "evidence-counts",
+      "consumer": "ErnestEvidenceHealthAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/stats/models?ids=sys-credit,sys-unused"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "counts": {
+            "sys-credit": 2
+          }
+        }
+      }
+    },
+    {
+      "id": "system-integrity",
+      "consumer": "ErnestEvidenceHealthAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/models/sys-credit/integrity"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "isValid": true,
+          "totalBlocks": 3
+        },
+        "equal": [
+          "isValid"
+        ]
+      }
+    },
+    {
+      "id": "execution-counts",
+      "consumer": "ErnestEvidenceHealthAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/stats/executions"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "counts": {
+            "sys-credit": 1
+          },
+          "lastExecutionAt": {
+            "sys-credit": "2026-10-26T08:00:00.000Z"
+          }
+        },
+        "equal": [
+          "counts"
+        ],
+        "eventually": true
+      }
+    }
+  ]
+}
