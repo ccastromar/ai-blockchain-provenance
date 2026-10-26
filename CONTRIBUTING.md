@@ -41,6 +41,11 @@ reads fails `backend/test/prudence-contract.test.js`.
   stored record is hashed or chained.
 - No secrets, real personal data or local paths in code, fixtures or docs.
 
+## Conduct
+
+Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md); report problems to
+conduct@ccmlab.cc.
+
 ## Security
 
 Report vulnerabilities privately, as `SECURITY.md` describes, never in a public issue.
