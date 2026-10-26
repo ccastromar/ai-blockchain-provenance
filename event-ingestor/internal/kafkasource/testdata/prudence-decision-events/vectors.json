@@ -31,7 +31,8 @@
       "headers" : {
         "source" : "prudence-pdp",
         "eventType" : "policy.decision",
-        "sourceEventId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90"
+        "sourceEventId" : "4f1c2a5e-9b0d-4c67-8a21-3e5f6d7c8b90",
+        "correlationId" : "case-12"
       },
       "value" : {
         "modelId" : "sys-credit",
@@ -91,6 +92,7 @@
       "method" : "POST",
       "path" : "/events",
       "headers" : {
+        "x-correlation-id" : "case-12",
         "x-ernest-event-source" : "prudence-pdp",
         "x-ernest-event-type" : "policy.decision",
         "x-ernest-ingest-key" : "contract-ingest-key",

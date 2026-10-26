@@ -21,7 +21,9 @@ consumes it.
 - **Topic**: `prudence.ernest.kafka-topic` (the suite uses `prudence.decisions`).
 - **Key**: the AI system id, so one system's decisions stay in order on one partition.
 - **Headers**: `source` = `prudence-pdp`, `eventType` = `policy.decision`, `sourceEventId` = the
-  `decisionId` Prudence returned to the gate.
+  `decisionId` Prudence returned to the gate, and `correlationId` when the decision belongs to a
+  business flow (the caller's `correlationId`; contract/observability). Over HTTP it is
+  `X-Correlation-Id`.
 - **Value**: JSON with `modelId` (the AI system), `modelName` and `aiSystem` (`id`, `name`,
   `riskTier`, `systemOfRecord: "prudence"`; name and tier only when Prudence knows them),
   `decisionId` = `inferenceId`, `inputHash` = SHA-256 of `subject|pipeline|action`,

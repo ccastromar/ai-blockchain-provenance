@@ -1,4 +1,4 @@
-# Copied from prudence-governance contract/decision-events at 73fd0408801e by sync.sh.
+# Copied from prudence-governance contract/decision-events at 88d28b5faded by sync.sh.
 # Do not edit: change the contract there and sync again. Ernest's test checks these sums.
-0173c8d6a43241839ce64b3613afac6772ef7246e2cbb3ad032230c15e9739e6  README.md
-a686fe5308ef6d9b41581414756b86bdb9c6a80d0549a66ce7ee60f307f617bb  vectors.json
+ff87562cb93ebed9bceaa1674eddf5483cbace62c431fda9bbb2b9b33bcf1c9e  README.md
+9bcaa318f7cc784707119c4ddc894eec71509c08e198350febf6d9e516c5534d  vectors.json
