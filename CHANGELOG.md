@@ -24,6 +24,12 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Added
 
+- **OpenTelemetry tracing in the event-ingestor.** With `OTEL_EXPORTER_OTLP_ENDPOINT` set,
+  `serve` traces requests (continuing the sender's `traceparent`), and the worker and the Kafka
+  source trace their processing as new spans linked to the context each event was sent in (the
+  `traceparent` stored with the stream entry or sent as a record header by AOS and Prudence).
+  Events keep the sender's `metadata.correlationId`.
+
 - **AOS's audit events contract, checked in the event-ingestor.**
   `event-ingestor/internal/kafkasource/contract_test.go` reads every Kafka record AOS publishes
   (`testdata/aos-audit-events/`, synced from AOS with SHA-256 sums) through the Kafka source and

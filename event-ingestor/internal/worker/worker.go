@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"event-ingestor/internal/telemetry"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"log"
 	"time"
 
@@ -118,6 +121,8 @@ func (w Worker) handleMessages(ctx context.Context, messages []redisstream.Messa
 		}
 		return
 	}
+	ctx, span := startProcessing(ctx, messages...)
+	defer span.End()
 	failures := map[int]error{}
 	batch := make([]events.CanonicalEvent, 0, len(messages))
 	positions := make([]int, 0, len(messages))
@@ -219,6 +224,8 @@ func (w Worker) reclaimStale(ctx context.Context) error {
 // acknowledged, on failure it's recorded and dead-lettered before being acknowledged.
 // Shared by the main read loop and reclaimStale so both paths handle failures identically.
 func (w Worker) handleMessage(ctx context.Context, message redisstream.Message) {
+	ctx, span := startProcessing(ctx, message)
+	defer span.End()
 	if err := w.process(ctx, message); err != nil {
 		w.fail(ctx, message, err)
 	}
@@ -256,6 +263,19 @@ func (w Worker) fail(ctx context.Context, message redisstream.Message, err error
 		"error":          err.Error(),
 		"payload":        message.Fields["payload"],
 	})
+}
+
+// startProcessing is the span of one read's processing, linked to the requests that sent its
+// events (the traceparent the handler stored with each entry).
+func startProcessing(ctx context.Context, messages ...redisstream.Message) (context.Context, trace.Span) {
+	traceparents := make([]string, 0, len(messages))
+	for _, message := range messages {
+		traceparents = append(traceparents, message.Fields["traceparent"])
+	}
+	return telemetry.Tracer().Start(ctx, "ernest.events.process",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithLinks(telemetry.Links(traceparents...)...),
+		trace.WithAttributes(attribute.Int("ernest.batch.size", len(messages))))
 }
 
 // parseMessage turns a stream entry into the ingested event it carries.

@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"event-ingestor/internal/telemetry"
 	"io"
 	"net/http"
 	"strconv"
@@ -133,7 +134,13 @@ var errBacklogFull = errors.New("event backlog full")
 // removed once the worker has processed them (see Worker.trimAcknowledged). When the
 // backlog is already at RedisMaxBacklog the event is refused (503, Retry-After) rather than
 // accepted and later dropped — a sender with a retrying outbox (Prudence) just tries again.
+//
+// ctx carries the request's span: its traceparent is stored with the entry, so the worker's
+// processing links to it (it does not end the request's span or cancel the write).
 func (h Handler) enqueue(ctx context.Context, fields map[string]string) (string, error) {
+	if tp := telemetry.Traceparent(ctx); tp != "" {
+		fields["traceparent"] = tp
+	}
 	if h.cfg.RedisMaxBacklog > 0 {
 		if n, err := h.stream.XLen(ctx, h.cfg.RedisStream); err == nil && n >= h.cfg.RedisMaxBacklog {
 			return "", errBacklogFull
@@ -198,7 +205,7 @@ func (h Handler) events(w http.ResponseWriter, r *http.Request) {
 
 	event := ingestedFromRequest(r, body, payload)
 
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        event.Source,
 		"eventType":     event.EventType,
 		"sourceEventId": event.SourceEventID,
@@ -281,7 +288,7 @@ func (h Handler) cloudEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -359,7 +366,7 @@ func (h Handler) huggingFace(w http.ResponseWriter, r *http.Request) {
 	if verificationStatus == "provider_secret" {
 		attachTransportAuth(adapted.Payload, transportStatus)
 	}
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -424,7 +431,7 @@ func (h Handler) sageMaker(w http.ResponseWriter, r *http.Request) {
 
 	adapted := sagemaker.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -489,7 +496,7 @@ func (h Handler) azureML(w http.ResponseWriter, r *http.Request) {
 
 	adapted := azureml.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -554,7 +561,7 @@ func (h Handler) databricks(w http.ResponseWriter, r *http.Request) {
 
 	adapted := databricks.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -619,7 +626,7 @@ func (h Handler) vertexAI(w http.ResponseWriter, r *http.Request) {
 
 	adapted := vertexai.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -684,7 +691,7 @@ func (h Handler) openLineage(w http.ResponseWriter, r *http.Request) {
 
 	adapted := openlineage.Adapt(payload, body)
 	attachVerification(adapted.Payload, verificationStatus)
-	id, err := h.enqueue(context.Background(), map[string]string{
+	id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 		"source":        adapted.Source,
 		"eventType":     adapted.EventType,
 		"sourceEventId": adapted.SourceEventID,
@@ -756,7 +763,7 @@ func (h Handler) openTelemetryLogs(w http.ResponseWriter, r *http.Request) {
 	streamIDs := make([]string, 0, len(adaptedEvents))
 	for _, adapted := range adaptedEvents {
 		attachVerification(adapted.Payload, verificationStatus)
-		id, err := h.enqueue(context.Background(), map[string]string{
+		id, err := h.enqueue(telemetry.Detach(r.Context()), map[string]string{
 			"source":        adapted.Source,
 			"eventType":     adapted.EventType,
 			"sourceEventId": adapted.SourceEventID,

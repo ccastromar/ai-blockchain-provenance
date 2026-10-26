@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"event-ingestor/internal/telemetry"
 	"log"
 	"net/http"
 	"os"
@@ -29,6 +30,15 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	shutdownTracing, err := telemetry.Setup(ctx)
+	if err != nil {
+		log.Fatalf("opentelemetry: %v", err)
+	}
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownTracing(flushCtx)
+	}()
 
 	switch os.Args[1] {
 	case "serve":
@@ -55,7 +65,7 @@ func runServer(ctx context.Context, cfg config.Config) {
 
 	server := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           handler.Routes(),
+		Handler:           telemetry.Handler(handler.Routes()),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

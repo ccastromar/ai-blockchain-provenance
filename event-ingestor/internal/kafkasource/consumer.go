@@ -16,7 +16,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"event-ingestor/internal/telemetry"
 	"fmt"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"log"
 	"os"
 	"strconv"
@@ -234,7 +238,30 @@ func Run(ctx context.Context, cfg Config, writer Writer) error {
 
 // record stores one poll. It returns an error only for failures that may succeed on retry
 // (infrastructure); a bad record is recorded as a failure and does not stop the rest.
-func record(ctx context.Context, writer Writer, records []*kgo.Record, status string) error {
+//
+// Each attempt is a span of its own, linked to the trace contexts the records were produced
+// in (their traceparent headers): never a child of a span that ended when they were sent.
+func record(ctx context.Context, writer Writer, records []*kgo.Record, status string) (err error) {
+	traceparents := make([]string, 0, len(records))
+	for _, rec := range records {
+		for _, h := range rec.Headers {
+			if h.Key == "traceparent" {
+				traceparents = append(traceparents, string(h.Value))
+			}
+		}
+	}
+	ctx, span := telemetry.Tracer().Start(ctx, "ernest.kafka.process",
+		trace.WithSpanKind(trace.SpanKindConsumer),
+		trace.WithLinks(telemetry.Links(traceparents...)...),
+		trace.WithAttributes(attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.operation.type", "process"),
+			attribute.Int("messaging.batch.message_count", len(records))))
+	defer func() {
+		if err != nil {
+			span.SetStatus(codes.Error, "not recorded")
+		}
+		span.End()
+	}()
 	batch := make([]events.CanonicalEvent, 0, len(records))
 	positions := make([]int, 0, len(records))
 	for i, rec := range records {

@@ -408,6 +408,18 @@ when the consumer connects with SASL, `unverified` otherwise (a warning is logge
 A record that cannot be parsed goes to `event_failures` (`sourceStreamId = kafka:<topic>/<partition>@<offset>`)
 and is committed past; a MongoDB outage retries the same poll without committing.
 
+### Tracing
+
+With `OTEL_EXPORTER_OTLP_ENDPOINT` (or `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`) set, every
+`event-ingestor` command exports OpenTelemetry spans over OTLP/HTTP (`service.name`
+`ernest-ingestor` unless `OTEL_SERVICE_NAME` says otherwise). `serve` traces each request,
+continuing the sender's `traceparent`, and stores that context with the stream entry; the
+worker's processing of a read (`ernest.events.process`) and the Kafka source's processing of a
+poll (`ernest.kafka.process`, one span per attempt) are new spans **linked** to the contexts the
+events were sent in (the entry's, or the record's `traceparent` header), following the
+Chestertown observability conventions. Unset, nothing is recorded. The business correlation id
+travels in the event, as `metadata.correlationId`, and is kept with it.
+
 ## Redis-Based Ingestion Architecture
 
 Redis should be used as a buffer, not as the source of truth.
