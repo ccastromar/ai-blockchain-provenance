@@ -1,8 +1,9 @@
 # ADR-004: Merkle-Batched Evidence (one block per batch, not per event)
 
 **Status:** Proposed — all five rollout steps and the verifiers implemented behind
-`EVIDENCE_BATCHING` (default `off`); see [Implementation status](#implementation-status). The
-open questions below still gate switching it on in production.
+`EVIDENCE_BATCHING`, whose default is `events` (step 1: the idempotent event store, one block
+per event) since 2026-10-26; see [Implementation status](#implementation-status). The open
+questions below still gate switching `on` (batch blocks) in production.
 **Date:** 2026-10-13
 **Deciders:** project maintainers
 **Related:** [ADR-001](adr-001-signed-submissions.md) (emitter signatures),
@@ -142,7 +143,7 @@ RFC 6962 verification, pinned cross-language by new golden vectors (as
 
 ### 7. Rollout and compatibility
 
-Behind `EVIDENCE_BATCHING=off|on` (default `off`):
+Behind `EVIDENCE_BATCHING=off|events|on` (default `off` until 2026-10-26, `events` since):
 
 1. **Event store and idempotency first**, still writing one block per event — proves the event
    path, dedup and proofs with zero change in chain shape.
@@ -197,7 +198,11 @@ Behind `EVIDENCE_BATCHING=off|on` (default `off`):
 ## Implementation status
 
 All rollout steps are implemented, switchable with `EVIDENCE_BATCHING=off|events|on` (set the
-same value on the backend and the event-ingestor). Steps 1–2 live in the NestJS backend
+same value on the backend and the event-ingestor). The default is `events` (unset or unknown
+values read as `events`): every submission is deduplicated by `(source, eventId)` and a
+conflicting re-send is refused with `409`, with the chain's shape unchanged. `off`, the
+pre-ADR-004 path, must be asked for and does not deduplicate: a retried submission is chained
+again. Prudence's evidence contract runs against all three modes. Steps 1–2 live in the NestJS backend
 (`backend/src/blockchain/evidence.service.ts`, `merkle-rfc6962.ts`):
 
 - `events` = rollout step 1: events go through `evidence_events` (idempotent), and the batcher

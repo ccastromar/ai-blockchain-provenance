@@ -39,15 +39,13 @@ func NewMongoWriter(db *mongo.Database) MongoWriter {
 	return MongoWriter{db: db}
 }
 
-// WithEvidenceBatching switches the writer to the ADR-004 event store when mode is
-// "events" or "on" (the backend's EVIDENCE_BATCHING): AppendEvent then inserts into
-// evidence_events and returns a Block with Index -1, and the backend's leased batcher
-// chains it -- one serialized writer for the whole chain instead of one per process.
+// WithEvidenceBatching switches the writer to the ADR-004 event store unless mode is "off"
+// (the backend's EVIDENCE_BATCHING, read the same way: "events" when unset or unknown):
+// AppendEvent then inserts into evidence_events and returns a Block with Index -1, and the
+// backend's leased batcher chains it -- one serialized writer for the whole chain instead of
+// one per process.
 func (w MongoWriter) WithEvidenceBatching(mode string) MongoWriter {
-	switch strings.ToLower(strings.TrimSpace(mode)) {
-	case "events", "on":
-		w.recordEvents = true
-	}
+	w.recordEvents = strings.ToLower(strings.TrimSpace(mode)) != "off"
 	return w
 }
 

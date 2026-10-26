@@ -45,8 +45,10 @@ export function writesAllowed(): boolean {
  */
 export function assertRolesConsistent(): void {
   const roles = ernestRoles();
-  const batching = (process.env.EVIDENCE_BATCHING || 'off').toLowerCase();
-  if (roles.has('writer') && !roles.has('chainer') && batching !== 'events' && batching !== 'on') {
+  // Same reading as EvidenceService: `events` unless EVIDENCE_BATCHING says off or on.
+  const raw = (process.env.EVIDENCE_BATCHING || '').trim().toLowerCase();
+  const batching = raw === 'off' || raw === 'on' ? raw : 'events';
+  if (roles.has('writer') && !roles.has('chainer') && batching === 'off') {
     throw new Error(
       'ERNEST_ROLE=writer without chainer needs EVIDENCE_BATCHING=events|on: with batching off a ' +
         'writer appends blocks itself and would race the chainer');

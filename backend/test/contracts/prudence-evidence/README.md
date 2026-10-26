@@ -8,13 +8,14 @@ Prudence is the consumer and writes this contract; Ernest is the provider and ve
 | --- | --- |
 | `README.md` | This contract (normative) |
 | `interactions.json` | The interactions, in the order Ernest replays them, with batching on (as the suite deploys Ernest) |
-| `interactions-unbatched.json` | The same conversation with batching off (Ernest's default) |
+| `interactions-events.json` | The same conversation in Ernest's default mode, `events` (one block per event) |
+| `interactions-unbatched.json` | The same conversation with batching turned off |
 | `sync.sh` | Copies this directory into Ernest with a `SOURCE` of SHA-256 sums |
 
 | Side | Test |
 | --- | --- |
 | Consumer: Prudence's adapters (`ReviewSealAdapter`, `ErnestEvidenceAdapter`, `ErnestAttestationAdapter`, `ErnestEvidenceHealthAdapter`) | `ErnestEvidenceContractTest`: the adapters against a stub that answers each interaction with its example |
-| Provider: Ernest's backend | `backend/test/prudence-contract.test.js` (`EVIDENCE_BATCHING=on`) and `prudence-contract-unbatched.test.js` (`off`): the real application on MongoDB answers every interaction |
+| Provider: Ernest's backend | `backend/test/prudence-contract.test.js` (`EVIDENCE_BATCHING=on`), `prudence-contract-events.test.js` (`events`) and `prudence-contract-unbatched.test.js` (`off`): the real application on MongoDB answers every interaction |
 
 ## 1. Interactions
 
@@ -28,7 +29,7 @@ runtime performs), a `request` (method, raw path with its query, JSON body) and 
 | `equal` | Top-level fields whose value must be exactly the example's |
 | `oneOf` | `list[].field` → the values allowed in every element |
 | `contains` | Text the raw answer must contain, because Prudence looks for it |
-| `eventually` | Ernest may need a moment (a batch to chain): it is asked again for up to 5 s |
+| `eventually` | Ernest may need a moment (a batch to chain, its chain index to catch up): it is asked again for up to 5 s |
 
 Ernest replays the interactions in order against an empty database, so each one sees the state
 the previous ones left.
@@ -52,6 +53,11 @@ the previous ones left.
 - Posture reads: `GET /api/verify`, `/api/stats/models`, `/api/models/{id}/integrity`,
   `/api/stats/executions`.
 
+In `events`, Ernest's default, every write goes through the event store like `on` (duplicates,
+`409` conflicts) but is chained in its own block before it answers (`200`/`201` with
+`blockIndex`), and the proof's inclusion kind is `block`: Prudence checks the block hash and that
+the event's data is the block's.
+
 With batching off, writes are chained at once (`200`/`201` with `blockIndex`), there is no event
 store (`GET /api/events/…/proof` is `404`), and Prudence confirms an attestation through the
 model's provenance (`GET /api/provenances/{m}`: `chainValid`, `history[].inputHash`,
@@ -59,8 +65,8 @@ model's provenance (`GET /api/provenances/{m}`: `chainValid`, `history[].inputHa
 
 **Not guaranteed with batching off:** Ernest does not deduplicate. A record re-sent by Prudence's
 outbox is chained again as a new block, and one re-sent with other content is accepted (`200`)
-instead of refused (`409`). Run Ernest with `EVIDENCE_BATCHING=on` (or `events`) wherever
-Prudence delivers evidence to it; the unbatched interactions leave those two cases out.
+instead of refused (`409`). Do not turn batching off where Prudence delivers evidence (Ernest's
+default, `events`, deduplicates); the unbatched interactions leave those two cases out.
 
 Not covered: paging `/api/blocks` (the fallback for an Ernest older than v0.3), and qualified
 seals (QTSP). The decision transports through the event-ingestor are `contract/decision-events/`.

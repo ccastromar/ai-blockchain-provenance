@@ -2,7 +2,8 @@
 // prudence-governance contract/ernest by its sync.sh): boots the real AppModule in one batching
 // mode, replays every interaction of one file in order and checks each answer has the status and
 // the fields Prudence reads (README.md there). Prudence runs the same interactions against its
-// own adapters. Used by prudence-contract.test.js (on) and prudence-contract-unbatched.test.js.
+// own adapters. Used by prudence-contract.test.js (on), prudence-contract-events.test.js (events, the default)
+// and prudence-contract-unbatched.test.js (off).
 //
 // Requires a reachable MongoDB, like http-auth-matrix.test.js; uses a throwaway database.
 const assert = require('node:assert/strict');

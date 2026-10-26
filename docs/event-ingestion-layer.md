@@ -280,7 +280,7 @@ Implemented environment variables:
 | `RATE_LIMIT_AUTHENTICATED_RPS` | Ingestor | `5000` | Requests/sec for callers with the valid ingestor API key (one bucket per key). `<= 0` disables it. |
 | `RATE_LIMIT_AUTHENTICATED_BURST` | Ingestor | `10000` | Burst for the authenticated bucket. |
 | `METRICS_PORT` | Ingestor, writer | `9102` | Port for the dedicated Prometheus `/metrics` HTTP server. |
-| `EVIDENCE_BATCHING` | Writer | `off` | ADR-004. `events` or `on` (same value as the backend): the worker records each event in `evidence_events` (`eventId` = `<eventType>:<sourceEventId>`) for the backend's batcher instead of appending a block itself; the ingested event's status becomes `recorded` and `ernest_writer_events_recorded_total` counts them. |
+| `EVIDENCE_BATCHING` | Writer | `events` | ADR-004 (same value as the backend; unset or unknown reads as `events`). `events` or `on`: the worker records each event in `evidence_events` (`eventId` = `<eventType>:<sourceEventId>`) for the backend's batcher instead of appending a block itself; the ingested event's status becomes `recorded` and `ernest_writer_events_recorded_total` counts them. `off` appends blocks directly, without the event store's deduplication. |
 
 The frontend must not receive `EVENT_INGESTOR_API_KEY`, `HF_WEBHOOK_SECRET`, or `EVENT_PROVIDER_HMAC_SECRET`. Browser actions call the NestJS backend proxy, and the backend injects secrets server-side.
 

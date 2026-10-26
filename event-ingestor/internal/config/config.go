@@ -84,7 +84,7 @@ func Load() Config {
 		RateLimitAuthenticatedRPS:   envFloat64("RATE_LIMIT_AUTHENTICATED_RPS", 5000),
 		RateLimitAuthenticatedBurst: int(envInt64("RATE_LIMIT_AUTHENTICATED_BURST", 10000)),
 		MetricsPort:                 env("METRICS_PORT", "9102"),
-		EvidenceBatching:            env("EVIDENCE_BATCHING", "off"),
+		EvidenceBatching:            env("EVIDENCE_BATCHING", "events"),
 		KafkaBrokers:                env("KAFKA_BROKERS", "127.0.0.1:9092"),
 		KafkaTopics:                 env("KAFKA_TOPICS", "prudence.decisions"),
 		KafkaGroup:                  env("KAFKA_GROUP", "ernest-ingestor"),

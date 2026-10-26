@@ -16,9 +16,11 @@ import { auditPath, canonicalEventData, leafHashOf, merkleRoot, TREE_ALG, verify
 import { hasRole, writesAllowed } from '../common/ernest-role';
 
 /**
- * EVIDENCE_BATCHING (ADR-004 rollout):
+ * EVIDENCE_BATCHING (ADR-004 rollout; `events` when unset or unknown, so submissions are
+ * always deduplicated unless batching is turned off on purpose):
  *  - off:    every event is appended as its own block, synchronously (pre-ADR-004 behaviour).
- *  - events: rollout step 1. Events go through the event store (idempotent by
+ *            No event store: a re-sent record is chained again, a conflicting one accepted.
+ *  - events: rollout step 1 (the default). Events go through the event store (idempotent by
  *            (source, eventId)) and the batcher chains ONE BLOCK PER EVENT, with exactly the
  *            data a direct append would have stored -- the chain's shape does not change.
  *            Submissions wait for their block by default, so responses still carry it.
@@ -27,6 +29,12 @@ import { hasRole, writesAllowed } from '../common/ernest-role';
  *            Submissions answer `pending` unless the caller asks to wait.
  */
 export type EvidenceMode = 'off' | 'events' | 'on';
+
+/** EVIDENCE_BATCHING as a mode: `off` and `on` only when asked for, `events` otherwise. */
+export function evidenceBatching(): EvidenceMode {
+    const raw = (process.env.EVIDENCE_BATCHING || '').trim().toLowerCase();
+    return raw === 'off' || raw === 'on' ? raw : 'events';
+}
 
 const LEASE_ID = 'evidence';
 const LEASE_TTL_MS = 15_000;
@@ -56,8 +64,7 @@ export class EvidenceService implements OnModuleInit, OnModuleDestroy {
     ) { }
 
     mode(): EvidenceMode {
-        const raw = (process.env.EVIDENCE_BATCHING || 'off').toLowerCase();
-        return raw === 'events' || raw === 'on' ? raw : 'off';
+        return evidenceBatching();
     }
 
     enabled(): boolean {

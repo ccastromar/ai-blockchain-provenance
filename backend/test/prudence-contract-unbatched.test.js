@@ -1,4 +1,4 @@
-// Ernest's side of its contract with Prudence, with batching off (EVIDENCE_BATCHING's default):
+// Ernest's side of its contract with Prudence, with batching turned off (EVIDENCE_BATCHING=off):
 // contracts/prudence-evidence/interactions-unbatched.json. Its own file, so its own process and
 // environment.
 const test = require('node:test');

@@ -3,7 +3,7 @@
   "provider": "Ernest",
   "consumer": "Prudence",
   "mode": "EVIDENCE_BATCHING=off",
-  "description": "The same conversation with an Ernest that chains every record as it arrives (EVIDENCE_BATCHING=off, Ernest's default): blocks come back at once, there is no event store, and Prudence confirms attestations through the model's provenance. Ernest does not deduplicate in this mode, so the retry and conflict interactions are not part of it (README.md, section 3).",
+  "description": "The same conversation with an Ernest that chains every record as it arrives (EVIDENCE_BATCHING=off, set on purpose): blocks come back at once, there is no event store, and Prudence confirms attestations through the model's provenance. Ernest does not deduplicate in this mode, so the retry and conflict interactions are not part of it (README.md, section 3).",
   "interactions": [
     {
       "id": "register-reviews",
@@ -350,7 +350,8 @@
           "counts": {
             "sys-credit": 4
           }
-        }
+        },
+        "eventually": true
       }
     },
     {
@@ -368,7 +369,8 @@
         },
         "equal": [
           "isValid"
-        ]
+        ],
+        "eventually": true
       }
     },
     {
@@ -390,7 +392,8 @@
         },
         "equal": [
           "counts"
-        ]
+        ],
+        "eventually": true
       }
     }
   ]

@@ -10,6 +10,11 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Changed
 
+- **`EVIDENCE_BATCHING` defaults to `events`** (was `off`), in the backend and the event-ingestor
+  alike, and an unset or unknown value reads as `events`. Every submission now goes through the
+  event store: a retried record is a duplicate (`200`, `duplicate: true`) instead of a second
+  block, and one re-sent with other content is refused (`409`). The chain's shape does not change
+  (one block per event) and writes still answer with their block. `off` must now be asked for.
 - **License: Apache-2.0** (was MIT).
 - **Authorization by governance function** (Chestertown contract `chestertown.governance/v1`). Every caller resolves to functions through the organization's governance model (`ERNEST_GOVERNANCE_MODEL`, or the packaged default that maps `ernest-editor` and `ernest-reader`): `evidence.write` writes evidence, `platform.admin` operates Ernest (access tokens, emitter keys, manual anchors, legal holds) and any function reads. Writing evidence no longer implies operating Ernest. `whoami` reports the functions; `OIDC_ROLE_CLAIM` and `OIDC_ROLE_MAP` are no longer read. Static keys keep working: the read-write key holds both functions and the read-only key `audit`.
 - The web console is now React 19 + Vite + TypeScript in `frontend/`, built on the shared Chestertown design system (`@chestertown/design`, vendored), with the same screens, URLs and `PUBLIC_*` build variables as the SvelteKit console it replaces; `frontend-svelte/` is removed. It is a standalone npm project outside the pnpm workspace.
