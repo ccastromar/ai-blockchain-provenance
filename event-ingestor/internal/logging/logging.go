@@ -6,11 +6,14 @@
 package logging
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"strings"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Version is service.version: the release the binary was built from, set at build time
@@ -23,6 +26,30 @@ func Setup() {
 		return
 	}
 	slog.SetDefault(New(os.Stdout, os.Getenv("OTEL_SERVICE_NAME"), Version, environment()))
+}
+
+// traced adds the trace_id and span_id of the context's span to each line logged with a
+// context (InfoCtx, WarnCtx): a log line about an event's processing leads to its trace.
+type traced struct{ slog.Handler }
+
+func (h traced) Handle(ctx context.Context, r slog.Record) error {
+	if sc := trace.SpanContextFromContext(ctx); sc.IsValid() {
+		r.AddAttrs(slog.String("trace_id", sc.TraceID().String()), slog.String("span_id", sc.SpanID().String()))
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+func (h traced) WithAttrs(attrs []slog.Attr) slog.Handler { return traced{h.Handler.WithAttrs(attrs)} }
+func (h traced) WithGroup(name string) slog.Handler       { return traced{h.Handler.WithGroup(name)} }
+
+// InfoCtx logs at INFO with ctx's trace.
+func InfoCtx(ctx context.Context, format string, args ...any) {
+	slog.InfoContext(ctx, fmt.Sprintf(format, args...))
+}
+
+// WarnCtx is Warnf with ctx's trace.
+func WarnCtx(ctx context.Context, format string, args ...any) {
+	slog.WarnContext(ctx, fmt.Sprintf(format, args...), errorType(args)...)
 }
 
 // New is a logger writing the suite's JSON lines to w.
@@ -50,7 +77,7 @@ func New(w io.Writer, service, version, env string) *slog.Logger {
 			return a
 		},
 	})
-	return slog.New(handler).With(
+	return slog.New(traced{handler}).With(
 		"service.name", service,
 		"service.version", version,
 		"deployment.environment.name", env,

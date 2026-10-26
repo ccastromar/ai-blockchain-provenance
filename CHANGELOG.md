@@ -32,6 +32,8 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
   outcome (recorded, duplicate, conflict), the delay from acceptance to chaining, and the time to
   generate a proof or verify the chain (a broken chain is `invalid`). Buckets hold the thresholds
   of the suite's freshness and verifiability indicators; sources outside a fixed set are `other`.
+- **The event-ingestor's processing log lines carry their trace** (`trace_id`, `span_id`): from
+  a recorded, duplicate or failed event in Loki to its processing span in Tempo.
 - **JSON logs in the event-ingestor** (`LOG_FORMAT=text` for plain text): the same fields as
   the backend, with failures as `WARN` or `ERROR` and their `error.type`; `service.version` from
   the image's `VERSION` build argument.

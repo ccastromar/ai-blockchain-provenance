@@ -2,6 +2,7 @@ package logging
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -9,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestLinesCarryTheSuitesFields(t *testing.T) {
@@ -60,5 +63,32 @@ func TestFailuresGetTheirSeverityAndErrorType(t *testing.T) {
 	}
 	if failure["severity"] != "ERROR" || failure["error.type"] != "*errors.errorString" {
 		t.Errorf("error = %v", failure)
+	}
+}
+
+// A line logged inside an event's processing span names its trace; one without a context does not.
+func TestLinesInsideASpanCarryItsTrace(t *testing.T) {
+	var buf bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(New(&buf, "", "", "test"))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	traceID, _ := trace.TraceIDFromHex("0af7651916cd43dd8448eb211c80319c")
+	spanID, _ := trace.SpanIDFromHex("b7ad6b7169203331")
+	ctx := trace.ContextWithSpanContext(context.Background(), trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID: traceID, SpanID: spanID, TraceFlags: trace.FlagsSampled,
+	}))
+	InfoCtx(ctx, "kafka source: recorded %d events", 3)
+	Warnf("redis read failed: %v", errors.New("refused"))
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	var inside, outside map[string]any
+	_ = json.Unmarshal([]byte(lines[0]), &inside)
+	_ = json.Unmarshal([]byte(lines[1]), &outside)
+	if inside["trace_id"] != "0af7651916cd43dd8448eb211c80319c" || inside["span_id"] != "b7ad6b7169203331" || inside["message"] != "kafka source: recorded 3 events" {
+		t.Errorf("inside = %v", inside)
+	}
+	if _, ok := outside["trace_id"]; ok {
+		t.Errorf("outside = %v", outside)
 	}
 }

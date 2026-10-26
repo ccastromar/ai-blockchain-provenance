@@ -318,7 +318,7 @@ func record(ctx context.Context, writer Writer, records []*kgo.Record, status st
 			}
 		}
 	}
-	log.Printf("kafka source: recorded %d events, %d duplicates, %d failed", recorded, duplicates, failed)
+	logging.InfoCtx(ctx, "kafka source: recorded %d events, %d duplicates, %d failed", recorded, duplicates, failed)
 	return nil
 }
 
@@ -348,7 +348,7 @@ func ingestedEvent(rec *kgo.Record, status string) (events.IngestedEvent, error)
 func recordFailure(ctx context.Context, writer Writer, rec *kgo.Record, cause error) error {
 	metrics.EventsProcessingFailed.WithLabelValues("kafka").Inc()
 	id := "kafka:" + rec.Topic + "/" + strconv.Itoa(int(rec.Partition)) + "@" + strconv.FormatInt(rec.Offset, 10)
-	logging.Warnf("event %s failed: %v", id, cause)
+	logging.WarnCtx(ctx, "event %s failed: %v", id, cause)
 	fields := map[string]string{"payload": string(rec.Value), "kafkaTopic": rec.Topic}
 	for _, h := range rec.Headers {
 		fields[h.Key] = string(h.Value)

@@ -414,7 +414,8 @@ Every command writes one JSON object per line on stdout (`LOG_FORMAT=text` for p
 `timestamp`, `severity`, `service.name` (`ernest-ingestor`, or `OTEL_SERVICE_NAME`),
 `service.version` (the image's `VERSION` build argument), `deployment.environment.name` (from
 `OTEL_RESOURCE_ATTRIBUTES`) and `message`; failures are `WARN` (retried or skipped) or `ERROR`
-(the process stops) with `error.type`.
+(the process stops) with `error.type`. Lines about an event's processing (recorded, duplicate,
+failed) carry the `trace_id` and `span_id` of its processing span.
 
 ### Tracing
 

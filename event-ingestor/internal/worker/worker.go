@@ -146,7 +146,7 @@ func (w Worker) handleMessages(ctx context.Context, messages []redisstream.Messa
 		case errors.Is(err, hashchain.ErrDuplicateEvent):
 			duplicates++
 			if markErr := w.writer.MarkDuplicate(ctx, event); markErr != nil {
-				logging.Warnf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
+				logging.WarnCtx(ctx, "mark duplicate %s failed: %v", event.SourceEventID, markErr)
 			}
 			metrics.EventsDuplicate.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
 		default:
@@ -157,7 +157,7 @@ func (w Worker) handleMessages(ctx context.Context, messages []redisstream.Messa
 		w.fail(ctx, messages[i], err)
 	}
 	w.ackAll(ctx, messages)
-	log.Printf("recorded %d external events (pending chaining), %d duplicates, %d failed", recorded, duplicates, len(failures))
+	logging.InfoCtx(ctx, "recorded %d external events (pending chaining), %d duplicates, %d failed", recorded, duplicates, len(failures))
 }
 
 func (w Worker) ackAll(ctx context.Context, messages []redisstream.Message) {
@@ -254,10 +254,10 @@ func (w Worker) processRejected(ctx context.Context) error {
 
 // fail records a message that could not be processed and sends it to the DLQ.
 func (w Worker) fail(ctx context.Context, message redisstream.Message, err error) {
-	logging.Warnf("event %s failed: %v", message.ID, err)
+	logging.WarnCtx(ctx, "event %s failed: %v", message.ID, err)
 	metrics.EventsProcessingFailed.WithLabelValues(metrics.SafeSourceLabel(message.Fields["source"])).Inc()
 	if recordErr := w.writer.RecordFailure(ctx, message.ID, message.Fields, err); recordErr != nil {
-		logging.Warnf("record failure %s failed: %v", message.ID, recordErr)
+		logging.WarnCtx(ctx, "record failure %s failed: %v", message.ID, recordErr)
 	}
 	_, _ = w.stream.XAdd(ctx, w.cfg.RedisDLQStream, w.cfg.RedisMaxLen, map[string]string{
 		"sourceStreamId": message.ID,
@@ -315,20 +315,20 @@ func (w Worker) process(ctx context.Context, message redisstream.Message) error 
 	if err != nil {
 		if errors.Is(err, hashchain.ErrDuplicateEvent) {
 			if markErr := w.writer.MarkDuplicate(ctx, canonical); markErr != nil {
-				logging.Warnf("mark duplicate %s failed: %v", event.SourceEventID, markErr)
+				logging.WarnCtx(ctx, "mark duplicate %s failed: %v", event.SourceEventID, markErr)
 			}
 			metrics.EventsDuplicate.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
-			log.Printf("skipping duplicate external event %s", event.SourceEventID)
+			logging.InfoCtx(ctx, "skipping duplicate external event %s", event.SourceEventID)
 			return nil
 		}
 		return err
 	}
 	if block.Index < 0 {
 		metrics.EventsRecorded.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
-		log.Printf("recorded external event %s (pending chaining)", event.SourceEventID)
+		logging.InfoCtx(ctx, "recorded external event %s (pending chaining)", event.SourceEventID)
 		return nil
 	}
 	metrics.BlocksAppended.WithLabelValues(metrics.SafeSourceLabel(event.Source)).Inc()
-	log.Printf("appended external event %s as block %d", event.SourceEventID, block.Index)
+	logging.InfoCtx(ctx, "appended external event %s as block %d", event.SourceEventID, block.Index)
 	return nil
 }
