@@ -9,7 +9,7 @@ This guide targets a small single-node demo server, for example 2 GB RAM and 50 
 - Host ports bound to `127.0.0.1`.
 - pnpm workspace lockfile for reproducible JavaScript container builds.
 - Caddy or Nginx terminates HTTPS and proxies public traffic to the local frontend/backend ports.
-- `ERNEST_API_KEY` enabled for all public demos.
+- `ERNEST_API_KEY`, `ERNEST_READ_API_KEY` and OIDC set: the backend refuses to start in production without them.
 
 ## Minimum Server Setup
 
@@ -30,13 +30,23 @@ chmod 600 .env
 Set at least:
 
 ```bash
-ERNEST_API_KEY=<long-random-secret>
+ERNEST_API_KEY=<long-random-secret>        # writes
+ERNEST_READ_API_KEY=<another-long-secret>  # reads; must differ from the write key
+OIDC_ISSUER=https://sso.example.com/realms/<realm>
+OIDC_AUDIENCE=<ernest-client-id>
 CORS_ORIGIN=https://ernest.example.com
 PUBLIC_API_URL=https://ernest.example.com
-PUBLIC_ERNEST_API_KEY=<same-key-only-for-browser-demo>
 ```
 
-For a browser-only demo, `PUBLIC_ERNEST_API_KEY` lets the frontend call protected write endpoints. It is public in the JavaScript bundle, so treat it as a demo convenience only. The React frontend is a static image, so rebuild the frontend container after changing any `PUBLIC_*` value.
+With `NODE_ENV=production` (the image's default) the backend **refuses to start** without both
+keys, different from each other, and the OIDC issuer and audience: without them it would accept
+evidence from anyone. People sign in to the console with OIDC.
+
+Never put the write key in `PUBLIC_ERNEST_API_KEY`: every `PUBLIC_*` value is compiled into the
+JavaScript bundle that browsers download. For a throw-away public demo without sign-in, set
+`ERNEST_OPEN_ACCESS=true` instead and accept that anyone can read and write that demo's evidence;
+the backend logs it on every start. The React frontend is a static image, so rebuild the frontend
+container after changing any `PUBLIC_*` value.
 
 Generate a long API key with a local password manager or with:
 

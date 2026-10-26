@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/global.exception.filter';
 import { assertRolesConsistent, ernestRoles } from './common/ernest-role';
+import { assertProductionSecurity } from './common/production-security';
 
 // Last line of defence: a failure in background work (anchoring, RPC polling, webhooks)
 // must never take the evidence service down. Log it loudly and keep serving.
@@ -13,6 +14,7 @@ process.on('unhandledRejection', (reason: any) => {
 });
 
 async function bootstrap() {
+  assertProductionSecurity();
   assertRolesConsistent();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   // Express defaults to 100 kB JSON bodies; POST /api/inferences/batch carries up to 500
@@ -68,4 +70,9 @@ async function bootstrap() {
   console.log(`Chain stats: http://localhost:${port}/api/stats`);
 }
 
-bootstrap();
+// A failed start (a production check, ERNEST_ROLE, the module) must end the process: the
+// unhandledRejection handler above would otherwise keep it alive, up but not listening.
+bootstrap().catch((err: any) => {
+  console.error('Ernest did not start:', err?.message || err);
+  process.exit(1);
+});

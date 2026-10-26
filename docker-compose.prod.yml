@@ -43,6 +43,12 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
       - ERNEST_API_KEY=${ERNEST_API_KEY:-}
       - ERNEST_READ_API_KEY=${ERNEST_READ_API_KEY:-}
+      # People sign in with OIDC; with NODE_ENV=production Ernest refuses to start without both
+      # keys (different) and the issuer and audience.
+      - OIDC_ISSUER=${OIDC_ISSUER:-}
+      - OIDC_AUDIENCE=${OIDC_AUDIENCE:-}
+      - OIDC_ROLE_CLAIM=${OIDC_ROLE_CLAIM:-roles}
+      - OIDC_ROLE_MAP=${OIDC_ROLE_MAP:-}
       - INFURA_URL=${INFURA_URL:-}
       - PRIVATE_KEY=${PRIVATE_KEY:-}
       - CONTRACT_ADDRESS=${CONTRACT_ADDRESS:-}

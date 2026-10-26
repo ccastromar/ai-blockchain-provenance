@@ -56,6 +56,15 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Fixed
 
+- **Ernest no longer starts open in production.** Without `ERNEST_API_KEY`, `ERNEST_READ_API_KEY`
+  and OIDC, Ernest ran with open access (anyone could read and write evidence) even with
+  `NODE_ENV=production`. It now refuses to start unless both keys are set and differ and
+  `OIDC_ISSUER` and `OIDC_AUDIENCE` are set; `ERNEST_OPEN_ACCESS=true` is the explicit, logged way
+  out for local demo stacks (the local `docker-compose.yml` sets it). `docker-compose.prod.yml`
+  passes the OIDC settings through.
+- **A failed start ends the process.** The `unhandledRejection` handler kept the backend alive,
+  up but not listening, when a start check (`ERNEST_ROLE`, the production checks) or the module
+  failed; it now exits with status 1.
 - **`GET /api/stats/executions` answered 500 with batching off** as soon as an execution block had
   no `occurredAt` (prudence-core's executions): the fallback converted the block's Unix-seconds
   `timestamp` with `$toDate`, which refuses a 32-bit int. It now converts seconds to milliseconds

@@ -68,6 +68,9 @@ services:
       - PORT=3001
       - MONGODB_URI=mongodb://mongodb:27017/ernest
       - NODE_ENV=production
+      # A local demo stack: without keys Ernest runs with open access, which production refuses.
+      # Set the keys and OIDC below and remove this line to try the production checks.
+      - ERNEST_OPEN_ACCESS=${ERNEST_OPEN_ACCESS:-true}
       - CORS_ORIGIN=${CORS_ORIGIN:-http://127.0.0.1:3000}
       - ERNEST_API_KEY=${ERNEST_API_KEY:-}
       - ERNEST_READ_API_KEY=${ERNEST_READ_API_KEY:-}
