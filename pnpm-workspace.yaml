@@ -14,6 +14,7 @@ allowBuilds:
   '@scarf/scarf': false
   esbuild: true
   keccak: true
+  protobufjs: false
 
 overrides:
   multer: 2.5.0

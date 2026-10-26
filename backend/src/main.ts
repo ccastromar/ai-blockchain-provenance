@@ -1,3 +1,5 @@
+// Must stay first: instrumentations patch http, express and mongodb before they are loaded.
+import './tracing';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';

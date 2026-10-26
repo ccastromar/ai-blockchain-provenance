@@ -24,6 +24,10 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Added
 
+- **OpenTelemetry tracing in the backend** (`src/tracing.ts`, loaded before Nest). With
+  `OTEL_EXPORTER_OTLP_ENDPOINT` set, HTTP, Express, Nest and MongoDB spans are exported over
+  OTLP, continuing the caller's `traceparent`; health checks are not traced and MongoDB
+  statements are not recorded. Off without an endpoint.
 - **OpenTelemetry tracing in the event-ingestor.** With `OTEL_EXPORTER_OTLP_ENDPOINT` set,
   `serve` traces requests (continuing the sender's `traceparent`), and the worker and the Kafka
   source trace their processing as new spans linked to the context each event was sent in (the

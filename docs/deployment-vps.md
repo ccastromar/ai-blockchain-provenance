@@ -93,6 +93,17 @@ ERNEST_API_ORIGIN=https://ernest.example.com ./scripts/deploy-check.sh
 
 If `ERNEST_API_KEY` is exported in the shell, the check also registers a short-lived test model.
 
+## Tracing (optional)
+
+The backend and the event-ingestor export OpenTelemetry traces when
+`OTEL_EXPORTER_OTLP_ENDPOINT` points at a collector (OTLP over HTTP, `http://otel-collector:4318`);
+unset, they record nothing. `service.name` is `ernest-backend` and `ernest-ingestor` unless
+`OTEL_SERVICE_NAME` says otherwise; add `OTEL_RESOURCE_ATTRIBUTES=deployment.environment.name=production`.
+Requests continue the caller's `traceparent` (Prudence and AOS send one), and the ingestor's
+processing of an event is a new span linked to the request or Kafka record that brought it.
+Spans carry routes, ids and the MongoDB operation, never evidence content. The backend exports
+only traces unless `OTEL_METRICS_EXPORTER` or `OTEL_LOGS_EXPORTER` asks for more.
+
 ## Optional Local Blockchain
 
 For a self-contained PoC, run Hardhat as another background service and anchor against a local `ErnestMerkleAnchor` contract instead of Sepolia:
