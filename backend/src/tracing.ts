@@ -47,8 +47,20 @@ function startTracing(): void {
     ],
   });
   sdk.start();
-  const shutdown = () => {
-    sdk.shutdown().catch((err) => console.error('OpenTelemetry shutdown failed:', err?.message || err));
+  // A signal listener replaces Node's default exit: flush what is buffered, then let the signal
+  // end the process as it would have (the listener is gone by then), bounded so a collector
+  // that does not answer never holds a stop.
+  const shutdown = (signal: NodeJS.Signals) => {
+    const exit = () => process.kill(process.pid, signal);
+    const timer = setTimeout(exit, 3000);
+    timer.unref();
+    sdk
+      .shutdown()
+      .catch((err) => console.error('OpenTelemetry shutdown failed:', err?.message || err))
+      .finally(() => {
+        clearTimeout(timer);
+        exit();
+      });
   };
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);

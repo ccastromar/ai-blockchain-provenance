@@ -24,6 +24,8 @@ Ernest 0.3.0 ships in Chestertown 0.1.0, with AOS (orchestrate) and Prudence (go
 
 ### Added
 
+- **The backend stops on SIGTERM again with tracing on.** The tracing shutdown listener replaced
+  Node's default exit, so a stop waited for SIGKILL; it now flushes (at most 3 s) and exits.
 - **Domain metrics in the backend**, over OTLP with the traces: evidence received by source and
   outcome (recorded, duplicate, conflict), the delay from acceptance to chaining, and the time to
   generate a proof or verify the chain (a broken chain is `invalid`). Buckets hold the thresholds
