@@ -14,9 +14,9 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
-    # Real MongoDB for the HTTP auth-matrix integration suite (test/http-auth-matrix.test.js);
-    # the suite skips itself with a warning when no Mongo is reachable, so local runs
-    # without the docker stack still pass — CI always exercises it.
+    # Real MongoDB for the HTTP suites (test/http-auth-matrix.test.js, test/prudence-contract*.test.js);
+    # they skip themselves when no Mongo is reachable, so local runs without the docker stack
+    # still pass — CI requires it (HTTP_TEST_REQUIRE_MONGO).
     services:
       mongodb:
         image: mongo:7
@@ -44,7 +44,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # The HTTP suites (auth matrix, Prudence's evidence contract in its three modes) need the
+      # MongoDB service: here its absence fails them instead of skipping them.
       - name: Run integrity tests
+        env:
+          HTTP_TEST_REQUIRE_MONGO: "1"
         run: pnpm --filter ernest-backend test:integrity
 
       # Fails on any high or critical advisory in production dependencies (backend workspace and

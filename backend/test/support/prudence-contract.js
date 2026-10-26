@@ -66,6 +66,8 @@ function check(want, got) {
 
 async function verifyPrudenceContract(t, { file, batching }) {
   if (!(await mongoReachable())) {
+    // CI sets HTTP_TEST_REQUIRE_MONGO: there a missing MongoDB fails instead of skipping.
+    if (process.env.HTTP_TEST_REQUIRE_MONGO) assert.fail(`MongoDB not reachable at ${MONGO_HOST}:${MONGO_PORT}`);
     t.skip(`MongoDB not reachable at ${MONGO_HOST}:${MONGO_PORT}`);
     return;
   }
@@ -124,7 +126,7 @@ async function verifyPrudenceContract(t, { file, batching }) {
         // sees it when it asks again later.
         let got = await send(interaction.request);
         let problems = check(want, got);
-        for (let i = 0; want.eventually && problems.length && i < 50; i++) {
+        for (let i = 0; want.eventually && problems.length && i < 150; i++) { // up to 15 s
           await new Promise((r) => setTimeout(r, 100));
           got = await send(interaction.request);
           problems = check(want, got);

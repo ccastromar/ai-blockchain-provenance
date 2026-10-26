@@ -39,6 +39,8 @@ const MODEL_PAYLOAD = {
 
 test('HTTP auth matrix against the real application', async (t) => {
   if (!(await mongoReachable())) {
+    // CI sets HTTP_TEST_REQUIRE_MONGO: there a missing MongoDB fails instead of skipping.
+    if (process.env.HTTP_TEST_REQUIRE_MONGO) assert.fail(`MongoDB not reachable at ${MONGO_HOST}:${MONGO_PORT}`);
     t.skip(`MongoDB not reachable at ${MONGO_HOST}:${MONGO_PORT} — start the docker stack to run the HTTP matrix`);
     return;
   }
