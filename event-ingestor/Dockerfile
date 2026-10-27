@@ -8,7 +8,7 @@ COPY event-ingestor/ ./
 ARG VERSION=dev
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X event-ingestor/internal/logging.Version=${VERSION}" -o /out/event-ingestor ./cmd/event-ingestor
 
-FROM alpine:3.22
+FROM alpine:3.24
 RUN adduser -D -H ernest
 USER ernest
 COPY --from=builder /out/event-ingestor /usr/local/bin/event-ingestor
