@@ -6,6 +6,8 @@ useDefault = true
 [[allowlists]]
 description = "Known non-secrets"
 paths = [
+  # AOS's audit-events vectors (synced copy): sentinel strings, not secrets
+  '''^event-ingestor/internal/kafkasource/testdata/aos-audit-events/vectors\.json$''',
   # the test-only key that signs the qualified-seal golden vector
   '''^scripts/generate-qualified-seal-vector\.cjs$''',
   # the test-only seed of the signed-submission golden vector
