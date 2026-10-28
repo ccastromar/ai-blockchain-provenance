@@ -40,13 +40,13 @@ flowchart TD
   GitHub --> CI["GitHub Actions CI"]
   GitHub --> Publish["Publish Images workflow"]
   Publish --> GHCR["GitHub Container Registry"]
-  GHCR --> VPS["VPS Docker Compose"]
-  VPS --> Proxy["Caddy or Nginx HTTPS"]
+  GHCR --> Host["Docker Compose host"]
+  Host --> Proxy["Caddy or Nginx HTTPS"]
   Proxy --> Browser["Browser dashboard"]
   Proxy --> APIClient["API clients"]
-  VPS --> Mongo["MongoDB volume"]
-  VPS --> LocalChain["Optional local Hardhat chain"]
-  VPS --> Sepolia["Optional Sepolia anchoring"]
+  Host --> Mongo["MongoDB volume"]
+  Host --> LocalChain["Optional local Hardhat chain"]
+  Host --> Sepolia["Optional Sepolia anchoring"]
 ```
 
 The repository supports two deployment modes:
@@ -147,11 +147,6 @@ These are useful for demos and experiments, but the core stack is backend, front
 | Static React frontend | Small deployable dashboard image | Runtime API URL changes should use same-origin proxying |
 | Key/token access control (read-write, read-only, revocable auditor tokens) | Scoped, revocable access without new infrastructure | No per-client identity; enterprise SSO/OIDC still needed on top |
 
-## Incubation Roadmap
+## Roadmap
 
-1. Layer per-client enterprise identity (OIDC/SSO) on top of the built-in role and token model.
-2. Add signed client submissions so Ernest can verify which system produced each hash.
-3. Add stronger append serialization for higher write throughput.
-4. Integrate with a real model registry and one production-like inference event source.
-5. Add operational metrics, audit logs for write attempts, and backup validation.
-6. Package evidence exports for compliance or model-risk review workflows.
+See [ROADMAP.md](../ROADMAP.md).

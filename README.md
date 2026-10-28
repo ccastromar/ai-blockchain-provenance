@@ -14,7 +14,7 @@ Ernest is an alpha proof-of-concept for that layer. It stores hashes and metadat
 
 In short: **Ernest is an evidence layer for AI governance, not a replacement for your ML platform.**
 
-## Incubator Pitch
+## What Ernest does
 
 Ernest is aimed at organizations evaluating how to make AI systems more auditable without moving raw model artifacts, prompts, inputs, or outputs into a new central platform. It provides a narrow provenance layer that can sit beside MLflow, model registries, internal AI platforms, business applications, and governance workflows.
 
@@ -26,9 +26,7 @@ The current alpha demonstrates:
 - Optional proof of existence through local Hardhat or Sepolia anchoring.
 - MLflow-to-Ernest demo flow for train-to-audit evidence.
 - Audit Readiness review for score, missing evidence, and exportable evidence packets.
-- A deployable dashboard/API stack suitable for a public PoC or internal pilot.
-
-For an incubation program, the next engineering milestones are enterprise identity, signed client submissions, stronger append serialization, and integrations with real model registries or application event streams.
+- A dashboard and API stack suitable for a public PoC or a pilot.
 
 ## Example Use Case
 
@@ -51,7 +49,7 @@ MLflow can help with experiment tracking and model registry workflows. Applicati
 - Internal AI platform teams building shared auditability infrastructure.
 - Banks, insurers, healthcare, pharma, energy, and other regulated-domain teams.
 - Security or architecture teams reviewing tamper-evident AI evidence patterns.
-- Incubators or research teams exploring verifiable AI lifecycle controls.
+- Research teams exploring verifiable AI lifecycle controls.
 
 ## Regulatory Fit
 
@@ -128,7 +126,7 @@ flowchart LR
   Hashchain --> Review
 ```
 
-More detail: [docs/architecture.md](docs/architecture.md). Cold-start demo in 10 minutes: [DEMO.md](DEMO.md).
+More detail: [docs/architecture.md](docs/architecture.md).
 
 ## Why Blockchain?
 
@@ -246,9 +244,7 @@ curl -X POST http://localhost:3001/api/anchors \
   -H "X-Ernest-Api-Key: <key-if-configured>"
 ```
 
-For a small public VPS deployment, see [docs/deployment-vps.md](docs/deployment-vps.md).
 For a fast evaluator path, see [docs/quick-eval.md](docs/quick-eval.md).
-For a company-facing summary, see [docs/incubation-brief.md](docs/incubation-brief.md).
 For the documentation map, see [docs/index.md](docs/index.md).
 
 ## Local Development
@@ -435,9 +431,7 @@ bash -n scripts/smoke.sh scripts/deploy-check.sh setup.sh
 ./scripts/deploy-check.sh
 ```
 
-Release checklist: [docs/release-checklist.md](docs/release-checklist.md).
 Dependency risk policy: [docs/dependency-risk.md](docs/dependency-risk.md).
-Backup and recovery: [docs/backup-recovery.md](docs/backup-recovery.md).
 Threat model — what Ernest detects vs. cannot prevent: [docs/threat-model.md](docs/threat-model.md).
 
 ## Roadmap
@@ -455,11 +449,7 @@ is not more code — it is one or two regulated design partners and a real pilot
 
 This is an alpha PoC. Issues and pull requests are welcome.
 
-Before proposing a release, check:
-
-- [CHANGELOG.md](CHANGELOG.md)
-- [docs/release-checklist.md](docs/release-checklist.md)
-- [SECURITY.md](SECURITY.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md) and [SECURITY.md](SECURITY.md).
 
 ## License
 

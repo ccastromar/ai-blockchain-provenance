@@ -1,49 +1,40 @@
 # Documentation Map
 
-Use this map when presenting Ernest to evaluators, incubator reviewers, or technical stakeholders.
-
 ## Start Here
 
 - `README.md`: project overview, quickstart, components, verification, and roadmap.
 - `docs/quick-eval.md`: 10-minute evaluator path.
-- `docs/incubation-brief.md`: company-facing summary for an IT incubator or internal sponsor.
-- `docs/presentation-deck.md`: 6-8 slide structure for company presentation.
-- `DEMO.md` (repo root): cold-start guide — zero to the offline-receipt demo in 10 minutes.
-- `docs/demo-script.md`: 5-minute presentation flow and talk track.
+- `docs/architecture.md`: system design, trust boundaries and trade-offs.
 - `docs/maturity-model.md`: alpha-to-enterprise maturity path.
-- `docs/threat-model.md`: alpha threat model and enterprise security gaps.
-- `docs/adr-001-signed-submissions.md`: accepted-pending design for per-emitter Ed25519 signed submissions.
-- `docs/adr-002-oidc-and-qtsp.md`: proposed design for enterprise identity (OIDC) and qualified eIDAS trust services (QTSP timestamp + seal).
-- `docs/adr-003-data-lifecycle.md`: proposed design for retention, legal hold, and GDPR erasure (crypto-shredding) on an append-only chain.
 - `docs/regulatory-mapping.md`: EU AI Act / ISO 42001 / NIST AI RMF record-keeping obligations mapped to Ernest evidence.
-- `docs/architecture.md`: system design, deployment view, trust boundaries, trade-offs, and roadmap.
+
+## Security
+
 - `docs/security-model.md`: guarantees, non-goals, trust assumptions, and hardening backlog.
+- `docs/threat-model.md`: what Ernest detects and what it cannot prevent.
+- `SECURITY.md`: vulnerability reporting and security expectations.
+- `docs/dependency-risk.md`: dependency audit policy and accepted alpha risks.
 
-## Build And Operate
+## Design Decisions
 
-- `docs/deployment-vps.md`: single-node Docker Compose deployment on a small VPS.
-- `docker-compose.yml`: local build-oriented stack.
-- `docker-compose.prod.yml`: GHCR image-based deployment stack.
-- `.github/workflows/ci.yml`: test/build CI.
-- `.github/workflows/docker-smoke.yml`: manual Docker Compose smoke test.
-- `.github/workflows/publish-images.yml`: GHCR image publication.
+- `docs/adr-001-signed-submissions.md`: per-emitter Ed25519 signed submissions.
+- `docs/adr-002-oidc-and-qtsp.md`: enterprise identity (OIDC) and qualified eIDAS trust services.
+- `docs/adr-003-data-lifecycle.md`: retention, legal hold and GDPR erasure on an append-only chain.
+- `docs/adr-004-merkle-batched-evidence.md`: one block per batch, every event still provable.
+- `docs/adr-005-kafka-ingestion.md`: Kafka as the transport for high-volume evidence.
+- `docs/adr-006-chain-derived-read-models.md`: read models derived from the chain.
 
 ## Integrate
 
 - `docs/api.md`: API reference and request examples.
+- `docs/event-ingestion-layer.md`: the event-ingestor (HTTP, Redis Streams, Kafka).
 - `docs/integrations.md`: current and planned AI tooling integrations.
-- `docs/connectors-real-integration.md`: turning simulated provider connectors into real ones (push/webhook vs pull/poller patterns, per provider).
+- `docs/connectors-real-integration.md`: turning simulated provider connectors into real ones.
 - `cli-ernest/README.md`: CLI-oriented verification and querying.
 - `integrations/mlflow/`: MLflow-to-Ernest registration adapter.
 - `ai-sandbox/`: sample AI workflow that registers demo model events.
 - `agentic-auditor/`: optional auditor assistant integration.
 
-## Release And Risk
+## Releases
 
 - `CHANGELOG.md`: release history.
-- `docs/releases/v0.2.0-alpha.md`: current alpha release notes.
-- `docs/releases/v0.1.0-alpha.md`: first alpha release notes.
-- `docs/release-checklist.md`: pre-release checklist.
-- `docs/release-assets.md`: release asset checklist.
-- `docs/dependency-risk.md`: dependency audit policy and accepted alpha risks.
-- `SECURITY.md`: vulnerability reporting and security expectations.

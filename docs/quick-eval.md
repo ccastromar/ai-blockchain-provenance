@@ -10,7 +10,6 @@ It is useful for:
 
 - AI auditability demos.
 - Internal model governance evaluations.
-- Incubator review of provenance and evidence patterns.
 - Synthetic-data pilots.
 
 It is not yet:
@@ -46,7 +45,6 @@ docker compose -f docker-compose.prod.yml up -d
 ## What To Inspect
 
 - `README.md`: overview and quickstart.
-- `docs/incubation-brief.md`: business-facing evaluation summary.
 - `docs/architecture.md`: system and deployment architecture.
 - `docs/threat-model.md`: security gaps and mitigations.
 - `docs/maturity-model.md`: alpha-to-enterprise path.

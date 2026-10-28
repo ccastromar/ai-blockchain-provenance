@@ -292,6 +292,6 @@ export function buildWebLlmPrompt(_model: any, report: LocalAuditReport): string
     '',
     report.evidencePacket,
     '',
-    'Return four sections: Executive readout, Key risks, Recommended next steps, Incubator demo angle.'
+    'Return four sections: Executive readout, Key risks, Recommended next steps, Demo angle.'
   ].join('\n');
 }

@@ -38,7 +38,7 @@ flowchart LR
   API --> Mongo["Private MongoDB"]
   Writer --> Mongo
   API --> Chain["Public EVM RPC (anchoring)"]
-  GitHub["GitHub Actions"] --> GHCR["GHCR images"] --> VPS["VPS runtime"]
+  GitHub["GitHub Actions"] --> GHCR["GHCR images"] --> Host["Docker Compose host"]
 ```
 
 | Actor | Access | Trusted with |
@@ -76,7 +76,7 @@ not yet covered by a confirmed anchor. With `ANCHOR_EVERY_N_BLOCKS=50`, that win
 up to 50 blocks plus confirmation time. Shrinking it costs anchor-transaction fees; the
 trade-off is the operator's to tune. Deleting the entire database is detectable by
 absence (published anchors reference roots the new history cannot reproduce) but not
-recoverable — see [backup-recovery.md](backup-recovery.md).
+recoverable without a backup (`scripts/backup-mongo.sh`).
 
 **N2 — Garbage in, garbage forever.** Ernest proves an event was recorded at a point in
 time and not altered since. It cannot prove the event was *true*. A model registered
@@ -126,7 +126,7 @@ The guarantees hold only if the deployment does its part:
 2. **Set `WEBHOOK_URL`** so integrity failures page someone instead of waiting in
    `/health` for a viewer.
 3. **Configure access keys.** With neither key set the instance is open — demos only.
-4. **Back up on a schedule and test restores** ([backup-recovery.md](backup-recovery.md)).
+4. **Back up on a schedule and test restores** (`scripts/backup-mongo.sh`, `scripts/restore-mongo.sh`).
 5. **Keep NTP disciplined** on the writing host if timestamps matter beyond anchor
    bounds.
 6. **One Ernest deployment per MongoDB.** Within a deployment, concurrent writers are

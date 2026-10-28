@@ -4,7 +4,7 @@ set -euo pipefail
 # Backs up the Ernest MongoDB database to a single gzip-compressed archive.
 # The optional Ethereum anchor only proves a Merkle root existed at a point in
 # time — it does not let you reconstruct block contents. This is what actually
-# protects the evidence itself. See docs/backup-recovery.md.
+# protects the evidence itself.
 
 CONTAINER="${MONGO_CONTAINER:-ernest-mongodb}"
 DB_NAME="${MONGO_DB_NAME:-ernest}"

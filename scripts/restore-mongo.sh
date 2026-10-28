@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Restores an Ernest MongoDB backup produced by scripts/backup-mongo.sh.
-# DESTRUCTIVE: drops the target database before restoring. See docs/backup-recovery.md.
+# DESTRUCTIVE: drops the target database before restoring.
 
 CONTAINER="${MONGO_CONTAINER:-ernest-mongodb}"
 DB_NAME="${MONGO_DB_NAME:-ernest}"

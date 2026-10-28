@@ -10,7 +10,7 @@ This model frames Ernest as an alpha PoC with a clear path toward an enterprise 
 | Tenant scope | `X-Ernest-Org-Id` demo scoping | Organization-aware access model | Formal tenant isolation and data boundaries |
 | Data handling | Hashes and non-sensitive metadata | Data classification rules | Retention, legal hold, deletion workflows |
 | Blockchain anchoring | Optional Sepolia root anchoring | Controlled testnet/mainnet policy | Managed custody, approvals, cost controls |
-| Deployment | Docker Compose on local/VPS | GHCR images with controlled VPS or lab cloud | HA services, managed database, IaC |
+| Deployment | Docker Compose on one host | GHCR images on a controlled host or lab cloud | HA services, managed database, IaC |
 | Observability | Health endpoint and logs | Metrics, traces, and alerting | SLOs, incident response, audit monitoring |
 | Backup/restore | Manual MongoDB backup guidance | Scheduled backup validation | DR runbooks and restore objectives |
 | Evidence export | API and UI inspection | Structured report exports | GRC/model-risk workflow integration |
