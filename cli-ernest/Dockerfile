@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine AS build
+FROM golang:1.27-alpine AS build
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY . .
 
 RUN go build -o ernest .
 
-FROM alpine:3.20.1 AS prod
+FROM alpine:3.24.3 AS prod
 WORKDIR /app
 COPY --from=build /app/ernest /app/ernest
 ENTRYPOINT ["./ernest"]
