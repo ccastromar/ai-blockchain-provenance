@@ -13,14 +13,14 @@ is still alpha.
 
 - Evidence from Prudence and AOS: decisions, reviews and executions, checked against their
   shared contracts.
-- Sign-in with any OpenID Connect provider, with suite-wide sign-out.
+- Sign-in with any OpenID Connect provider, with sign-out across the apps.
 - Qualified trust services: anchored roots can carry an RFC 3161 timestamp, and evidence can be
   sealed with a qualified electronic seal. Ernest consumes these services; it does not provide
   them.
 - Data lifecycle, first part: a retention floor, legal holds and a verifiable archive export.
 - High-volume evidence: batch submissions and a Kafka source.
 - Public read-only access for demos.
-- Traces, metrics and logs following the suite's conventions.
+- Traces, metrics and logs following Chestertown's conventions.
 
 ### Changed
 

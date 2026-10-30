@@ -4,6 +4,8 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Status: Alpha](https://img.shields.io/badge/status-0.3.0-orange.svg)](CHANGELOG.md)
 
+> The reference implementation of Prove in the [Chestertown](https://ccmlab.cc/architecture) reference architecture: Decide · Run · Prove · Oversee. Ernest also works on its own.
+
 AI systems are increasingly asked to prove what happened: which model version was used, which artifact hash was approved, which code commit produced it, whether inference evidence was recorded, and whether the audit trail was later changed.
 
 Most teams already have model registries, ML platforms, application logs, and observability tools. What is often missing is a small, verifiable evidence layer that can sit beside them and answer a narrower question:

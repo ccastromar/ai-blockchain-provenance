@@ -1,7 +1,7 @@
 # Contributing to Ernest
 
-Thank you for helping. Ernest is the evidence vertex of the Chestertown suite (AOS
-orchestrates, Ernest proves, Prudence governs). What it records must stay verifiable by anyone,
+Thank you for helping. Ernest implements Prove in the Chestertown reference architecture
+(AOS runs, Ernest proves, Prudence decides and oversees). What it records must stay verifiable by anyone,
 offline, so hashes, proofs and the contracts below matter as much as the code.
 
 ## Before you open a pull request

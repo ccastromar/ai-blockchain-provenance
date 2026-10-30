@@ -20,7 +20,7 @@ Status legend: ✅ shipped · 🔜 next (a pilot would likely need it) · 🕓 l
 
 Current tag: `v0.2.0-alpha`. A large batch of evidence features sits in `[Unreleased]`
 (see [CHANGELOG.md](CHANGELOG.md)) and becomes `v0.3.0` — "the evidence release" — at the
-Chestertown 0.1.0 suite launch on 2026-11-16.
+Chestertown 0.1.0 launch on 2026-11-16.
 
 Shipped this cycle (the four questions a receipt now answers — what / who / when / where):
 
@@ -41,7 +41,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
   Everything above exists to make that first meeting succeed.
 - 🔜 **One real end-to-end pilot**: a partner instruments a real model, and an auditor
   verifies a real receipt. This is the alpha-exit signal that matters most.
-- 🔜 **Cut `v0.3.0`** with the Chestertown 0.1.0 suite launch (2026-11-16).
+- 🔜 **Cut `v0.3.0`** with the Chestertown 0.1.0 launch (2026-11-16).
 
 ## Next — engineering a pilot would pull
 
@@ -112,7 +112,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 |---|---|
 | A real model-registry / ML-platform integration demonstrated | ✅ MLflow watcher (one real; more would strengthen it) |
 | Write clients can sign provenance submissions | ✅ ADR-001 (direct API); 🔜 ingestor path |
-| Authentication delegated to an enterprise identity provider | ✅ OIDC/SSO on top of roles/tokens (shared suite sign-in and sign-out) |
+| Authentication delegated to an enterprise identity provider | ✅ OIDC/SSO on top of roles/tokens (shared sign-in and sign-out) |
 | Backup and restore tested on the target deployment shape | ✅ scripts + runbook (test on the real target during the pilot) |
 | A pilot threat model reviewed with security stakeholders | 🔜 needs the design-partner conversation (checklist in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md)) |
 | Data lifecycle: retention, legal hold, GDPR erasure | 🔜 designed in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md); not yet implemented |
