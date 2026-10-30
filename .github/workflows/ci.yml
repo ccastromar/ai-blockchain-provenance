@@ -125,7 +125,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: cli-ernest/go.mod
           cache-dependency-path: cli-ernest/go.sum
@@ -171,7 +171,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: event-ingestor/go.mod
           cache-dependency-path: event-ingestor/go.sum
