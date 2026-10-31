@@ -12,7 +12,7 @@ wasm-bindgen = "0.2"
 sha2 = "0.10"
 hex = "0.4"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-ed25519-dalek = { version = "2", default-features = false, features = ["alloc"] }
+ed25519-dalek = { version = "3", default-features = false, features = ["alloc"] }
 # ADR-002 B2: qualified electronic seal (qeseal-ecdsa-p256) verification in the browser.
 p256 = { version = "0.13", default-features = false, features = ["ecdsa", "pkcs8"] }
 x509-cert = { version = "0.2", default-features = false }
