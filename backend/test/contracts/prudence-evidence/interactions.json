@@ -381,6 +381,9 @@
             "hash": "3337fbccf9085435515fa63c8e7f8729957942b43fd69aa9596bc1c5918ea377"
           }
         },
+        "mayBeEmpty": [
+          "inclusion.auditPath"
+        ],
         "equal": [
           "status"
         ]

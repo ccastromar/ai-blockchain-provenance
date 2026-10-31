@@ -50,7 +50,10 @@ function check(want, got) {
   const out = [];
   const statuses = [].concat(want.status);
   if (!statuses.includes(got.status)) out.push(`status ${got.status}, Prudence expects ${statuses.join(' or ')}`);
-  if (want.body !== undefined) missing(want.body, got.json, '$', out);
+  if (want.body !== undefined) {
+    const allowed = (want.mayBeEmpty || []).map((field) => `$.${field} is empty`);
+    out.push(...missing(want.body, got.json).filter((problem) => !allowed.includes(problem)));
+  }
   for (const field of want.equal || []) {
     if (JSON.stringify(got.json?.[field]) !== JSON.stringify(want.body[field])) out.push(`$.${field} is not ${JSON.stringify(want.body[field])}`);
   }

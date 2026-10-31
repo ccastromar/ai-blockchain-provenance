@@ -29,6 +29,7 @@ runtime performs), a `request` (method, raw path with its query, JSON body) and 
 | `equal` | Top-level fields whose value must be exactly the example's |
 | `oneOf` | `list[].field` → the values allowed in every element |
 | `contains` | Text the raw answer must contain, because Prudence looks for it |
+| `mayBeEmpty` | Fields whose array may be empty in the answer: a batch of one event has no audit path |
 | `eventually` | Ernest may need a moment (a batch to chain, its chain index to catch up): it is asked again for up to 15 s |
 
 Ernest replays the interactions in order against an empty database, so each one sees the state
