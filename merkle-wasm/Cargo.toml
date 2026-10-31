@@ -18,7 +18,7 @@ p256 = { version = "0.13", default-features = false, features = ["ecdsa", "pkcs8
 x509-cert = { version = "0.2", default-features = false }
 spki = { version = "0.7", default-features = false, features = ["alloc"] }
 der = { version = "0.7", default-features = false, features = ["alloc"] }
-base64 = "0.22"
+base64 = "0.23"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
