@@ -32,6 +32,8 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM nginx:1.29-alpine AS runner
+# Fixes that reach Alpine before a new base image does.
+RUN apk upgrade --no-cache
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 3000
