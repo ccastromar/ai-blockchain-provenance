@@ -2,7 +2,7 @@
 #   docker build -f frontend/Dockerfile .
 # The console is a standalone npm project; @chestertown/design comes from the vendored
 # tarball in frontend/vendor, so the build needs nothing else from the repository.
-FROM node:24-alpine AS builder
+FROM node:25-alpine AS builder
 
 # Vite fixes these at build time (envPrefix PUBLIC_, see frontend/vite.config.ts).
 ARG PUBLIC_API_URL=
