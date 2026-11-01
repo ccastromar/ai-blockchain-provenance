@@ -1,7 +1,7 @@
 # ------------------------------------------------------
 # BASE: Python slim (pequeña, segura, producción real)
 # ------------------------------------------------------
-FROM python:3.12-slim AS base
+FROM python:3.15-slim AS base
 
 # Evita problemas con buffering en logs
 ENV PYTHONUNBUFFERED=1
