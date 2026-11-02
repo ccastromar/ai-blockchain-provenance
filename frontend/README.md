@@ -30,5 +30,5 @@ it does not sign out of the identity provider or affect sessions in other apps.
 `dist/` with nginx on port 3000, proxying `/api/` to the backend and `/ingestor/` to the optional
 event-ingestor. The `PUBLIC_*` values are build arguments.
 
-To upgrade the design system, run `scripts/release-local.sh` in the `chestertown-design`
-repository and commit `vendor/`, `package.json` and `package-lock.json`.
+The tarball is released from a separate repository. To upgrade the design system, install the new
+tarball and commit `vendor/`, `package.json` and `package-lock.json`.
