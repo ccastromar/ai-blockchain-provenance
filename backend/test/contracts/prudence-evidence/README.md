@@ -55,6 +55,11 @@ the previous ones left.
   inclusion path and the block. The example proof is a real one from Ernest v0.3.
 - Posture reads: `GET /api/verify`, `/api/stats/models`, `/api/models/{id}/integrity`,
   `/api/stats/executions`.
+- `GET /api/stats/executions?idsSince=<ISO instant>` adds `executionIds`: per AI system, the
+  `correlationId` of every execution evidence (`stage: execution`) at or after that instant, and
+  `executionIdsTruncated` when Ernest capped the list. Prudence matches them one by one with the
+  executions runtimes reported, for runtimes that send their execution id as the evidence's
+  `correlationId` (AOS does).
 
 In `events`, Ernest's default, every write goes through the event store like `on` (duplicates,
 `409` conflicts) but is chained in its own block before it answers (`200`/`201` with

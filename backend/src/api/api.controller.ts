@@ -198,13 +198,20 @@ export class ApiController {
     description: 'Server-side aggregation over an index. `since` is an exclusive block index; pass the returned `upToIndex` to continue incrementally.',
   })
   @ApiQuery({ name: 'since', required: false, type: Number })
-  @ApiOkResponse({ description: '{ counts: { [aiSystemId]: n }, lastExecutionAt: { [aiSystemId]: ISO time of the latest execution }, sinceIndex, upToIndex }' })
-  async getExecutionCounts(@Query('since') since?: string) {
+  @ApiQuery({ name: 'idsSince', required: false, type: String, description: 'ISO instant: also list each system\'s execution correlationIds at or after it.' })
+  @ApiOkResponse({ description: '{ counts: { [aiSystemId]: n }, lastExecutionAt: { [aiSystemId]: ISO time of the latest execution }, sinceIndex, upToIndex }, plus with idsSince { executionIds: { [aiSystemId]: correlationId[] }, executionIdsTruncated }' })
+  async getExecutionCounts(@Query('since') since?: string, @Query('idsSince') idsSince?: string) {
     const parsed = since === undefined || since === '' ? undefined : Number(since);
     if (parsed !== undefined && (!Number.isInteger(parsed) || parsed < -1)) {
       throw new BadRequestException('since must be an integer >= -1');
     }
-    return await this.apiService.executionCountsBySystem(parsed);
+    const counts = await this.apiService.executionCountsBySystem(parsed);
+    if (idsSince === undefined || idsSince === '') return counts;
+    const from = new Date(idsSince);
+    if (Number.isNaN(from.getTime())) {
+      throw new BadRequestException('idsSince must be an ISO-8601 instant');
+    }
+    return { ...counts, ...await this.apiService.executionIdsSince(from) };
   }
 
   @Get('stats')

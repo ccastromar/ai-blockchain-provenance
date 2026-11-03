@@ -423,7 +423,8 @@
             "aiSystemId": "sys-credit",
             "pipeline": "credit_prescreening",
             "runtime": "langgraph",
-            "decisionId": "dec-1"
+            "decisionId": "dec-1",
+            "correlationId": "exec-1"
           }
         }
       },
@@ -508,6 +509,30 @@
         },
         "equal": [
           "counts"
+        ],
+        "eventually": true
+      }
+    },
+    {
+      "id": "execution-ids",
+      "consumer": "ErnestEvidenceHealthAdapter",
+      "request": {
+        "method": "GET",
+        "path": "/api/stats/executions?idsSince=2026-01-01T00%3A00%3A00Z"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "executionIds": {
+            "sys-credit": [
+              "exec-1"
+            ]
+          },
+          "executionIdsTruncated": false
+        },
+        "equal": [
+          "executionIds",
+          "executionIdsTruncated"
         ],
         "eventually": true
       }

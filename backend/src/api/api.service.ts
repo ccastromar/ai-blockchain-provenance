@@ -607,6 +607,10 @@ export class ApiService {
     return await this.blockchainService.executionCountsBySystem(sinceIndex ?? -1);
   }
 
+  async executionIdsSince(since: Date) {
+    return await this.blockchainService.executionIdsSince(since);
+  }
+
   async exportAllBlocksCursor() {
     return await this.blockchainService.exportAllBlocksCursor();
   }

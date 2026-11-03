@@ -857,6 +857,42 @@ export class BlockchainService implements OnModuleInit {
     }
 
     /**
+     * The `correlationId` of every execution evidence at or after `since`, per AI system, so a
+     * consumer can match executions one by one instead of comparing the latest time. Only
+     * evidence that carries a correlationId is listed (AOS sends its execution id there). The
+     * list stops at `cap` ids, and says so.
+     */
+    async executionIdsSince(since: Date, cap = 10_000): Promise<{ executionIds: Record<string, string[]>; executionIdsTruncated: boolean }> {
+        const blockTime = { $toDate: { $multiply: [{ $toLong: '$timestamp' }, 1000] } };
+        const withId = {
+            'data.metadata.stage': 'execution',
+            'data.metadata.aiSystemId': { $type: 'string', $ne: '' },
+            'data.metadata.correlationId': { $type: 'string', $ne: '' },
+        };
+        const project = { $project: { _id: 0, system: '$data.metadata.aiSystemId', id: '$data.metadata.correlationId' } };
+        const rows: Array<{ system: string; id: string }> = await this.provenanceBlockModel.aggregate([
+            { $match: withId },
+            { $match: { $expr: { $gte: [{ $convert: { input: '$data.occurredAt', to: 'date', onError: blockTime, onNull: blockTime } }, since] } } },
+            project,
+            { $limit: cap + 1 },
+        ]);
+        if (this.evidenceEventModel && rows.length <= cap) {
+            // Batched executions, once chained, as executionCountsBySystem counts them.
+            rows.push(...await this.evidenceEventModel.aggregate([
+                { $match: { ...withId, 'chain.kind': 'batch', state: 'chained' } },
+                { $match: { $expr: { $gte: [{ $convert: { input: '$data.occurredAt', to: 'date', onError: '$createdAt', onNull: '$createdAt' } }, since] } } },
+                project,
+                { $limit: cap + 1 - rows.length },
+            ]));
+        }
+        const truncated = rows.length > cap;
+        const ids: Record<string, Set<string>> = {};
+        for (const r of rows.slice(0, cap)) (ids[r.system] ??= new Set()).add(r.id);
+        const executionIds = Object.fromEntries(Object.entries(ids).map(([system, set]) => [system, [...set].sort()]));
+        return { executionIds, executionIdsTruncated: truncated };
+    }
+
+    /**
      * Get all blocks (paginated)
      */
     async getAllBlocks(page = 1, limit = 20, after?: number, order: 'asc' | 'desc' = 'asc'): Promise<any> {
