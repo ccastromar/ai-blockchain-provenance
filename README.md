@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/ccastromar/ai-blockchain-provenance/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Status: Alpha](https://img.shields.io/badge/status-0.3.0-orange.svg)](CHANGELOG.md)
+[![Version: 0.3.0](https://img.shields.io/badge/version-0.3.0-orange.svg)](CHANGELOG.md)
 
 > The reference implementation of Prove in the [Chestertown](https://ccmlab.cc/architecture) reference architecture: Decide · Run · Prove · Oversee. Ernest also works on its own.
 
@@ -12,7 +12,7 @@ Most teams already have model registries, ML platforms, application logs, and ob
 
 > Can this AI lifecycle evidence be independently checked for integrity later?
 
-Ernest is an alpha proof-of-concept for that layer. It stores hashes and metadata, links AI lifecycle events in a local hashchain, verifies the chain, computes Merkle roots, and can optionally anchor those roots to an EVM chain for external proof of existence.
+Ernest is that layer. It stores hashes and metadata, links AI lifecycle events in a local hashchain, verifies the chain, computes Merkle roots, and can optionally anchor those roots to an EVM chain for external proof of existence.
 
 In short: **Ernest is an evidence layer for AI governance, not a replacement for your ML platform.**
 
@@ -20,7 +20,7 @@ In short: **Ernest is an evidence layer for AI governance, not a replacement for
 
 Ernest is aimed at organizations evaluating how to make AI systems more auditable without moving raw model artifacts, prompts, inputs, or outputs into a new central platform. It provides a narrow provenance layer that can sit beside MLflow, model registries, internal AI platforms, business applications, and governance workflows.
 
-The current alpha demonstrates:
+The current release provides:
 
 - Tamper-evident registration of model lifecycle events.
 - Hash-only logging of inference events.
@@ -28,7 +28,7 @@ The current alpha demonstrates:
 - Optional proof of existence through local Hardhat or Sepolia anchoring.
 - MLflow-to-Ernest demo flow for train-to-audit evidence.
 - Audit Readiness review for score, missing evidence, and exportable evidence packets.
-- A dashboard and API stack suitable for a public PoC or a pilot.
+- A dashboard and API stack suitable for a public demo or a pilot.
 
 ## Example Use Case
 
@@ -104,7 +104,7 @@ MLflow is excellent for ML lifecycle tracking. Ernest is narrower: it turns sele
 
 ## Status
 
-This project is currently `0.3.0` (alpha).
+This project is currently `0.3.0`.
 
 It is suitable for demos, technical evaluation, and research prototypes. It is not a production compliance system. Ernest can support auditability workflows, but it does not by itself provide HIPAA, GDPR, FDA, banking, or enterprise compliance.
 
@@ -381,7 +381,7 @@ No. MLflow remains useful for experiments and model registry workflows. Ernest c
 
 ### Is Ernest compliant with AI Act, HIPAA, GDPR, or banking regulations?
 
-No standalone tool is compliant by itself. Ernest is an alpha PoC that can support evidence collection, integrity checks, and audit discussions inside a broader governance process.
+No standalone tool is compliant by itself. Ernest can support evidence collection, integrity checks, and audit discussions inside a broader governance process.
 
 ## Demo Assets
 
@@ -439,7 +439,7 @@ Threat model — what Ernest detects vs. cannot prevent: [docs/threat-model.md](
 ## Roadmap
 
 Full roadmap with honest status markers (shipped / next / later / not doing) and the
-alpha-exit criteria: **[ROADMAP.md](ROADMAP.md)**.
+maturity criteria still open: **[ROADMAP.md](ROADMAP.md)**.
 
 The short version: the engineering foundation is in place (tamper-evident chain,
 offline-verifiable receipts, EVM + OpenTimestamps anchoring, per-emitter signatures,
@@ -449,7 +449,7 @@ is not more code — it is one or two regulated design partners and a real pilot
 
 ## Contributing
 
-This is an alpha PoC. Issues and pull requests are welcome.
+Issues and pull requests are welcome.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CHANGELOG.md](CHANGELOG.md) and [SECURITY.md](SECURITY.md).
 
