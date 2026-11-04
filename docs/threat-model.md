@@ -81,7 +81,7 @@ recoverable without a backup (`scripts/backup-mongo.sh`).
 **N2 — Garbage in, garbage forever.** Ernest proves an event was recorded at a point in
 time and not altered since. It cannot prove the event was *true*. A model registered
 with a falsified accuracy metric is preserved with perfect integrity. Provenance is
-evidence of process, not of honesty at the source. Signed submissions (ADR-001)
+evidence of process, not of honesty at the source. Signed submissions
 narrow this: with `SIGNED_SUBMISSIONS=required` and per-emitter Ed25519 keys, every
 event is non-repudiably attributable — a lie now has an author, verifiable offline
 from the block itself.
@@ -137,7 +137,7 @@ The guarantees hold only if the deployment does its part:
 
 | Threat | Current state | Recommended next control |
 | --- | --- | --- |
-| Client identity on writes | Per-emitter Ed25519 signed submissions implemented ([adr-001-signed-submissions.md](adr-001-signed-submissions.md)): registry with revocation, offline-verifiable envelopes in blocks/receipts, `off/optional/required` modes | sigstore/OIDC keyless envelopes (v2); ingestor-path signing contract (v1.1) |
+| Client identity on writes | Per-emitter Ed25519 signed submissions implemented: registry with revocation, offline-verifiable envelopes in blocks/receipts, `off/optional/required` modes | sigstore/OIDC keyless envelopes (v2); ingestor-path signing contract (v1.1) |
 | Browser demo key exposure | `PUBLIC_ERNEST_API_KEY` documented as public | Session auth or server-side write proxy |
 | Anchor key custody | Eliminated under the recommended `ANCHOR_PROVIDER=ots` (OpenTimestamps: keyless, free Bitcoin attestation); EVM contract anchoring remains optional with its wallet in an environment variable | Secrets manager or external signer for deployments that choose EVM anchoring |
 | Supply-chain drift | Release images signed with cosign (keyless), with SBOM and provenance attached (see SECURITY.md) | Verify signatures at deploy time |

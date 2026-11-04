@@ -237,7 +237,7 @@ export function buildLocalAuditReport(input: AuditInput): LocalAuditReport {
     }
   );
   const summary = clampedScore >= 80
-    ? 'This model is ready for an alpha evidence review.'
+    ? 'This model is ready for an evidence review.'
     : clampedScore >= 55
       ? 'This model is reviewable, but the evidence packet needs follow-up before external presentation.'
       : 'This model should not be used as the primary demo evidence until high-priority gaps are resolved.';
@@ -287,7 +287,7 @@ export function buildLocalAuditReport(input: AuditInput): LocalAuditReport {
 
 export function buildWebLlmPrompt(_model: any, report: LocalAuditReport): string {
   return [
-    'You are an AI governance reviewer. Write a concise audit memo for an alpha PoC evaluation.',
+    'You are an AI governance reviewer. Write a concise audit memo for a pilot evaluation.',
     'Use only the evidence below. Do not claim production compliance.',
     '',
     report.evidencePacket,

@@ -6,8 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## [Unreleased]
 
-Ernest 0.3.0 ships in Chestertown 0.1.0, with Prudence (govern) and AOS (operate). Its maturity
-is still alpha.
+Ernest 0.3.0 ships in Chestertown 0.1.0 as the reference implementation of Prove, with Prudence
+(Decide and Oversee) and AOS (Run). It is not a production compliance system on its own.
 
 ### Added
 
@@ -19,6 +19,8 @@ is still alpha.
   them.
 - Data lifecycle, first part: a retention floor, legal holds and a verifiable archive export.
 - High-volume evidence: batch submissions and a Kafka source.
+- `GET /api/stats/executions?idsSince=` lists each AI system's execution ids, so Prudence can
+  match executions one by one.
 - Public read-only access for demos.
 - Traces, metrics and logs following Chestertown's conventions.
 

@@ -79,7 +79,7 @@ export class ApiService {
    * off = envelopes ignored (not stored: an unverified claim is worse than none),
    * optional = verify when present, required = unsigned submissions rejected.
    * The registry only matters HERE -- the block embeds the key, so downstream
-   * verification is offline (see docs/adr-001-signed-submissions.md).
+   * verification is offline.
    */
   private async admitSignature(
     payload: Record<string, any>,

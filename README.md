@@ -251,6 +251,9 @@ For the documentation map, see [docs/index.md](docs/index.md).
 
 ## Local Development
 
+Requires Node.js 24+ and the pnpm version the repository pins (`packageManager` in
+`package.json`); `corepack enable` provides it. An older pnpm rewrites `pnpm-lock.yaml` on install.
+
 Backend:
 
 ```bash
@@ -439,7 +442,7 @@ Threat model — what Ernest detects vs. cannot prevent: [docs/threat-model.md](
 ## Roadmap
 
 Full roadmap with honest status markers (shipped / next / later / not doing) and the
-maturity criteria still open: **[ROADMAP.md](ROADMAP.md)**.
+beta criteria still open: **[ROADMAP.md](ROADMAP.md)**.
 
 The short version: the engineering foundation is in place (tamper-evident chain,
 offline-verifiable receipts, EVM + OpenTimestamps anchoring, per-emitter signatures,

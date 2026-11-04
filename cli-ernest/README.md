@@ -25,7 +25,7 @@ curl -H "X-Ernest-Api-Key: $READ_ONLY_KEY" https://ernest.example.com/api/blocks
 MONGO_URI=mongodb://127.0.0.1:27017 BLUEPRINT_DB_DATABASE=ernest ./ernest hashchain verify
 ```
 
-With ADR-004 batching on, `batch` blocks commit to their events through an RFC 6962 root, so
+With batching on, `batch` blocks commit to their events through an RFC 6962 root, so
 the events are needed too: every batch root is re-derived from its events' data. The API and
 Mongo modes fetch them automatically; offline, pass the events export alongside the chain:
 
@@ -34,7 +34,7 @@ curl -H "X-Ernest-Api-Key: $READ_ONLY_KEY" https://ernest.example.com/api/events
 ./ernest hashchain verify --file chain.json --events events.json
 ```
 
-When a block embeds an ADR-001 emitter signature, `proof verify` also checks it
+When a block embeds an emitter signature, `proof verify` also checks it
 offline and reports the signing `keyId`. Generate emitter keypairs with
 `./ernest emitter keygen`.
 
@@ -56,7 +56,7 @@ canonicalization) and the hash must climb the proof path to the anchored root
 (keccak256, sorted pairs, pinned by `../testdata/merkle-proof-golden.json`). The
 printed anchor transaction lets anyone confirm the root on the public chain.
 
-The same command verifies an ADR-004 event proof (detected automatically):
+The same command verifies a batched event proof (detected automatically):
 
 ```bash
 curl -H "X-Ernest-Api-Key: $READ_ONLY_KEY" \

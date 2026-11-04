@@ -4,7 +4,7 @@ Use this page when someone has 10 minutes to evaluate Ernest.
 
 ## 1 Minute Summary
 
-Ernest is an alpha PoC for AI provenance. It records model lifecycle events and inference evidence as hashes and metadata, verifies a local hashchain, and can optionally anchor Merkle roots to Sepolia.
+Ernest is the reference implementation of Prove in the Chestertown architecture: verifiable provenance for AI. It records model lifecycle events and inference evidence as hashes and metadata, verifies a local hashchain, and can optionally anchor Merkle roots to Sepolia.
 
 It is useful for:
 
@@ -47,7 +47,7 @@ docker compose -f docker-compose.prod.yml up -d
 - `README.md`: overview and quickstart.
 - `docs/architecture.md`: system and deployment architecture.
 - `docs/threat-model.md`: security gaps and mitigations.
-- `docs/maturity-model.md`: alpha-to-enterprise path.
+- `docs/maturity-model.md`: maturity path towards beta and an enterprise pilot.
 - `docs/integrations.md`: AI tooling integrations.
 - `/auditor`: Audit Readiness evidence review, score dimensions, and optional browser-side WebLLM memo.
 

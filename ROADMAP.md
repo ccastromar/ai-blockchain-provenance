@@ -27,7 +27,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 - ✅ Tamper-evident hashchain, per-model and full-chain verification.
 - ✅ SPV-style **inclusion receipts**, verifiable offline (CLI + in-browser WASM).
 - ✅ **Anchoring** to EVM *and* OpenTimestamps/Bitcoin (keyless, free — production default).
-- ✅ **Signed submissions** (per-emitter Ed25519, ADR-001) — the "who".
+- ✅ **Signed submissions** (per-emitter Ed25519) — the "who".
 - ✅ Roles + revocable auditor tokens; login; access scoping.
 - ✅ Cross-language hash/proof/signature **consensus** pinned by golden fixtures in CI.
 - ✅ Checkpointed integrity monitoring; constant-memory export; NTP drift detection.
@@ -40,7 +40,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 - 🔜 **One or two regulated design partners** (banking/insurance with Annex III models).
   Everything above exists to make that first meeting succeed.
 - 🔜 **One real end-to-end pilot**: a partner instruments a real model, and an auditor
-  verifies a real receipt. This is the alpha-exit signal that matters most.
+  verifies a real receipt. This is the beta signal that matters most.
 - 🔜 **Cut `v0.3.0`** with the Chestertown 0.1.0 launch (2026-11-16).
 
 ## Next — engineering a pilot would pull
@@ -50,18 +50,17 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
   backpressure. Evidence delivery from one client went from 1.6/s to ~1,400/s.
 - 🔜 **Merkle-batched evidence** — one chain block per batch, every event still individually
   provable; lifts the serialized-append ceiling and adds idempotent submission.
-  Design: [docs/adr-004-merkle-batched-evidence.md](docs/adr-004-merkle-batched-evidence.md) (Proposed).
   All rollout steps implemented behind `EVIDENCE_BATCHING=events|on`: event store + idempotency,
   batcher, event proofs, ingestor writing events, reads over events, RFC 6962 in the CLI/WASM/
-  Prudence verifiers pinned by `testdata/rfc6962-golden.json`. Before switching it on: the ADR's
+  Prudence verifiers pinned by `testdata/rfc6962-golden.json`. Before switching it on: the
   open questions (eIDAS, defaults via load test, ordering) and golden-test consumers.
 
-- 🔜 **Signed submissions v1.1 — the ingestor path.** ADR-001 covers direct API writes;
+- 🔜 **Signed submissions v1.1 — the ingestor path.** Signing covers direct API writes;
   events coming through the Go ingestor (HF/SageMaker/…) still use the HMAC channel
   ladder. Needs its own "signed subset" contract because adapters enrich payloads.
 - ✅ **Enterprise identity (OIDC/SSO)** layered on top of the built-in role/token model —
   per-client identity, not just "whoever holds the key"; the console signs in through the shared
-  Chestertown SSO. Design: [docs/adr-002-oidc-and-qtsp.md](docs/adr-002-oidc-and-qtsp.md) (Decision A).
+  Chestertown SSO.
 - 🔜 **Real provider connectors.** Today 8 providers are *simulated* (the adapters are
   real parsers; only the *source* is faked) and the MLflow watcher is the one real
   integration. Two patterns cover all of them — **push** (native webhooks: HF, Databricks)
@@ -75,7 +74,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
 ## Later
 
 - 🕓 **sigstore keyless envelopes (signing v2)** — OIDC identity + Rekor transparency log,
-  as an *additional* envelope type (deferred in ADR-001; must not break air-gapped use).
+  as an *additional* envelope type (deferred; must not break air-gapped use).
 - 🕓 **in-toto / SLSA provenance attestations** as an export format over the same data
   (natural companion to the CycloneDX export).
 - 🕓 **Standards alignment**: W3C PROV, OpenLineage — speak the vocabularies GRC tools use.
@@ -83,7 +82,7 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
   eIDAS, not just cryptographic strength. ✅ **RFC 3161 qualified timestamp** for anchoring
   is implemented (additive, fail-soft; point `QTS_TSA_URL` at an EU QTSP for presumption).
   🔜 Qualified electronic **seals** for emitter signatures (remote sealing via the CSC API)
-  remain — needs a QTSP contract/sandbox. Design: [docs/adr-002-oidc-and-qtsp.md](docs/adr-002-oidc-and-qtsp.md) (Decision B); see also docs/regulatory-mapping.md.
+  remain — needs a QTSP contract/sandbox. See docs/regulatory-mapping.md.
 - 🕓 **Streaming CLI verification / export** for chains too large to buffer as one file
   (the server export already streams; the file format could go NDJSON).
 - ✅ **Testcontainers CLI integration tests in CI** — the CLI Mongo tests self-provision a container (they already used testcontainers); now run via `go test ./...` in CI and skip gracefully where Docker is absent. (This also pulled the sigverify golden tests into CI, which were silently excluded.)
@@ -106,16 +105,16 @@ Shipped this cycle (the four questions a receipt now answers — what / who / wh
   it does not replace it.
 - 🚫 Storing raw prompts, inputs, outputs, datasets or model binaries.
 
-## Alpha-exit criteria (from `docs/maturity-model.md`) — status
+## Beta criteria (from `docs/maturity-model.md`) — status
 
 | Criterion | Status |
 |---|---|
 | A real model-registry / ML-platform integration demonstrated | ✅ MLflow watcher (one real; more would strengthen it) |
-| Write clients can sign provenance submissions | ✅ ADR-001 (direct API); 🔜 ingestor path |
+| Write clients can sign provenance submissions | ✅ direct API; 🔜 ingestor path |
 | Authentication delegated to an enterprise identity provider | ✅ OIDC/SSO on top of roles/tokens (shared sign-in and sign-out) |
 | Backup and restore tested on the target deployment shape | ✅ scripts + runbook (test on the real target during the pilot) |
-| A pilot threat model reviewed with security stakeholders | 🔜 needs the design-partner conversation (checklist in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md)) |
-| Data lifecycle: retention, legal hold, GDPR erasure | 🔜 designed in [docs/adr-003-data-lifecycle.md](docs/adr-003-data-lifecycle.md); not yet implemented |
+| A pilot threat model reviewed with security stakeholders | 🔜 needs the design-partner conversation |
+| Data lifecycle: retention, legal hold, GDPR erasure | 🔜 designed; not yet implemented |
 
 The gating items left are **not more code** — they are a pilot and a security review with
 a real counterparty. That is the roadmap.

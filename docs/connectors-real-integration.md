@@ -113,7 +113,7 @@ about which, because it determines what a receipt actually proves.
 
 Connectors carry **model-lifecycle** events (a version was registered / promoted). They do
 **not** carry **per-inference** evidence — ML platforms don't emit an event per inference.
-Per-inference sealing is always the direct signed-API path (ADR-001), never a connector.
+Per-inference sealing is always the direct signed-API path, never a connector.
 Keep this line clear in any pitch: connectors = provenance of *which model exists*;
 direct API = provenance of *what each inference did*.
 

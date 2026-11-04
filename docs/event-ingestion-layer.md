@@ -280,7 +280,7 @@ Implemented environment variables:
 | `RATE_LIMIT_AUTHENTICATED_RPS` | Ingestor | `5000` | Requests/sec for callers with the valid ingestor API key (one bucket per key). `<= 0` disables it. |
 | `RATE_LIMIT_AUTHENTICATED_BURST` | Ingestor | `10000` | Burst for the authenticated bucket. |
 | `METRICS_PORT` | Ingestor, writer | `9102` | Port for the dedicated Prometheus `/metrics` HTTP server. |
-| `EVIDENCE_BATCHING` | Writer | `events` | ADR-004 (same value as the backend; unset or unknown reads as `events`). `events` or `on`: the worker records each event in `evidence_events` (`eventId` = `<eventType>:<sourceEventId>`) for the backend's batcher instead of appending a block itself; the ingested event's status becomes `recorded` and `ernest_writer_events_recorded_total` counts them. `off` appends blocks directly, without the event store's deduplication. |
+| `EVIDENCE_BATCHING` | Writer | `events` | Batching (same value as the backend; unset or unknown reads as `events`). `events` or `on`: the worker records each event in `evidence_events` (`eventId` = `<eventType>:<sourceEventId>`) for the backend's batcher instead of appending a block itself; the ingested event's status becomes `recorded` and `ernest_writer_events_recorded_total` counts them. `off` appends blocks directly, without the event store's deduplication. |
 
 The frontend must not receive `EVENT_INGESTOR_API_KEY`, `HF_WEBHOOK_SECRET`, or `EVENT_PROVIDER_HMAC_SECRET`. Browser actions call the NestJS backend proxy, and the backend injects secrets server-side.
 
@@ -379,10 +379,10 @@ Before allowing the Go writer to append blocks directly, we should add cross-lan
 
 This is critical. If Go and NestJS disagree on canonicalization, `/api/verify` could fail even though both services are individually "correct".
 
-## Kafka Source (ADR-005)
+## Kafka Source
 
-High-volume emitters (Prudence's PDP decisions) publish to Kafka instead of calling HTTP; see
-[ADR-005](adr-005-kafka-ingestion.md). `event-ingestor kafka` consumes the topics as a consumer
+High-volume emitters (Prudence's PDP decisions) publish to Kafka instead of calling HTTP.
+`event-ingestor kafka` consumes the topics as a consumer
 group and records each poll in bulk through the same writer as the Redis worker, committing
 offsets only after the records are recorded (at-least-once; replays are deduplicated).
 

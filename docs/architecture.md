@@ -1,6 +1,6 @@
 # Architecture
 
-Ernest is a modular proof-of-concept for AI provenance. The default stack uses a React dashboard, a NestJS API, MongoDB for local hashchain storage, and optional EVM anchoring through either a local Hardhat chain or Sepolia.
+Ernest is a modular reference implementation for AI provenance. The default stack uses a React dashboard, a NestJS API, MongoDB for local hashchain storage, and optional EVM anchoring through either a local Hardhat chain or Sepolia.
 
 The design intentionally separates the provenance control plane from raw AI data. Ernest records hashes, model metadata, and audit-oriented events; source systems remain responsible for raw prompts, inference payloads, training data, model binaries, access control, and retention policies.
 
@@ -107,7 +107,7 @@ Appending a hashchain block is a read-last-block, calculate-next-block, insert o
 - Retry handling for duplicate-key races.
 - `409 Conflict` if append retries are exhausted.
 
-This is sufficient for a PoC and low-throughput demo. A production implementation should consider stronger append serialization, transactions, or a dedicated event log.
+This is sufficient for a demo and low-throughput deployments. A production implementation should consider stronger append serialization, transactions, or a dedicated event log.
 
 ## Trust Boundaries
 

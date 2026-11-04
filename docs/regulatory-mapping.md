@@ -59,7 +59,7 @@ or a non-qualified form. Ernest's primitives map conceptually to three of them:
 | eIDAS trust service | Ernest's corresponding primitive | Qualified? |
 | --- | --- | --- |
 | **Electronic timestamp** | Anchoring (OpenTimestamps/Bitcoin, EVM) — proof a record existed before a point in time | **No** — cryptographically strong, but not from a qualified TSA |
-| **Electronic seal** (origin + integrity, for a legal person/system) | Per-emitter Ed25519 signed submissions (ADR-001) | **No** — self-managed keys, not QTSP-issued seal certificates |
+| **Electronic seal** (origin + integrity, for a legal person/system) | Per-emitter Ed25519 signed submissions | **No** — self-managed keys, not QTSP-issued seal certificates |
 | **Electronic ledger** (eIDAS 2.0 — records with integrity and accurate chronological order) | The tamper-evident hashchain itself | **No** — the architecture matches; the *qualified* status does not |
 
 **The honest gap:** Ernest is **not** a Qualified Trust Service Provider. Its timestamps

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Ernest POC - Setup Script"
+echo "Ernest - Setup Script"
 echo "=================================="
 echo ""
 

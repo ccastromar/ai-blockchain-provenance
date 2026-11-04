@@ -6,7 +6,7 @@ offline, so hashes, proofs and the contracts below matter as much as the code.
 
 ## Before you open a pull request
 
-Run what CI runs for the parts you changed:
+Run what CI runs for the parts you changed, with Node.js 24+ and the pinned pnpm (`corepack enable`):
 
 ```bash
 pnpm install --frozen-lockfile

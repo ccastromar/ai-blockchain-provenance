@@ -1,6 +1,6 @@
 # Security Model
 
-Ernest is an alpha proof-of-concept. It provides tamper-evident event storage and optional public anchoring, but it is not a full production security or compliance system.
+Ernest is a 0.x reference implementation. It provides tamper-evident event storage and optional public anchoring, but it is not a full production security or compliance system.
 
 ## Goals
 

@@ -42,8 +42,7 @@ var keygenCmd = &cobra.Command{
 `, base64.StdEncoding.EncodeToString(publicKey))
 		fmt.Println()
 		fmt.Println("Sign submissions with integrations/signing/sign-submission.mjs or any")
-		fmt.Println("Ed25519 library, over the DSSE PAE of the Ernest-canonical payload")
-		fmt.Println("(see docs/adr-001-signed-submissions.md).")
+		fmt.Println("Ed25519 library, over the DSSE PAE of the Ernest-canonical payload.")
 		return nil
 	},
 }

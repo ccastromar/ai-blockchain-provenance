@@ -5,7 +5,7 @@
 - `README.md`: project overview, quickstart, components, verification, and roadmap.
 - `docs/quick-eval.md`: 10-minute evaluator path.
 - `docs/architecture.md`: system design, trust boundaries and trade-offs.
-- `docs/maturity-model.md`: alpha-to-enterprise maturity path.
+- `docs/maturity-model.md`: maturity path, from today towards beta and an enterprise pilot.
 - `docs/regulatory-mapping.md`: EU AI Act / ISO 42001 / NIST AI RMF record-keeping obligations mapped to Ernest evidence.
 
 ## Security
@@ -13,16 +13,7 @@
 - `docs/security-model.md`: guarantees, non-goals, trust assumptions, and hardening backlog.
 - `docs/threat-model.md`: what Ernest detects and what it cannot prevent.
 - `SECURITY.md`: vulnerability reporting and security expectations.
-- `docs/dependency-risk.md`: dependency audit policy and accepted alpha risks.
-
-## Design Decisions
-
-- `docs/adr-001-signed-submissions.md`: per-emitter Ed25519 signed submissions.
-- `docs/adr-002-oidc-and-qtsp.md`: enterprise identity (OIDC) and qualified eIDAS trust services.
-- `docs/adr-003-data-lifecycle.md`: retention, legal hold and GDPR erasure on an append-only chain.
-- `docs/adr-004-merkle-batched-evidence.md`: one block per batch, every event still provable.
-- `docs/adr-005-kafka-ingestion.md`: Kafka as the transport for high-volume evidence.
-- `docs/adr-006-chain-derived-read-models.md`: read models derived from the chain.
+- `docs/dependency-risk.md`: dependency audit policy and accepted risks.
 
 ## Integrate
 

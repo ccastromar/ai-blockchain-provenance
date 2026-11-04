@@ -1,7 +1,7 @@
 # Security Policy
 
 Ernest records tamper-evident AI evidence, anchors it and issues receipts anyone can verify
-offline. Its maturity is alpha: review `docs/security-model.md` and `docs/threat-model.md` before
+offline. It is a 0.x release maturing towards beta: review `docs/security-model.md` and `docs/threat-model.md` before
 using it with regulated or sensitive data.
 
 ## Reporting a vulnerability

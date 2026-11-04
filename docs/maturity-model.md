@@ -1,8 +1,8 @@
 # Maturity Model
 
-This model frames Ernest as an alpha PoC with a clear path toward an enterprise pilot and later production hardening.
+This model places Ernest today, a reference implementation maturing towards beta, on its path toward an enterprise pilot and later production hardening. The first column is where it started.
 
-| Capability | Alpha PoC | Enterprise Pilot | Production Direction |
+| Capability | Starting point | Enterprise Pilot | Production Direction |
 | --- | --- | --- | --- |
 | Identity | Optional shared API key | OIDC/JWT or API gateway auth | RBAC/ABAC, mTLS, service identities |
 | Authorization | Protected write endpoints | Role-based write/read controls | Tenant-aware policy enforcement |
@@ -16,9 +16,9 @@ This model frames Ernest as an alpha PoC with a clear path toward an enterprise 
 | Evidence export | API and UI inspection | Structured report exports | GRC/model-risk workflow integration |
 | Dependency risk | `audit:prod` gate and documented exceptions | Policy review before releases | SBOM, vulnerability SLAs, provenance attestations |
 
-## Alpha Exit Criteria
+## Beta Criteria
 
-Ernest is ready to leave alpha PoC status when:
+Ernest reaches beta when:
 
 - A real model registry or ML platform integration is demonstrated.
 - Write clients can sign provenance submissions.
