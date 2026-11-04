@@ -173,7 +173,9 @@ test('HTTP auth matrix against the real application', async (t) => {
       });
       assert.equal(patched.status, 200);
 
-      const verify = await call('GET', '/api/verify', { key: WRITE_KEY });
+      // Full mode: the default is incremental from the chain indexer's checkpoint, which may
+      // already sit at the tip, so its block count depends on when the indexer last ran.
+      const verify = await call('GET', '/api/verify?mode=full', { key: WRITE_KEY });
       assert.equal(verify.body.isValid, true, 'chain must verify after the lifecycle');
       assert.deepEqual(verify.body.errors, []);
       assert.ok(verify.body.blocksVerified >= 3, 'verify reports how many blocks it checked');
