@@ -1,8 +1,13 @@
 # Contributing to Ernest
 
-Thank you for helping. Ernest implements Prove in the Chestertown reference architecture
+Thank you for helping. Ernest implements Prove in the Chestertown open architecture
 (AOS runs, Ernest proves, Prudence decides and oversees). What it records must stay verifiable by anyone,
 offline, so hashes, proofs and the contracts below matter as much as the code.
+
+**Maintenance.** This is a reference implementation kept by one person in their spare time. Issues and
+pull requests are read when time allows; there is no support and no promised response time, and a
+pull request may stay open or be closed without a full review. Security reports follow
+[SECURITY.md](SECURITY.md).
 
 ## Before you open a pull request
 

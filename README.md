@@ -6,6 +6,12 @@
 
 > Ernest implements Prove in [Chestertown](https://ccmlab.cc/architecture), an open architecture for governing AI agents: Decide · Run · Prove · Oversee. Ernest also works on its own.
 
+> **See it run:** a 1:21 recording of one request going through Prudence, AOS and Ernest is on
+> [ccmlab.cc](https://ccmlab.cc/#film), with one recording per risk tier.
+>
+> **Maintenance:** a reference implementation, maintained by one person on a best-effort basis.
+> Issues and pull requests are welcome, but there is no support and no promised response time.
+
 AI systems are increasingly asked to prove what happened: which model version was used, which artifact hash was approved, which code commit produced it, whether inference evidence was recorded, and whether the audit trail was later changed.
 
 Most teams already have model registries, ML platforms, application logs, and observability tools. What is often missing is a small, verifiable evidence layer that can sit beside them and answer a narrower question:

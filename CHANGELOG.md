@@ -6,8 +6,12 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-16
+
 Ernest 0.3.0 ships in Chestertown 0.1.0 as the reference implementation of Prove, with Prudence
 (Decide and Oversee) and AOS (Run). It is not a production compliance system on its own.
+
+Suite release notes: https://ccmlab.cc/releases/0.1.0
 
 ### Added
 
