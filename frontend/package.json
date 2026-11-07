@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@chestertown/design": "file:vendor/chestertown-design-0.3.11.tgz",
-    "axios": "^1.6.2",
+    "axios": "^1.21.0",
     "date-fns": "^3.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
