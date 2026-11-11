@@ -37,7 +37,7 @@
     "json-canonicalize": "2.0.0",
     "keccak256": "^1.0.6",
     "merkletreejs": "^0.6.0",
-    "mongoose": "^8.24.6",
+    "mongoose": "^8.24.7",
     "opentimestamps": "^0.4.9",
     "swagger-ui-express": "^5.0.1"
   },
